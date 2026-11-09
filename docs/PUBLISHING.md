@@ -1,8 +1,7 @@
 # Making the George repository public
 
 **Status (2026-11-09): public.** Fresh single-commit history; old CI branches and runs deleted;
-handbook v1.1. Still open for the owner: rulesets → Enforcement **Active** (both), Advanced Security
-→ Secret Protection → **Enable** (+ Push protection).
+handbook v1.1; both rulesets active; secret scanning and push protection on. Nothing open.
 
 Follows the handbook's SETUP_CHECKLIST 7 (v1.1). Public repos run GitHub Actions – including the
 Mac builds – for free; the code becomes readable by everyone.
