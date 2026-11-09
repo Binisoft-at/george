@@ -1,0 +1,11 @@
+Validating cloudkit/schema.ckdb against iCloud.at.binisoft.george (Development)…
+Validation: {
+  "isValid": true,
+  "errorMessage": ""
+}
+Importing into Development…
+Import: {
+  "statusCode": 202,
+  "description": "Accepted schema import."
+}
+Production already matches Development – nothing to deploy.
