@@ -1,5 +1,9 @@
 # Making the George repository public
 
+**Status (2026-11-09): public.** Fresh single-commit history; old CI branches and runs deleted;
+handbook v1.1. Still open for the owner: rulesets → Enforcement **Active** (both), Advanced Security
+→ Secret Protection → **Enable** (+ Push protection).
+
 Follows the handbook's SETUP_CHECKLIST 7 (v1.1). Public repos run GitHub Actions – including the
 Mac builds – for free; the code becomes readable by everyone.
 
@@ -11,19 +15,19 @@ Mac builds – for free; the code becomes readable by everyone.
 | CI logs, artifacts and the `ci-*` branches (screenshots use demo data) | App Store Connect, the Developer account, TestFlight testers |
 | Identifiers (bundle ID, iCloud container, App Store app id) – these are in every shipped app anyway | Users' data – it lives in their own iCloud and Apple Health, never in this repo |
 | `Vendor/BinisoftKit` and `scripts/ci` (copies from the private handbook) | The handbook repository itself |
-| Commit history (authors: "Claude", "Binisoft CI"; early commits contain the old bundle ID prefix `com.erblinkastrati`) | |
+| Commit history (fresh since going public; the earlier history stays in the owner's private backups) | |
 
 ## Done (Claude, 2026-11-08)
 
 - Audit of all files and the full history of every branch: no keys, certificates, tokens or private
   workout data. Exercise data is public domain (free-exercise-db) or original.
-- Handbook v1.1 (synced): saved CI logs are redacted (API key ID, issuer ID, CloudKit token → `***`;
+- Handbook v1.1 (tagged after a green Handbook CI run, synced): saved CI logs are redacted (API key ID, issuer ID, CloudKit token → `***`;
   the old archive logs contained the key ID and issuer ID), the certificate list counts instead of
   naming team members and other projects (the old `asc/status.txt` named them), workflows run
   read-only except their publish jobs, fork pull requests don't publish.
 - `LICENSE` (all rights reserved, source readable), `THIRD_PARTY_NOTICES.md`, `SECURITY.md`, README
   section "Status, privacy, licence".
-- Not done (needs the owner – deleting is blocked for Claude here): the old `ci-*` branches and
+- Owner (done 2026-11-09): the old `ci-*` branches and
   workflow runs were made **before** the redaction. `ci-output/asc/status.txt` names team members and
   other projects' pass IDs; the archive logs on `ci-testflight` and in the TestFlight runs' artifacts
   contain the API key ID and issuer ID (not usable without the private key, but not for the public).
@@ -48,9 +52,11 @@ Mac builds – for free; the code becomes readable by everyone.
      collaborators**
    - *Workflow permissions* → **Read repository contents and packages permissions** → Save
 7. **Settings → Advanced Security** (<https://github.com/Binisoft-at/george/settings/security_analysis>):
-   **Private vulnerability reporting**, **Dependabot alerts**, **Secret scanning** and **Push
-   protection** → Enable (secret scanning appears once the repo is public).
-8. **Settings → Rules → Rulesets** (<https://github.com/Binisoft-at/george/settings/rules>):
+   **Private vulnerability reporting** and **Dependabot alerts** on; at the bottom **Secret
+   Protection → Enable**, then **Push protection → Enable** (free for public repos). CodeQL and
+   Dependabot updates aren't needed – George has no third-party packages.
+8. **Settings → Rules → Rulesets** (<https://github.com/Binisoft-at/george/settings/rules>) – both with
+   **Enforcement status: Active** (a fresh history needs the `main` one disabled for one push):
    - *New branch ruleset* "main": Enforcement **Active**, target **Default branch**, rules **Restrict
      deletions** and **Block force pushes** → Create
    - *New tag ruleset* "release tags": target pattern `v*`, rules **Restrict creations**, bypass list

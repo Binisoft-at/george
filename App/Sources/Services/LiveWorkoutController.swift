@@ -434,7 +434,10 @@ final class LiveWorkoutController {
         celebrationTask?.cancel()
         celebration = nil
         effortRequest = nil
-        if focusSuperset, let block = content.blocks.first(where: { $0.items.count > 1 }), let first = block.items.first {
+        if focusSuperset, let block = content.blocks.first(where: { $0.items.count > 1 }),
+           let first = block.items.first, let last = block.items.last {
+            // One extra set on the last exercise, so the screenshot shows "Match sets".
+            edit { $0.addSet(to: last.id) }
             focus(itemID: first.id)
         }
     }

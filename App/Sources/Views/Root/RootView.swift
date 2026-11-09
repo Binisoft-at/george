@@ -212,7 +212,12 @@ final class Router {
             // Mid-workout: a few sets ticked, momentum up; "live-superset" jumps to the first superset.
             if let template = store.suggestedTemplate(in: store.activeProgram) {
                 live.start(template: template)
-                live.demoProgress(sets: 3, focusSuperset: launch.screen == "live-superset")
+                // Let the live screen finish appearing first (ticking during the presentation left
+                // the screenshot blank).
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    live.demoProgress(sets: 3, focusSuperset: launch.screen == "live-superset")
+                }
             }
         case "muscles":
             show(.muscles)

@@ -91,7 +91,7 @@ enum DemoData {
     Gym – Strength Block,UPPER,CHEST + BACK + SHOULDERS,gym,1,Mon,MAIN,,,,,Barbell Bench Press,gym,4,8,60,kg,,,120,,,,,,chest;triceps
     Gym – Strength Block,UPPER,,,,,MAIN,,,,,Bent Over Barbell Row,gym,4,10,50,kg,,,90,,,,,,middle back;lats
     Gym – Strength Block,UPPER,,,,,MAIN,A,superset,3,60,Dumbbell Shoulder Press,gym,3,10,16,kg,,,,,,,,,shoulders;triceps
-    Gym – Strength Block,UPPER,,,,,MAIN,A,,,,Wide-Grip Lat Pulldown,gym,4,12,45,kg,,,,,,,,,lats;biceps
+    Gym – Strength Block,UPPER,,,,,MAIN,A,,,,Wide-Grip Lat Pulldown,gym,3,12,45,kg,,,,,,,,,lats;biceps
     Gym – Strength Block,UPPER,,,,,ARMS,,,,,Dumbbell Bicep Curl,gym,3,12,10,kg,,,60,,,,,,biceps
     Gym – Strength Block,LOWER,LEGS + CORE,gym,2,Wed,MAIN,,,,,Barbell Squat,gym,4,6,80,kg,,,150,,,,,,quadriceps;glutes
     Gym – Strength Block,LOWER,,,,,MAIN,,,,,Romanian Deadlift,gym,3,10,60,kg,,,120,,,,,,hamstrings;glutes;lower back
