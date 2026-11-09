@@ -1,0 +1,113 @@
+name: CI
+
+# Synced from the Binisoft handbook (ci/workflows) – change it there and run tools/sync.sh.
+# App settings come from Config/ci.env.
+#
+# Mac minutes count 10x on private repos (public repos: free): Core tests run on Linux first and the
+# Mac builds only start when they pass; docs-only pushes are skipped; a newer push cancels the
+# running build.
+# Results go to the ci-output branch (folder ci/): git fetch origin ci-output &&
+#   git show origin/ci-output:ci/status.txt
+# Screenshots: "[screenshots]" in the commit message, or run the workflow manually.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
+  pull_request:
+    paths-ignore: ["**/*.md", "docs/**"]
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: Capture iPhone / Watch / Mac screenshots (published to ci-output)
+        type: boolean
+        default: true
+      mac_only:
+        description: Only build (and screenshot) the macOS app
+        type: boolean
+        default: false
+
+concurrency:
+  # The event name keeps a push from cancelling a manual screenshot run.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+# Read-only by default; only the report job may push (to ci-output). Pull requests from forks get
+# a read-only token and no secrets from GitHub anyway – their results stay in the run's artifacts.
+permissions:
+  contents: read
+
+# bash with -eo pipefail, so `cmd | tee log` fails when cmd fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  core-tests:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.2-noble
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: swift test
+        run: scripts/ci/core-tests.sh
+      - name: Keep the test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-tests
+          path: ci-logs/
+          if-no-files-found: ignore
+
+  build:
+    name: Build macOS + iOS (unsigned)
+    needs: core-tests
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || contains(github.event.head_commit.message, '[screenshots]') }}
+      WHAT: ${{ (github.event_name == 'workflow_dispatch' && inputs.mac_only) && 'mac' || 'all' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select Xcode
+        run: scripts/ci/select-xcode.sh
+      - name: Generate the Xcode project
+        run: scripts/ci/xcodegen.sh generate
+      - name: watchOS platform
+        if: env.WHAT != 'mac'
+        run: scripts/ci/ensure-watchos.sh
+      - name: Build
+        run: scripts/ci/build.sh "$WHAT"
+      - name: Screenshots
+        if: env.SHOTS == 'true'
+        continue-on-error: true
+        run: scripts/ci/screenshots.sh "$WHAT"
+      - name: Keep logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: ci-logs/
+          if-no-files-found: ignore
+
+  report:
+    name: Publish to ci-output
+    needs: [core-tests, build]
+    # Not for cancelled runs (a newer run publishes its own results) and not for pull requests from
+    # forks (they can't push).
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish status, errors and screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULTS: core-tests=${{ needs.core-tests.result }} build=${{ needs.build.result }}
+        run: scripts/ci/ci-report.sh artifacts

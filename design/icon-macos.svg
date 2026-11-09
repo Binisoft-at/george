@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><clipPath id="sq"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath><filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/></filter></defs><g filter="url(#sh)"><g clip-path="url(#sq)"><g transform="translate(100 100) scale(0.8046875)"><svg width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#22408F"/>
+      <stop offset="0.55" stop-color="#101A45"/>
+      <stop offset="1" stop-color="#070B1F"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#C9F7FF"/>
+      <stop offset="0.35" stop-color="#5FE1FF"/>
+      <stop offset="1" stop-color="#1E6BFF"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4FD8FF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4FD8FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="suit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A4468"/>
+      <stop offset="0.45" stop-color="#232A45"/>
+      <stop offset="1" stop-color="#151A2E"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A3358"/>
+      <stop offset="1" stop-color="#0C1128"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE3F0"/>
+    </linearGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7DEBFF"/>
+      <stop offset="0.5" stop-color="#2F9BFF"/>
+      <stop offset="1" stop-color="#1A4FD6"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9F6FF"/>
+      <stop offset="1" stop-color="#8FB4D9"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- soft AI glow behind the head -->
+  <circle cx="512" cy="330" r="300" fill="url(#glow)"/>
+
+  <!-- shoulders / tuxedo -->
+  <path d="M 150 1024 C 160 800, 270 680, 420 640 L 604 640 C 754 680, 864 800, 874 1024 Z" fill="url(#suit)"/>
+  <!-- shirt front (white V) -->
+  <path d="M 420 640 L 604 640 L 560 1024 L 464 1024 Z" fill="url(#shirt)"/>
+  <!-- lapels -->
+  <path d="M 420 640 L 512 820 L 470 1024 L 330 1024 C 330 860, 360 720, 420 640 Z" fill="#0A0E1C"/>
+  <path d="M 604 640 L 512 820 L 554 1024 L 694 1024 C 694 860, 664 720, 604 640 Z" fill="#0A0E1C"/>
+  <path d="M 420 640 L 512 820" stroke="#6E7BA8" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 604 640 L 512 820" stroke="#6E7BA8" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 172 1024 C 182 812, 286 690, 420 650" stroke="#5B6794" stroke-width="4" fill="none" opacity="0.45"/>
+  <path d="M 852 1024 C 842 812, 738 690, 604 650" stroke="#5B6794" stroke-width="4" fill="none" opacity="0.45"/>
+  <!-- shirt studs -->
+  <circle cx="512" cy="860" r="11" fill="#1B2033"/>
+  <circle cx="512" cy="930" r="11" fill="#1B2033"/>
+  <!-- collar points -->
+  <path d="M 440 640 L 512 640 L 470 700 Z" fill="#FFFFFF"/>
+  <path d="M 584 640 L 512 640 L 554 700 Z" fill="#FFFFFF"/>
+
+  <!-- head: AI orb with HUD ring -->
+  <circle cx="512" cy="360" r="150" fill="url(#orb)"/>
+  <path d="M 366 330 C 372 250, 432 206, 512 206 C 600 206, 660 258, 662 334 C 640 286, 600 262, 560 258 C 520 254, 470 262, 440 282 C 410 300, 380 316, 366 330 Z" fill="url(#hair)"/>
+  <ellipse cx="575" cy="420" rx="34" ry="20" fill="#FFFFFF" opacity="0.18" transform="rotate(-30 575 420)"/>
+  <g fill="none" stroke="#7DEBFF" stroke-linecap="round">
+    <circle cx="512" cy="360" r="196" stroke-width="12" stroke-dasharray="230 48 120 48 300 48 140 300" opacity="0.95"/>
+    <circle cx="512" cy="360" r="228" stroke-width="4" stroke-dasharray="40 30" opacity="0.45"/>
+  </g>
+
+  <!-- dumbbell bow tie -->
+  <g transform="translate(512 648)">
+    <rect x="-136" y="-19" width="272" height="38" rx="19" fill="url(#bar)"/>
+    <rect x="-36" y="-30" width="72" height="60" rx="18" fill="#E9F6FF"/>
+    <!-- left plates -->
+    <rect x="-200" y="-92" width="64" height="184" rx="20" fill="url(#plate)"/>
+    <rect x="-252" y="-66" width="48" height="132" rx="16" fill="url(#plate)"/>
+    <!-- right plates -->
+    <rect x="136" y="-92" width="64" height="184" rx="20" fill="url(#plate)"/>
+    <rect x="204" y="-66" width="48" height="132" rx="16" fill="url(#plate)"/>
+    <!-- highlights -->
+    <rect x="-192" y="-84" width="14" height="168" rx="7" fill="#FFFFFF" opacity="0.35"/>
+    <rect x="144" y="-84" width="14" height="168" rx="7" fill="#FFFFFF" opacity="0.35"/>
+  </g>
+</svg></g></g></g></svg>

@@ -1,0 +1,29 @@
+# George program CSV v1 — sample. Lines starting with # are ignored. See docs/CSV_FORMAT.md
+program,workout,workout_subtitle,workout_type,workout_order,schedule,section,group,group_style,rounds,rest_after_round,exercise,exercise_type,sets,reps,weight,unit,load,duration,rest,tempo,per_side,set_type,notes,tutorial_url,muscles
+Elastic Bands – Tennis,LOWER,LOWER BODY + TENNIS CORE,band,1,Mon,WARM-UP,,,,,Jumping Jacks,cardio,1,,,,,60s,0,,,,Easy pace,,
+Elastic Bands – Tennis,LOWER,,,,,WARM-UP,,,,,Lateral Band Walk,band,2,12,,,light band,,30,,yes,,Stay low and keep tension,,glutes;abductors
+Elastic Bands – Tennis,LOWER,,,,,MAIN,,,,,Squats - With Bands,band,4,12-15,,,heavy band,,60,3-1-1,,,Stand on band; handles at shoulders,,quadriceps;glutes
+Elastic Bands – Tennis,LOWER,,,,,MAIN,A,superset,3,60,Band Romanian Deadlift,band,3,12,,,heavy band,,,,,,Hinge at hips,,hamstrings;glutes
+Elastic Bands – Tennis,LOWER,,,,,MAIN,A,,,,Banded Glute Bridge,band,3,15,,,medium band,,,,,,Band above knees,,glutes
+Elastic Bands – Tennis,LOWER,,,,,MAIN,,,,,Band Split Squat,band,3,10,,,,,45,,yes,,,,quadriceps;glutes
+Elastic Bands – Tennis,LOWER,,,,,TENNIS CORE,B,circuit,3,45,Pallof Press,band,3,10,,,medium band,,,,yes,,Anti-rotation – don't let the band twist you,,abdominals
+Elastic Bands – Tennis,LOWER,,,,,TENNIS CORE,B,,,,Band High-to-Low Woodchop,band,3,10,,,medium band,,,,yes,,,,abdominals
+Elastic Bands – Tennis,LOWER,,,,,TENNIS CORE,B,,,,Side Plank,core,3,,,,,30s,,,yes,,,,abdominals
+Elastic Bands – Tennis,UPPER,UPPER BODY + SHOULDER/WRIST HEALTH,band,2,Tue;Thu,PREHAB,,,,,External Rotation with Band,band,2,15,,,light band,,30,,yes,warmup,Elbow tucked to side,,shoulders
+Elastic Bands – Tennis,UPPER,,,,,PREHAB,,,,,External Rotation with Band,band,2,12,,,light band,,30,,yes,,,,shoulders
+Elastic Bands – Tennis,UPPER,,,,,MAIN,A,superset,4,75,Band Bent-Over Row,band,4,"15,12,12,10",,,heavy band,,,,,,,,middle back;lats
+Elastic Bands – Tennis,UPPER,,,,,MAIN,A,,,,Band Chest Press,band,4,"15,12,12,10",,,heavy band,,,,,,,,chest;triceps
+Elastic Bands – Tennis,UPPER,,,,,MAIN,,,,,Band Face Pull,band,3,15,,,medium band,,45,,,,Pull to eyes; thumbs back,,shoulders;traps
+Elastic Bands – Tennis,UPPER,,,,,MAIN,,,,,Shoulder Press - With Bands,band,3,10,,,medium band,,60,,,,,,shoulders
+Elastic Bands – Tennis,UPPER,,,,,WRIST,C,superset,2,30,Band Wrist Extension,band,2,15,,,light band,,,,yes,,Slow eccentric,,forearms
+Elastic Bands – Tennis,UPPER,,,,,WRIST,C,,,,Band Wrist Flexion,band,2,15,,,light band,,,,yes,,,,forearms
+Elastic Bands – Tennis,FULLY,FULL BODY + TENNIS CONDITIONING,band,3,Sun,MAIN,,,,,Band Squat to Press,band,3,12,,,medium band,,60,,,,,,quadriceps;shoulders
+Elastic Bands – Tennis,FULLY,,,,,MAIN,,,,,Band Single-Arm Row,band,3,12,,,heavy band,,45,,yes,,,,lats;middle back
+Elastic Bands – Tennis,FULLY,,,,,CONDITIONING,A,circuit,4,60,Lateral Bound,bodyweight,4,,,,,30s,,,,,,,quadriceps;glutes
+Elastic Bands – Tennis,FULLY,,,,,CONDITIONING,A,,,,Split-Step Drill,bodyweight,4,,,,,30s,,,,,Stay on the balls of your feet,,calves
+Elastic Bands – Tennis,FULLY,,,,,CONDITIONING,A,,,,Band Forehand Rotation,band,4,10,,,medium band,,,,yes,,,,abdominals
+Elastic Bands – Tennis,PRE&MOB,PREHAB + MOBILITY,mobility,4,,MOBILITY,,,,,Cat-Cow,mobility,1,10,,,,,0,,,,,,lower back
+Elastic Bands – Tennis,PRE&MOB,,,,,MOBILITY,,,,,World's Greatest Stretch,mobility,2,5,,,,,15,,yes,,,,hamstrings;quadriceps
+Elastic Bands – Tennis,PRE&MOB,,,,,MOBILITY,,,,,Thoracic Open Book,mobility,2,8,,,,,15,,yes,,,,middle back
+Elastic Bands – Tennis,PRE&MOB,,,,,STRETCH,,,,,Sleeper Stretch,stretch,2,,,,,30s,10,,yes,,Gentle – no pain,,shoulders
+Elastic Bands – Tennis,PRE&MOB,,,,,STRETCH,,,,,Child's Pose,yoga,1,,,,,60s,0,,,,,,lower back

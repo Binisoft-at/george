@@ -1,0 +1,29 @@
+// George – every identifier lives here (Binisoft conventions). Nothing is hard-coded elsewhere:
+// entitlements, Info.plist and code read these values.
+// Local overrides (DEVELOPMENT_TEAM for running from Xcode) go into Config/Local.xcconfig (git-ignored).
+
+BUNDLE_ID_PREFIX = at.binisoft
+DEVELOPMENT_TEAM =
+
+// App
+APP_DISPLAY_NAME = George
+APP_BUNDLE_ID = $(BUNDLE_ID_PREFIX).george
+APP_CATEGORY = public.app-category.healthcare-fitness
+
+// Extra targets: $(APP_BUNDLE_ID).<extension>
+WATCH_BUNDLE_ID = $(APP_BUNDLE_ID).watchkitapp
+
+// iCloud: the app's own container holds its data
+APP_CLOUDKIT_CONTAINER = iCloud.$(APP_BUNDLE_ID)
+
+// Shared by every Binisoft app – small cross-app events and summaries only, never app data.
+// Neutral names on purpose: they never change, even if the suite is renamed.
+SHARED_APP_GROUP = group.$(BUNDLE_ID_PREFIX).shared
+SHARED_CLOUDKIT_CONTAINER = iCloud.$(BUNDLE_ID_PREFIX).shared
+SHARED_KEYCHAIN_GROUP = $(AppIdentifierPrefix)$(BUNDLE_ID_PREFIX).shared
+
+// Versions: bump MARKETING_VERSION for a new version; CI sets the build number (= run number).
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1
+
+#include? "Local.xcconfig"

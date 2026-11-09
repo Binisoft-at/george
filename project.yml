@@ -1,0 +1,131 @@
+# XcodeGen spec – George.xcodeproj is generated (`make generate`) and never committed.
+# Identifiers, team and versions come from Config/Base.xcconfig. Info.plists and entitlements are
+# handwritten files in Config/<platform>/, wired through INFOPLIST_FILE and CODE_SIGN_ENTITLEMENTS –
+# never XcodeGen's `info:` / `entitlements:` keys (they regenerate the files and drop keys).
+name: George
+options:
+  deploymentTarget:
+    iOS: "26.0"
+    macOS: "26.0"
+    watchOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_PREVIEWS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    DEAD_CODE_STRIPPING: YES
+    GENERATE_INFOPLIST_FILE: NO
+  configs:
+    Debug:
+      APS_ENVIRONMENT: development
+    Release:
+      APS_ENVIRONMENT: production
+
+packages:
+  BinisoftKit:
+    path: Vendor/BinisoftKit
+  GeorgeCore:
+    path: Packages/GeorgeCore
+
+# One source tree (App/Sources + Shared) for iPhone/iPad and Mac. The watch app shares Shared/.
+targets:
+  George:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+      - path: Shared
+      - path: samples
+        buildPhase: resources
+      - path: docs/AI_PROMPT.md
+        buildPhase: resources
+      - path: docs/CSV_FORMAT.md
+        buildPhase: resources
+    dependencies:
+      - package: GeorgeCore
+      - package: BinisoftKit
+        product: BinisoftKit
+      - target: GeorgeWatch
+    settings:
+      base:
+        PRODUCT_NAME: George
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        INFOPLIST_FILE: Config/iOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/iOS/George.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    scheme:
+      testTargets: []
+
+  # Mac app: same sources and bundle ID (universal purchase), its own Info.plist and entitlements.
+  GeorgeMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+      - path: Shared
+      - path: samples
+        buildPhase: resources
+      - path: docs/AI_PROMPT.md
+        buildPhase: resources
+      - path: docs/CSV_FORMAT.md
+        buildPhase: resources
+    dependencies:
+      - package: GeorgeCore
+      - package: BinisoftKit
+        product: BinisoftKit
+    settings:
+      base:
+        PRODUCT_NAME: George
+        PRODUCT_MODULE_NAME: George
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        INFOPLIST_FILE: Config/macOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/macOS/George.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+    scheme:
+      testTargets: []
+
+  # Apple Watch app, embedded in the iOS app. Gets the running workout from the iPhone
+  # (WatchConnectivity) and records it with HealthKit; it keeps no synced store of its own.
+  GeorgeWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Watch/Sources
+      - path: Watch/Resources
+      - path: Shared
+    dependencies:
+      - package: GeorgeCore
+    settings:
+      base:
+        PRODUCT_NAME: GeorgeWatch
+        PRODUCT_BUNDLE_IDENTIFIER: $(WATCH_BUNDLE_ID)
+        INFOPLIST_FILE: Config/watchOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/watchOS/GeorgeWatch.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
+    scheme:
+      testTargets: []

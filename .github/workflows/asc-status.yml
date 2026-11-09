@@ -1,0 +1,40 @@
+name: App Store Connect status
+
+# Synced from the Binisoft handbook (ci/workflows) – change it there and run tools/sync.sh.
+#
+# Manual, read-only: the processing and TestFlight state of the latest builds, and the team's
+# signing certificates. Results go to the ci-output branch (folder asc/):
+#   git fetch origin ci-output && git show origin/ci-output:asc/status.txt
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# bash with -eo pipefail, so `cmd | tee log` fails when cmd fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Query App Store Connect
+        run: |
+          mkdir -p ci-logs/asc
+          set -o pipefail
+          python3 scripts/ci/asc-status.py 2>&1 | tee ci-logs/asc/status.txt
+          { echo '```'; cat ci-logs/asc/status.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish to ci-output/asc
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci/publish-output.sh ci-logs/asc "asc status run ${{ github.run_number }}" ci-output asc

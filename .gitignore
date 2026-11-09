@@ -1,0 +1,31 @@
+# Build output
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+ci-logs/
+node_modules/
+__pycache__/
+*.log
+.DS_Store
+
+# Never in git: keys, certificates, profiles, secrets, private data
+*.p8
+*.p12
+*.cer
+*.pem
+*.mobileprovision
+*.provisionprofile
+.env
+Config/Local.xcconfig
+*.xlsx
+*.xls
+*.numbers

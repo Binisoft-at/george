@@ -1,0 +1,4 @@
+v1-1-gef3e1fa
+# Binisoft handbook version this app follows (written by tools/sync.sh, commit ef3e1fa, 2026-11-08).
+# Synced from the handbook – don't edit in the app: Vendor/BinisoftKit, scripts/ci,
+# .github/workflows/{asc-status.yml,ci.yml,cloudkit-schema.yml,testflight.yml}

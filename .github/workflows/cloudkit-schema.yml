@@ -1,0 +1,84 @@
+name: CloudKit schema
+
+# Synced from the Binisoft handbook (ci/workflows) – change it there and run tools/sync.sh.
+#
+# Manual. Imports cloudkit/schema.ckdb into the Development environment of the app's own container
+# (APP_CLOUDKIT_CONTAINER from Config/Base.xcconfig) with Apple's CKTool JS on Linux, and reports
+# which repository secrets this repo can see. Deploying to Production stays a button in the CloudKit
+# Console (no API): schema.ckdb → this workflow → Deploy Schema Changes → TestFlight build.
+# Needs CLOUDKIT_MANAGEMENT_TOKEN and APPLE_TEAM_ID. Results go to the ci-cloudkit branch.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# bash with -eo pipefail, so `cmd | tee log` fails when cmd fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  import:
+    name: Import schema into Development
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      OUT_DIR: ci-logs/cloudkit
+    steps:
+      - uses: actions/checkout@v5
+      - name: Which secrets this repo can see
+        id: secrets
+        run: |
+          mkdir -p "$OUT_DIR"
+          SECRETS_REPORT="$OUT_DIR/secrets.md" scripts/ci/secrets-report.sh cloudkit
+      - name: Container from Config/Base.xcconfig
+        run: |
+          CONTAINER_ID=$(python3 scripts/ci/xcconfig.py APP_CLOUDKIT_CONTAINER)
+          echo "Container: $CONTAINER_ID"
+          echo "CONTAINER_ID=$CONTAINER_ID" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+      - name: Install CKTool JS
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm install --no-save --no-package-lock --ignore-scripts @apple/cktool.database@1.3.2 @apple/cktool.target.nodejs@1.3.2
+      - name: Validate and import (Development)
+        id: import
+        if: steps.secrets.outputs.ready == 'true'
+        run: node scripts/ci/cloudkit-schema.mjs
+      - name: Next step
+        if: steps.import.outcome == 'success'
+        run: |
+          {
+            echo "## Imported into Development of \`$CONTAINER_ID\`"
+            echo
+            if [ "$(cat "$OUT_DIR/needs-deploy.txt" 2>/dev/null)" = "no" ]; then
+              echo "Production already matches Development – nothing to deploy."
+            else
+              echo "Last step (TestFlight builds use Production):"
+              echo
+              echo "1. https://icloud.developer.apple.com → choose the Binisoft team"
+              echo "2. CloudKit Database → container \`$CONTAINER_ID\` → environment **Development**"
+              echo "3. **Deploy Schema Changes…** → **Deploy**"
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY" > "$OUT_DIR/next-step.md"
+      - name: Publish to ci-cloudkit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "secrets=${{ steps.secrets.outputs.ready }} import=${{ steps.import.outcome }} container=$CONTAINER_ID" > "$OUT_DIR/status.txt"
+          scripts/ci/publish-output.sh "$OUT_DIR" "cloudkit run ${{ github.run_number }}: import=${{ steps.import.outcome }}" ci-cloudkit .
+      - name: Fail when the import didn't run or failed
+        if: steps.secrets.outputs.ready != 'true' || steps.import.outcome != 'success'
+        run: |
+          echo "::error::Schema not imported – see the summary and the ci-cloudkit branch (secrets.md, report.txt)."
+          exit 1

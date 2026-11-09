@@ -1,0 +1,148 @@
+name: TestFlight
+
+# Synced from the Binisoft handbook (ci/workflows) – change it there and run tools/sync.sh.
+#
+# Runs on: a manual run, a v* tag, or a push to main whose commit message contains [testflight].
+#   1. Revoke "Created via API" development certificates older than 2 h (Linux).
+#   2. Archive with automatic cloud signing through the App Store Connect API key.
+#   3. Check the signed entitlements before export.
+#   4. Upload to App Store Connect (build number = run number).
+#   5. Revoke the development certificate this run created (keychain snapshot).
+# Without the secrets it only does an unsigned build. No certificates or profiles live in the repo.
+# Repository secrets: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (team key "Binisoft CI", Admin).
+# Results go to the ci-testflight branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: Platforms to upload
+        type: choice
+        options: [both, ios, macos]
+        default: both
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+# Read-only by default; only the report job may push (to ci-testflight).
+permissions:
+  contents: read
+
+# bash with -eo pipefail, so `cmd | tee log` fails when cmd fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prune-certificates:
+    name: 1. Revoke old CI certificates
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v') || contains(github.event.head_commit.message, '[testflight]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Revoke "Created via API" development certificates older than 2 h
+        continue-on-error: true
+        run: |
+          mkdir -p ci-logs
+          python3 scripts/ci/certificates.py prune 2>&1 | tee ci-logs/certificates-prune.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prune
+          path: ci-logs/
+          if-no-files-found: ignore
+
+  upload:
+    name: 2–5. Archive, check, upload
+    needs: prune-certificates
+    runs-on: macos-26
+    timeout-minutes: 90
+    concurrency:
+      group: testflight-upload
+      cancel-in-progress: false
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      PLATFORMS: ${{ inputs.platforms || 'both' }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check secrets
+        id: secrets
+        run: scripts/ci/secrets-report.sh testflight
+      - name: Select Xcode
+        run: scripts/ci/select-xcode.sh
+      - name: Generate the Xcode project
+        run: scripts/ci/xcodegen.sh generate
+      - name: watchOS platform
+        if: env.PLATFORMS != 'macos'
+        run: scripts/ci/ensure-watchos.sh
+
+      - name: Unsigned build only (secrets missing)
+        if: steps.secrets.outputs.ready != 'true'
+        run: scripts/ci/build.sh
+
+      - name: API key
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+      # Automatic signing creates a throwaway development certificate on every fresh runner;
+      # remember what's in the keychain so step 5 revokes only this run's.
+      - name: Snapshot signing identities
+        if: steps.secrets.outputs.ready == 'true'
+        run: python3 scripts/ci/certificates.py snapshot "$RUNNER_TEMP/identities-before.txt"
+      - name: iOS (+ watch app, widgets) – archive, check entitlements, upload
+        if: steps.secrets.outputs.ready == 'true' && env.PLATFORMS != 'macos'
+        run: scripts/ci/archive-upload.sh ios
+      - name: macOS – archive, check entitlements, upload
+        if: steps.secrets.outputs.ready == 'true' && env.PLATFORMS != 'ios'
+        run: |
+          . scripts/ci/config.sh
+          if [ "$HAS_MAC" = 1 ]; then scripts/ci/archive-upload.sh macos; else echo "No Mac app (HAS_MAC=0)"; fi
+      - name: 5. Revoke this run's development certificate
+        if: always() && steps.secrets.outputs.ready == 'true'
+        continue-on-error: true
+        run: |
+          mkdir -p ci-logs
+          python3 scripts/ci/certificates.py revoke-new "$RUNNER_TEMP/identities-before.txt" 2>&1 | tee ci-logs/certificates-revoke.log
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upload
+          path: ci-logs/
+          if-no-files-found: ignore
+
+  report:
+    name: Publish to ci-testflight
+    needs: [prune-certificates, upload]
+    if: ${{ !cancelled() && needs.prune-certificates.result != 'skipped' }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULTS: prune=${{ needs.prune-certificates.result }} upload=${{ needs.upload.result }} build=${{ github.run_number }}
+          BRANCH: ci-testflight
+          SUBDIR: "."
+        run: scripts/ci/ci-report.sh artifacts
