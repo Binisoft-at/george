@@ -147,6 +147,10 @@ final class WatchConnector: NSObject, WCSessionDelegate {
             guard state.firstOpenSet() != nil else { return }
             resumeIfPaused(&state, at: now)
             if state.completeCurrentSet() { Haptics.success() }
+        case .startSet:
+            resumeIfPaused(&state, at: now)
+            state.startSet(now: now)
+            Haptics.start()
         case .startRest(let seconds):
             state.startRest(seconds, now: now)
         case .addRest(let seconds):
@@ -460,7 +464,17 @@ extension WatchLiveState {
         exercises[target.exerciseIndex].sets[target.setIndex].isDone = true
         completedSets += 1
         currentSetID = nextOpenSetID(after: target)
+        setStartedAt = nil
+        lastSetEndedAt = Date()
         return true
+    }
+
+    /// "I'm starting the set now" (optimistic; the phone's next state has the real numbers).
+    mutating func startSet(now: Date) {
+        guard setStartedAt == nil, firstOpenSet() != nil else { return }
+        restEndsAt = nil
+        restTotalSeconds = nil
+        setStartedAt = now
     }
 
     /// The next open set after `location` in program order, wrapping around. The phone may pick a

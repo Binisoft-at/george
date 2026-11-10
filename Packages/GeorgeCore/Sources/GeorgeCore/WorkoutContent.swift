@@ -51,13 +51,15 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
     public var rpe: Double?
     public var isDone: Bool
     public var doneAt: Date?
+    /// When the set was started (the Start button, or the timer of a timed set).
+    public var startedAt: Date?
     public var note: String?
 
     public init(
         id: UUID = UUID(), kind: SetKind = .working, targetReps: String? = nil, targetWeight: Double? = nil,
         targetLoad: String? = nil, targetSeconds: Int? = nil, targetMeters: Double? = nil, targetRPE: Double? = nil,
         reps: Int? = nil, weight: Double? = nil, seconds: Int? = nil, meters: Double? = nil, rpe: Double? = nil,
-        isDone: Bool = false, doneAt: Date? = nil, note: String? = nil
+        isDone: Bool = false, doneAt: Date? = nil, startedAt: Date? = nil, note: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -74,12 +76,13 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
         self.rpe = rpe
         self.isDone = isDone
         self.doneAt = doneAt
+        self.startedAt = startedAt
         self.note = note
     }
 
     enum CodingKeys: String, CodingKey {
         case id, kind, targetReps, targetWeight, targetLoad, targetSeconds, targetMeters, targetRPE
-        case reps, weight, seconds, meters, rpe, isDone, doneAt, note
+        case reps, weight, seconds, meters, rpe, isDone, doneAt, startedAt, note
     }
 
     public init(from decoder: Decoder) throws {
@@ -99,6 +102,7 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
         rpe = try c.decodeIfPresent(Double.self, forKey: .rpe)
         isDone = try c.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
         doneAt = try c.decodeIfPresent(Date.self, forKey: .doneAt)
+        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
         note = try c.decodeIfPresent(String.self, forKey: .note)
     }
 
@@ -128,6 +132,7 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
         copy.rpe = nil
         copy.isDone = false
         copy.doneAt = nil
+        copy.startedAt = nil
         return copy
     }
 
@@ -199,12 +204,14 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
     public var equipment: String?
     public var muscles: [String]
     public var imageURL: String?
+    /// How fatigued the trained muscles felt after this exercise, 0…1 (asked after the last set).
+    public var fatigue: Double?
 
     public init(
         id: UUID = UUID(), exerciseID: String? = nil, name: String, kind: WorkoutKind? = nil,
         mode: ExerciseMode = .reps, sets: [WorkoutSet] = [], perSide: Bool = false, restSeconds: Int? = nil,
         tempo: String? = nil, notes: String? = nil, links: [String] = [], equipment: String? = nil,
-        muscles: [String] = [], imageURL: String? = nil
+        muscles: [String] = [], imageURL: String? = nil, fatigue: Double? = nil
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -220,10 +227,11 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
         self.equipment = equipment
         self.muscles = muscles
         self.imageURL = imageURL
+        self.fatigue = fatigue
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, exerciseID, name, kind, mode, sets, perSide, restSeconds, tempo, notes, links, equipment, muscles, imageURL
+        case id, exerciseID, name, kind, mode, sets, perSide, restSeconds, tempo, notes, links, equipment, muscles, imageURL, fatigue
     }
 
     public init(from decoder: Decoder) throws {
@@ -242,6 +250,7 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
         equipment = try c.decodeIfPresent(String.self, forKey: .equipment)
         muscles = try c.decodeIfPresent([String].self, forKey: .muscles) ?? []
         imageURL = try c.decodeIfPresent(String.self, forKey: .imageURL)
+        fatigue = try c.decodeIfPresent(Double.self, forKey: .fatigue)
     }
 
     /// Stable key used to match the same exercise across sessions.

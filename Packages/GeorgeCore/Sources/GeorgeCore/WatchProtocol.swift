@@ -146,8 +146,21 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
     public var exercises: [WatchExercise]
     public var completedSets: Int
     public var totalSets: Int
+    /// When the current set was started (Start button); nil while waiting or resting.
+    public var setStartedAt: Date?
+    /// End of the last finished set – the break is measured from here.
+    public var lastSetEndedAt: Date?
+    /// Planned rest before the current set, seconds.
+    public var plannedRestSeconds: Int?
+    /// Target of a timed current set (countdown), seconds.
+    public var timedSetSeconds: Int?
+    /// Planned minus actual over all breaks so far: positive = behind.
+    public var behindSeconds: Double?
+    /// The last break against the plan (positive = longer than planned).
+    public var lastDeltaSeconds: Double?
 
-    public init(sessionID: UUID, title: String, kind: WorkoutKind, startedAt: Date, accumulatedSeconds: Double, resumedAt: Date?, isPaused: Bool, restEndsAt: Date?, restTotalSeconds: Int?, currentSetID: UUID?, exercises: [WatchExercise], completedSets: Int, totalSets: Int) {
+    public init(sessionID: UUID, title: String, kind: WorkoutKind, startedAt: Date, accumulatedSeconds: Double, resumedAt: Date?, isPaused: Bool, restEndsAt: Date?, restTotalSeconds: Int?, currentSetID: UUID?, exercises: [WatchExercise], completedSets: Int, totalSets: Int,
+                setStartedAt: Date? = nil, lastSetEndedAt: Date? = nil, plannedRestSeconds: Int? = nil, timedSetSeconds: Int? = nil, behindSeconds: Double? = nil, lastDeltaSeconds: Double? = nil) {
         self.sessionID = sessionID
         self.title = title
         self.kind = kind
@@ -161,6 +174,18 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
         self.exercises = exercises
         self.completedSets = completedSets
         self.totalSets = totalSets
+        self.setStartedAt = setStartedAt
+        self.lastSetEndedAt = lastSetEndedAt
+        self.plannedRestSeconds = plannedRestSeconds
+        self.timedSetSeconds = timedSetSeconds
+        self.behindSeconds = behindSeconds
+        self.lastDeltaSeconds = lastDeltaSeconds
+    }
+
+    /// While waiting for the current set: seconds over (positive) or under the planned rest.
+    public func waitingDelta(at date: Date = Date()) -> Double? {
+        guard restEndsAt == nil, setStartedAt == nil, let lastSetEndedAt, let plannedRestSeconds else { return nil }
+        return date.timeIntervalSince(lastSetEndedAt) - Double(plannedRestSeconds)
     }
 
     public func elapsed(at date: Date = Date()) -> Double {
@@ -218,6 +243,8 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
 public enum WatchCommand: Codable, Hashable, Sendable {
     case toggleSet(UUID)
     case completeCurrentSet
+    /// "I'm starting the set now" – measures the real rest against the plan.
+    case startSet
     case startRest(Int)
     case addRest(Int)
     case skipRest

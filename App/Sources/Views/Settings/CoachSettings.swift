@@ -5,18 +5,28 @@ import GeorgeCore
 /// Settings → Workout Coach: every voice, sound, haptic and motivation extra can be switched off.
 struct CoachSettingsSection: View {
     @AppStorage(Prefs.voiceCoach) private var voice = true
-    @AppStorage(Prefs.voiceCountdown) private var countdown = true
     @AppStorage(Prefs.restSounds) private var sounds = true
     @AppStorage(Prefs.haptics) private var haptics = true
     @AppStorage(Prefs.motivation) private var motivationRaw = MotivationStyle.full.rawValue
     @AppStorage(Prefs.paceNudges) private var nudges = true
     @AppStorage(Prefs.askEffort) private var askEffort = true
+    @AppStorage(Prefs.askFatigue) private var askFatigue = true
+    @AppStorage(Prefs.startButton) private var startButton = true
     @AppStorage(Prefs.energyCheckIn) private var energyCheckIn = true
     @AppStorage(Prefs.autoRest) private var autoRest = true
     @AppStorage(Prefs.keepAwake) private var keepAwake = true
 
     var body: some View {
         Section {
+            NavigationLink {
+                VoiceSettingsView()
+            } label: {
+                LabeledContent {
+                    Text(voice ? VoiceSettings.engine.title : "Off")
+                } label: {
+                    Label("Voice Coach", systemImage: "waveform")
+                }
+            }
             Picker(selection: $motivationRaw) {
                 ForEach(MotivationStyle.allCases) { style in
                     Text(style.title).tag(style.rawValue)
@@ -27,27 +37,183 @@ struct CoachSettingsSection: View {
             Text((MotivationStyle(rawValue: motivationRaw) ?? .full).detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-
-            Toggle(isOn: $voice) { Label("Voice coach", systemImage: "waveform") }
-            if voice {
-                Toggle(isOn: $countdown) { Label("“10 seconds” warning", systemImage: "timer") }
-                Button {
-                    VoiceCoach.shared.say("Rest 90 seconds. Next: Bench Press, 8 reps at 62.5 kilos.", interrupt: true)
-                } label: {
-                    Label("Play a Sample", systemImage: "play.circle")
-                }
-            }
+            Toggle(isOn: $startButton) { Label("Start button between sets", systemImage: "play.circle") }
             Toggle(isOn: $sounds) { Label("Sound when rest ends", systemImage: "bell") }
             Toggle(isOn: $haptics) { Label("Haptics", systemImage: "iphone.radiowaves.left.and.right") }
-            Toggle(isOn: $nudges) { Label("Nudge me when I dawdle", systemImage: "hourglass") }
-            Toggle(isOn: $askEffort) { Label("Ask how hard sets felt", systemImage: "gauge.with.dots.needle.67percent") }
+            Toggle(isOn: $nudges) { Label("Tell me when I'm over the rest", systemImage: "hourglass") }
+            Toggle(isOn: $askFatigue) { Label("Ask how fatigued the muscles are", systemImage: "bolt.heart") }
+            Toggle(isOn: $askEffort) { Label("Ask how many reps were left", systemImage: "gauge.with.dots.needle.67percent") }
             Toggle(isOn: $energyCheckIn) { Label("Energy check-in", systemImage: "battery.75percent") }
             Toggle(isOn: $autoRest) { Label("Start rest timer automatically", systemImage: "timer.circle") }
             Toggle(isOn: $keepAwake) { Label("Keep screen awake", systemImage: "sun.max") }
         } header: {
             Text("Workout Coach")
         } footer: {
-            Text("The voice ducks your music while it speaks. Low-energy days: pick “Calm” in the workout's ⋯ menu (or answer the check-in) – no nudges, more slack between sets. The effort question comes at most four times per workout and makes the weight suggestions better.")
+            Text("Start button: tap it when you begin a set – George compares your real rest with the planned one and shows how far behind or ahead you are (tap the bar at the bottom of live mode). Low-energy days: pick “Calm” in the workout's ⋯ menu or answer the check-in – no nudges, more slack.")
+        }
+    }
+}
+
+/// Settings → Workout Coach → Voice Coach: which voice, when it speaks, what happens to the music,
+/// and whether it keeps talking with the phone locked.
+struct VoiceSettingsView: View {
+    @AppStorage(Prefs.voiceCoach) private var voice = true
+    @AppStorage(Prefs.voiceEngine) private var engineRaw = VoiceEngineKind.system.rawValue
+    @AppStorage(Prefs.musicMode) private var musicRaw = MusicMode.duck.rawValue
+    @AppStorage(Prefs.voiceVolume) private var volume = 1.0
+    @AppStorage(Prefs.voiceRate) private var rate = 1.05
+    @AppStorage(Prefs.voiceInBackground) private var background = true
+    @AppStorage(Prefs.systemVoiceID) private var systemVoiceID = ""
+    @AppStorage(Prefs.naturalVoiceID) private var naturalVoiceID = NaturalVoice.defaultVoiceID
+    @AppStorage(Prefs.naturalVoiceName) private var naturalVoiceName = "Brian"
+    @State private var cueStates: [CoachCue: Bool] = Dictionary(uniqueKeysWithValues: CoachCue.allCases.map { ($0, VoiceSettings.isOn($0)) })
+    @State private var keyText = ""
+    @State private var hasKey = NaturalVoice.hasKey
+    @State private var voices: [NaturalVoice.Voice] = []
+    @State private var voiceError: String?
+
+    private static let sample = "Bench Press, set 2 of 4: 8 reps at 62.5 kilos. Let's go!"
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $voice) { Label("Voice coach", systemImage: "waveform") }
+                if voice {
+                    Picker("Voice", selection: $engineRaw) {
+                        ForEach(VoiceEngineKind.allCases) { Text($0.title).tag($0.rawValue) }
+                    }
+                    Button {
+                        VoiceCoach.shared.preview(Self.sample)
+                    } label: {
+                        Label("Play a Sample", systemImage: "play.circle")
+                    }
+                }
+            } footer: {
+                Text("Mute it for one workout with the speaker button in live mode (⋯ or the panel).")
+            }
+
+            if voice {
+                if engineRaw == VoiceEngineKind.natural.rawValue {
+                    naturalSection
+                } else {
+                    systemSection
+                }
+
+                Section {
+                    ForEach(CoachCue.allCases) { cue in
+                        Toggle(isOn: Binding(get: { cueStates[cue] ?? cue.isOnByDefault }, set: { on in
+                            cueStates[cue] = on
+                            VoiceSettings.set(cue, on: on)
+                        })) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(cue.title)
+                                Text(cue.example).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("When the coach speaks")
+                } footer: {
+                    Text("The coach only talks about the set that's actually next. When you move on, anything still waiting is dropped.")
+                }
+
+                Section {
+                    Picker(selection: $musicRaw) {
+                        ForEach(MusicMode.allCases) { Text($0.title).tag($0.rawValue) }
+                    } label: {
+                        Label("Music", systemImage: "music.note")
+                    }
+                    VStack(alignment: .leading) {
+                        Label("Voice volume", systemImage: "speaker.wave.2")
+                        Slider(value: $volume, in: 0.3...1)
+                    }
+                    VStack(alignment: .leading) {
+                        Label("Speed", systemImage: "hare")
+                        Slider(value: $rate, in: 0.85...1.25)
+                    }
+                } header: {
+                    Text("Music")
+                } footer: {
+                    Text("“Keep it as it is” never touches your music – lower the voice volume if it's too loud. “Lower it” is iOS's own ducking; George gives the volume back right after each cue.")
+                }
+
+                Section {
+                    Toggle(isOn: $background) { Label("Keep coaching when the phone is locked", systemImage: "lock.iphone") }
+                } footer: {
+                    Text("With the screen locked, George keeps the workout running on the iPhone (an Apple Health workout session – nothing extra is saved), so the voice keeps coming. If iOS still pauses George, the end of a rest is spoken by the notification instead.")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Voice Coach")
+        .inlineTitle()
+    }
+
+    @ViewBuilder
+    private var systemSection: some View {
+        let installed = VoiceSettings.englishVoices()
+        Section {
+            Picker("iPhone voice", selection: $systemVoiceID) {
+                Text("Best installed").tag("")
+                ForEach(installed, id: \.identifier) { voice in
+                    Text("\(voice.name) · \(VoiceSettings.qualityLabel(voice))\(voice.gender == .male ? " · male" : "")").tag(voice.identifier)
+                }
+            }
+        } header: {
+            Text("iPhone voice")
+        } footer: {
+            Text("For a natural voice, download a Premium one: iPhone Settings → Accessibility → Spoken Content → Voices → English – e.g. “Evan (Premium)” or “Nathan (Premium)”. George picks the best installed voice by itself.")
+        }
+    }
+
+    @ViewBuilder
+    private var naturalSection: some View {
+        Section {
+            if hasKey {
+                LabeledContent("API key", value: "Saved on this iPhone")
+                Picker("Voice", selection: $naturalVoiceID) {
+                    if voices.isEmpty { Text(naturalVoiceName).tag(naturalVoiceID) }
+                    ForEach(voices) { voice in
+                        Text(voice.summary.isEmpty ? voice.name : "\(voice.name) · \(voice.summary)").tag(voice.voice_id)
+                    }
+                }
+                .onChange(of: naturalVoiceID) { _, id in
+                    if let voice = voices.first(where: { $0.voice_id == id }) { naturalVoiceName = voice.name }
+                }
+                Button("Remove Key", role: .destructive) {
+                    NaturalVoice.setAPIKey(nil)
+                    NaturalVoice.clearCache()
+                    hasKey = false
+                }
+            } else {
+                SecureField("ElevenLabs API key", text: $keyText)
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+                Button("Save Key") {
+                    NaturalVoice.setAPIKey(keyText)
+                    keyText = ""
+                    hasKey = NaturalVoice.hasKey
+                    Task { await loadVoices() }
+                }
+                .disabled(keyText.trimmingCharacters(in: .whitespaces).count < 10)
+            }
+            if let voiceError {
+                Text(voiceError).font(.caption).foregroundStyle(.red)
+            }
+        } header: {
+            Text("Natural voice (ElevenLabs)")
+        } footer: {
+            Text("Uses your own ElevenLabs account (elevenlabs.io → Profile → API keys). The key stays in this iPhone's Keychain. The coach's lines (exercise names and numbers, nothing else) are sent to ElevenLabs and cached here, so each line is made once – a workout costs roughly 1,000–3,000 characters of your plan. Without internet the iPhone voice speaks.")
+        }
+        .task { if hasKey && voices.isEmpty { await loadVoices() } }
+    }
+
+    private func loadVoices() async {
+        do {
+            voices = try await NaturalVoice.voices().sorted { $0.name < $1.name }
+            voiceError = nil
+        } catch {
+            voiceError = error.localizedDescription
         }
     }
 }

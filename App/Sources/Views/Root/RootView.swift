@@ -72,6 +72,8 @@ final class Router {
     var tab: AppTab = .today
     var paths: [AppTab: [Route]] = [:]
     var insights: InsightsSection = .muscles
+    /// Screenshots: a sheet opened straight from `-DemoScreen`.
+    var demoSheet: DemoSheet?
     var workoutsFilter: WorkoutsFilter = .all
 
     var pendingRequest: Request?
@@ -208,16 +210,29 @@ final class Router {
             if let template = store.suggestedTemplate(in: store.activeProgram) {
                 live.start(template: template)
             }
-        case "live-mid", "live-superset":
-            // Mid-workout: a few sets ticked, momentum up; "live-superset" jumps to the first superset.
+        case "live-mid", "live-superset", "live-panel", "live-feedback":
+            // Mid-workout: a few sets ticked, momentum up; "live-superset" jumps to the first superset,
+            // "live-panel" opens the coach panel, "live-feedback" finishes the first exercise.
             if let template = store.suggestedTemplate(in: store.activeProgram) {
                 live.start(template: template)
+                let screen = launch.screen ?? ""
                 // Let the live screen finish appearing first (ticking during the presentation left
                 // the screenshot blank).
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 1_200_000_000)
-                    live.demoProgress(sets: 3, focusSuperset: launch.screen == "live-superset")
+                    let sets = screen == "live-feedback" ? (live.currentItem?.sets.count ?? 4) : 3
+                    live.demoProgress(sets: sets, focusSuperset: screen == "live-superset", keepFeedback: screen == "live-feedback")
+                    if screen == "live-panel" {
+                        try? await Task.sleep(nanoseconds: 600_000_000)
+                        live.showPanel = true
+                    }
                 }
+            }
+        case "voice":
+            demoSheet = .voice
+        case "share":
+            if let template = store.suggestedTemplate(in: store.activeProgram) ?? store.fetchTemplates().first {
+                demoSheet = .share(template.id)
             }
         case "muscles":
             show(.muscles)
@@ -239,6 +254,17 @@ final class Router {
             break
         }
         if launch.startTour { startTour(at: launch.tourStep) }
+    }
+}
+
+enum DemoSheet: Identifiable, Hashable {
+    case voice
+    case share(UUID)
+    var id: String {
+        switch self {
+        case .voice: return "voice"
+        case .share(let id): return "share-\(id)"
+        }
     }
 }
 
@@ -323,6 +349,7 @@ struct SplitRootView: View {
 /// iPhone/iPad: Liquid Glass tab bar (a sidebar on iPad), one stack per tab,
 /// and the running workout as a "now playing" bar above the tabs.
 struct TabRootView: View {
+    @Environment(LiveWorkoutController.self) private var live
     @Environment(Router.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Query(sort: \Program.sortIndex) private var programs: [Program]
@@ -362,9 +389,26 @@ struct TabRootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            NowPlayingAccessory()
+        .liveWorkoutAccessory(enabled: live.isActive)
+    }
+}
+
+private extension View {
+    /// The "now playing" bar above the tab bar – only while a workout runs (otherwise it covered
+    /// content and doubled the Start buttons; Today has the Up Next card).
+    @ViewBuilder
+    func liveWorkoutAccessory(enabled: Bool) -> some View {
+        #if os(iOS)
+        if #available(iOS 26.1, *) {
+            tabViewBottomAccessory(isEnabled: enabled) { NowPlayingAccessory() }
+        } else if enabled {
+            tabViewBottomAccessory { NowPlayingAccessory() }
+        } else {
+            self
         }
+        #else
+        self
+        #endif
     }
 }
 
@@ -431,6 +475,14 @@ struct RootPresentation: ViewModifier {
             #endif
             .sheet(item: $live.summary) { summary in
                 WorkoutSummarySheet(summary: summary)
+            }
+            .sheet(item: $router.demoSheet) { sheet in
+                switch sheet {
+                case .voice:
+                    NavigationStack { VoiceSettingsView() }
+                case .share(let id):
+                    if let template = store.template(id: id) { RoutineShareSheet(template: template) }
+                }
             }
             .sheet(isPresented: $router.showImport) {
                 NavigationStack { ImportView() }

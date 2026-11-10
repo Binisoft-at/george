@@ -87,12 +87,17 @@ private struct MetricsPage: View {
             Spacer(minLength: 2)
 
             if let exercise = live.currentExercise, let currentSet = live.currentSet {
-                Text("\(exercise.name) · \(currentSet.label)")
+                Text("NOW · \(exercise.name) · \(currentSet.label)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
-            DoneSetButton(live: live)
+            PaceLine(live: live, date: now)
+            if live.setStartedAt == nil && live.firstOpenSet() != nil {
+                StartSetButton(live: live)
+            } else {
+                DoneSetButton(live: live)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -120,14 +125,14 @@ private struct MetricsPage: View {
             .frame(width: 92, height: 92)
 
             HStack(spacing: 6) {
-                Button("Skip") { connector.perform(.skipRest) }
-                    .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
-                Button("+15s") { connector.perform(.addRest(15)) }
+                Button("Start") { connector.perform(.startSet) }
                     .buttonStyle(CapsuleButtonStyle(fill: live.kind.tint, foreground: live.kind.onTint))
+                Button("+15s") { connector.perform(.addRest(15)) }
+                    .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
             }
 
             if let next = live.currentExercise {
-                Text("Next: \(next.name)")
+                Text("Up next: \(next.name)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -161,6 +166,51 @@ private struct MetricValue: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// After the rest: tap when you actually start – the phone measures the real rest against the plan.
+private struct StartSetButton: View {
+    let live: WatchLiveState
+    @Environment(WatchConnector.self) private var connector
+
+    var body: some View {
+        Button {
+            connector.perform(.startSet)
+        } label: {
+            Label("Start set", systemImage: "play.fill")
+        }
+        .buttonStyle(CapsuleButtonStyle(fill: .green, foreground: .black))
+    }
+}
+
+/// "Rest 1:30 · +0:23" while waiting, "In progress 0:41" while working, and the running total.
+private struct PaceLine: View {
+    let live: WatchLiveState
+    let date: Date
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let started = live.setStartedAt {
+                if let target = live.timedSetSeconds {
+                    let left = max(0, Double(target) - date.timeIntervalSince(started))
+                    Text("\(Format.clock(Int(left.rounded(.up)))) left").foregroundStyle(.green)
+                } else {
+                    Text("Set \(Format.clock(Int(date.timeIntervalSince(started))))").foregroundStyle(.green)
+                }
+            } else if let waiting = live.waitingDelta(at: date), let planned = live.plannedRestSeconds {
+                Text("Rest \(Format.clock(planned)) · \(WorkoutPace.signed(waiting))")
+                    .foregroundStyle(waiting > 60 ? .red : (waiting > 0 ? .orange : .green))
+            }
+            if let behind = live.behindSeconds, abs(behind) >= 10 {
+                Text("· \(WorkoutPace.deltaText(behind))")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .font(.caption2.weight(.semibold))
+        .monospacedDigit()
     }
 }
 

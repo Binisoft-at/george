@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 import BinisoftKit
 import GeorgeCore
 
@@ -25,6 +26,7 @@ struct GeorgeApp: App {
     init() {
         AppLog.bootstrap(appName: AppInfo.name)
         BinisoftTips.configure()
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         let opened = Persistence.open()
         container = opened.container
         mode = opened.mode

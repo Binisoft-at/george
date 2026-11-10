@@ -35,6 +35,7 @@ private struct TemplateDocument: View {
     @State private var loadedData: Data?
     @State private var editor = EditorState()
     @State private var logPast: WorkoutTemplate?
+    @State private var shareRoutine = false
     @State private var planDate = Date()
     @State private var showPlan = false
     @State private var showDetails = false
@@ -61,6 +62,9 @@ private struct TemplateDocument: View {
         .navigationTitle(template.name.isEmpty ? "Template" : template.name)
         .inlineTitle()
         .toolbar { toolbarItems }
+        .sheet(isPresented: $shareRoutine) {
+            RoutineShareSheet(template: template)
+        }
         .onAppear(perform: load)
         .task {
             // A template created a moment ago: go straight to picking exercises.
@@ -278,6 +282,12 @@ private struct TemplateDocument: View {
     @ToolbarContentBuilder
     private var toolbarItems: some ToolbarContent {
         ToolbarItemGroup(placement: .georgeTrailing) {
+            Button {
+                shareRoutine = true
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+            }
+            .accessibilityLabel("Share routine")
             Menu {
                 TemplateMenuItems(template: template, logPastFor: $logPast)
             } label: {

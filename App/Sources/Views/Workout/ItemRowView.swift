@@ -176,14 +176,7 @@ struct ExerciseThumb: View {
     var body: some View {
         Group {
             if showImages, let url = urls.first {
-                AsyncImage(url: url, transaction: Transaction(animation: .easeIn)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        fallback
-                    }
-                }
+                CachedImage(url: url, contentMode: .fill) { fallback }
             } else {
                 fallback
             }
@@ -221,14 +214,8 @@ struct ExerciseAnimation: View {
                 let index = Int(context.date.timeIntervalSinceReferenceDate / 1.1) % urls.count
                 ZStack {
                     ForEach(Array(urls.enumerated()), id: \.offset) { offset, url in
-                        AsyncImage(url: url) { phase in
-                            if case .success(let image) = phase {
-                                image.resizable().scaledToFit()
-                            } else {
-                                Color.clear
-                            }
-                        }
-                        .opacity(offset == index ? 1 : 0)
+                        CachedImage(url: url) { Color.clear }
+                            .opacity(offset == index ? 1 : 0)
                     }
                 }
                 .animation(.easeInOut(duration: 0.35), value: index)

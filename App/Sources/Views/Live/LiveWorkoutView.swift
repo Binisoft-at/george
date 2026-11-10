@@ -42,6 +42,17 @@ struct LiveWorkoutView: View {
             editSet: { setID, itemID in editingSet = SetEditRequest(setID: setID, itemID: itemID) },
             tutorial: { tutorial = $0 }
         ))
+        .sheet(isPresented: Binding(get: { live.showPanel }, set: { live.showPanel = $0 })) {
+            LivePanelSheet(onFinish: {
+                live.showPanel = false
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 450_000_000)
+                    showFinish = true
+                }
+            })
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showFinish) {
             FinishWorkoutSheet()
                 .presentationDetents([.medium, .large])
@@ -111,7 +122,9 @@ struct LiveWorkoutView: View {
                 VStack(spacing: 2) {
                     Text(session.title)
                         .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         HStack(spacing: 8) {
                             Text(Format.clock(Int(live.elapsed(at: context.date))))
@@ -179,6 +192,10 @@ struct LiveWorkoutView: View {
             Button { live.togglePause() } label: {
                 Label(live.isPaused ? "Resume" : "Pause", systemImage: live.isPaused ? "play" : "pause")
             }
+            Button { live.toggleVoiceMute() } label: {
+                Label(live.isVoiceMuted ? "Unmute Voice" : "Mute Voice", systemImage: live.isVoiceMuted ? "speaker.wave.2" : "speaker.slash")
+            }
+            Button { live.showPanel = true } label: { Label("Pace & Controls", systemImage: "rectangle.expand.vertical") }
             Divider()
             Button { showFinish = true } label: { Label("Finish Workout…", systemImage: "flag.checkered") }
             Button(role: .destructive) { confirmDiscard = true } label: { Label("Discard…", systemImage: "trash") }
@@ -247,7 +264,8 @@ struct LiveWorkoutView: View {
             set: { id in
                 guard let id, id != focusedBlock?.id, let block = live.content.blocks.first(where: { $0.id == id }) else { return }
                 let target = block.items.first { !$0.isComplete } ?? block.items.first
-                if let target { live.focusedItemID = target.id }
+                // The page you swipe to is what you're doing now.
+                if let target { live.focus(itemID: target.id) }
             }
         )
     }
@@ -265,16 +283,11 @@ struct LiveWorkoutView: View {
         GlassEffectContainer(spacing: 12) {
             VStack(spacing: 10) {
                 if let request = live.effortRequest {
-                    EffortPromptCard(request: request)
+                    FeedbackCard(request: request)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                if live.restEndsAt != nil {
-                    RestPanel()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    SetTimerBar(onPrevious: { move(by: -1) }, onNext: { move(by: 1) }, onFinish: { showFinish = true })
-                        .transition(.opacity)
-                }
+                CoachBar(onExpand: { live.showPanel = true }, onFinish: { showFinish = true })
+                    .transition(.opacity)
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
@@ -564,6 +577,9 @@ struct LiveSetRow: View {
                 }
             }
             if isCurrent && !set.isDone {
+                if item.mode == .time {
+                    TimedSetDial(item: item, set: set)
+                }
                 ValueTiles(item: item, set: set)
             }
         }
@@ -993,143 +1009,6 @@ struct ExerciseStrip: View {
                 withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
             }
         }
-    }
-}
-
-/// Countdown ring for the rest timer.
-struct RestPanel: View {
-    @Environment(LiveWorkoutController.self) private var live
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { context in
-            let remaining = live.restRemaining(at: context.date)
-            let total = max(1, live.restTotal)
-            HStack(spacing: 16) {
-                ZStack {
-                    ProgressRing(progress: Double(remaining) / Double(total), tint: remaining <= 10 ? .red : .orange, lineWidth: 6)
-                    Text(Format.clock(remaining))
-                        .font(.headline.weight(.bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText(countsDown: true))
-                }
-                .frame(width: 64, height: 64)
-                .scaleEffect(remaining <= 10 && remaining > 0 ? 1.06 : 1)
-                .animation(.easeInOut(duration: 0.25), value: remaining)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(remaining <= 10 ? "Get ready" : "Rest")
-                        .font(.headline)
-                    if let item = live.currentItem, let set = live.currentSet {
-                        Text("Next: \(item.name) · \(set.label(mode: item.mode, unit: live.unit))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                Spacer()
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        Button("−15") { live.addRest(-15) }
-                        Button("+15") { live.addRest(15) }
-                    }
-                    .buttonStyle(.glass)
-                    .font(.caption.weight(.semibold))
-                    Button("Skip") { live.skipRest() }
-                        .buttonStyle(.glassProminent)
-                        .tint(.orange)
-                        .font(.caption.weight(.semibold))
-                        .keyboardShortcut("r", modifiers: [])
-                }
-            }
-            .padding(14)
-            .floatingGlass(cornerRadius: 26, tint: .orange)
-        }
-    }
-}
-
-/// Instead of a big Done button: what's next and how long since the last set (turns orange, then
-/// red, when you're dawdling). ‹ › move between exercises.
-struct SetTimerBar: View {
-    let onPrevious: () -> Void
-    let onNext: () -> Void
-    let onFinish: () -> Void
-    @Environment(LiveWorkoutController.self) private var live
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onPrevious) {
-                Image(systemName: "chevron.left")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 48, height: 48)
-            }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .keyboardShortcut(.leftArrow, modifiers: .command)
-            .accessibilityLabel("Previous exercise")
-
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                content(at: context.date)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button(action: onNext) {
-                Image(systemName: "chevron.right")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 48, height: 48)
-            }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .keyboardShortcut(.rightArrow, modifiers: .command)
-            .accessibilityLabel("Next exercise")
-        }
-        .background {
-            // ␣ completes the current set on a keyboard (Mac, iPad).
-            Button("") { live.completeCurrentSet() }
-                .keyboardShortcut(.space, modifiers: [])
-                .opacity(0)
-                .accessibilityHidden(true)
-        }
-    }
-
-    @ViewBuilder
-    private func content(at date: Date) -> some View {
-        if let item = live.currentItem, let set = live.currentSet {
-            let idle = live.pace.idleSeconds(at: date)
-            let overdue = live.overdueSeconds(at: date)
-            VStack(spacing: 4) {
-                Text("Next: \(item.name) · \(set.label(mode: item.mode, unit: live.unit))")
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Image(systemName: overdue > 0 ? "hourglass.bottomhalf.filled" : "stopwatch")
-                    Text(live.pace.lastSetAt == nil ? "Ready when you are" : "\(Format.clock(Int(idle))) since last set")
-                        .monospacedDigit()
-                }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(timerColor(overdue: overdue))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(timerColor(overdue: overdue).opacity(0.14), in: Capsule())
-                .animation(.easeInOut, value: overdue > 0)
-            }
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
-            .floatingGlass(cornerRadius: 24)
-        } else {
-            Button(action: onFinish) {
-                Label("Finish Workout", systemImage: "flag.checkered")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(.green)
-        }
-    }
-
-    private func timerColor(overdue: Double) -> Color {
-        if overdue > 60 { return .red }
-        if overdue > 0 { return .orange }
-        return .accentColor
     }
 }
 

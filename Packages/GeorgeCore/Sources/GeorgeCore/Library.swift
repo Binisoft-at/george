@@ -141,6 +141,10 @@ public final class ExerciseCatalog: @unchecked Sendable {
     private let byID: [String: LibraryExercise]
     private let byName: [String: LibraryExercise]
     private let searchText: [String: String]
+    /// Name and alias words per exercise, for fuzzy matching.
+    private let nameTokens: [(exercise: LibraryExercise, tokens: Set<String>)]
+    private let lock = NSLock()
+    private var fuzzyCache: [String: String] = [:]
 
     public init(file: LibraryFile) {
         exercises = file.exercises
@@ -158,6 +162,9 @@ public final class ExerciseCatalog: @unchecked Sendable {
         byID = ids
         byName = names
         searchText = texts
+        nameTokens = file.exercises.flatMap { exercise in
+            ([exercise.name] + exercise.aliases).map { (exercise: exercise, tokens: ExerciseCatalog.tokens($0)) }
+        }
     }
 
     public convenience init(data: Data) throws {
@@ -183,9 +190,56 @@ public final class ExerciseCatalog: @unchecked Sendable {
         byName[ExerciseCatalog.fold(name)]
     }
 
-    /// Best library match for a workout item (by id, then exact name/alias).
+    /// Best library match for a workout item: by id, then exact name/alias, then the closest name
+    /// that contains all its words ("Barbell Bench Press" → "Barbell Bench Press - Medium Grip").
     public func match(for item: WorkoutItem) -> LibraryExercise? {
-        exercise(id: item.exerciseID) ?? exercise(named: item.name)
+        exercise(id: item.exerciseID) ?? exercise(named: item.name) ?? fuzzyMatch(item.name)
+    }
+
+    /// The exercise whose name (or alias) shares the most words with `name`, when one contains all
+    /// the words of the other and they overlap at least half. Exercises with pictures win ties.
+    public func fuzzyMatch(_ name: String) -> LibraryExercise? {
+        let key = ExerciseCatalog.fold(name).lowercased()
+        lock.lock()
+        let cached = fuzzyCache[key]
+        lock.unlock()
+        if let cached { return cached.isEmpty ? nil : byID[cached] }
+        let query = ExerciseCatalog.tokens(name)
+        var best: (score: Double, exercise: LibraryExercise)?
+        if !query.isEmpty {
+            for entry in nameTokens {
+                let common = query.intersection(entry.tokens).count
+                guard common > 0, common == query.count || common == entry.tokens.count else { continue }
+                var score = Double(common) / Double(query.union(entry.tokens).count)
+                if !entry.exercise.images.isEmpty { score += 0.05 }
+                if score > (best?.score ?? 0) { best = (score, entry.exercise) }
+            }
+        }
+        let result = (best?.score ?? 0) >= 0.5 ? best?.exercise : nil
+        lock.lock()
+        fuzzyCache[key] = result?.id ?? ""
+        lock.unlock()
+        return result
+    }
+
+    private static let synonyms: [String: String] = [
+        "db": "dumbbell", "dbs": "dumbbell", "bb": "barbell", "kb": "kettlebell", "ez": "ez",
+        "pullup": "pull", "pullups": "pull", "pushup": "push", "pushups": "push", "chinup": "chin", "chinups": "chin",
+        "situp": "sit", "situps": "sit", "lat": "lat", "lats": "lat", "tricep": "triceps", "bicep": "biceps",
+    ]
+    private static let stopwords: Set<String> = ["the", "a", "an", "with", "and", "on", "of", "to", "for", "in"]
+
+    /// Lowercased words without punctuation, plurals and filler ("Dumbbell Curls" → dumbbell, curl).
+    static func tokens(_ text: String) -> Set<String> {
+        let words = fold(text).lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        var result = Set<String>()
+        for var word in words where !stopwords.contains(word) {
+            if let synonym = synonyms[word] { word = synonym }
+            if word.hasSuffix("sses") { word = String(word.dropLast(2)) }
+            else if word.count > 3, word.hasSuffix("s"), !word.hasSuffix("ss"), !word.hasSuffix("us") { word = String(word.dropLast()) }
+            result.insert(word)
+        }
+        return result
     }
 
     public func imageURLs(for exercise: LibraryExercise) -> [URL] {

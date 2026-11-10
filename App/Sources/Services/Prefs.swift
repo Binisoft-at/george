@@ -27,12 +27,25 @@ enum Prefs {
     static let motivation = "motivation"
     static let paceNudges = "paceNudges"
     static let askEffort = "askEffort"
+    static let askFatigue = "askFatigue"
     static let energyCheckIn = "energyCheckIn"
     static let healthSignals = "healthSignals"
     /// Include Apple Health "State of Mind" entries in the energy insights (read on demand, never stored).
     static let useStateOfMind = "useStateOfMind"
     /// Birth year read from Apple Health – kept on this device only (Health data must not go to iCloud).
     static let healthBirthYear = "healthBirthYear"
+
+    // Voice coach (Settings → Voice Coach)
+    static let voiceEngine = "voiceEngine"
+    static let musicMode = "musicMode"
+    static let voiceVolume = "voiceVolume"
+    static let voiceRate = "voiceRate"
+    static let voiceInBackground = "voiceInBackground"
+    static let systemVoiceID = "systemVoiceID"
+    static let naturalVoiceID = "naturalVoiceID"
+    static let naturalVoiceName = "naturalVoiceName"
+    /// Live mode: show the Start button between sets (measures the real rest).
+    static let startButton = "startButton"
 }
 
 /// How much the live workout cheers you on.
@@ -66,6 +79,8 @@ enum CoachPrefs {
     static var sounds: Bool { bool(Prefs.restSounds, default: true) }
     static var paceNudges: Bool { bool(Prefs.paceNudges, default: true) }
     static var askEffort: Bool { bool(Prefs.askEffort, default: true) }
+    static var askFatigue: Bool { bool(Prefs.askFatigue, default: true) }
+    static var startButton: Bool { bool(Prefs.startButton, default: true) }
     static var energyCheckIn: Bool { bool(Prefs.energyCheckIn, default: true) }
     static var healthSignals: Bool { bool(Prefs.healthSignals, default: true) }
     static var motivation: MotivationStyle {

@@ -187,8 +187,10 @@ public struct MuscleEngine: Sendable {
                 let muscles = contributions(item)
                 guard !muscles.isEmpty else { continue }
                 let workoutKind = item.kind ?? session.kind
+                // Subjective fatigue after the exercise (0–100 %): 50 % is neutral, 100 % counts 1.4×.
+                let fatigueFactor = item.fatigue.map { 0.6 + 0.8 * min(1, max(0, $0)) } ?? 1
                 for set in done {
-                    let base = setLoad(kind: set.kind, rpe: set.rpe, sessionEffort: sessionEffort, workoutKind: workoutKind)
+                    let base = setLoad(kind: set.kind, rpe: set.rpe, sessionEffort: sessionEffort, workoutKind: workoutKind) * fatigueFactor
                     let sides: Double = item.perSide ? 2 : 1
                     let volume = Double(set.effectiveReps ?? 0) * (set.effectiveWeight ?? 0) * sides
                     let countsAsSet = set.kind != .warmup

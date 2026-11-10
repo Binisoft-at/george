@@ -14,6 +14,8 @@ enum MuscleMetric: String, CaseIterable, Identifiable {
         case .load: return "Muscular Load"
         }
     }
+    /// For the picker row.
+    var shortTitle: String { self == .load ? "Load" : title }
     var symbol: String {
         switch self {
         case .freshness: return "battery.75percent"
@@ -112,24 +114,38 @@ struct MusclesView: View {
 
     // MARK: Controls
 
+    /// All four metrics in one row: with icons when they fit, text only when they don't – never cut off.
     private var metricPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(MuscleMetric.allCases) { item in
-                    Button {
-                        withAnimation(.snappy) { metric = item }
-                    } label: {
-                        Label(item.title, systemImage: item.symbol)
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .foregroundStyle(metric == item ? Color.primary : Color.secondary)
+        ViewThatFits(in: .horizontal) {
+            metricRow(showIcons: true)
+            metricRow(showIcons: false)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func metricRow(showIcons: Bool) -> some View {
+        HStack(spacing: 6) {
+            ForEach(MuscleMetric.allCases) { item in
+                Button {
+                    withAnimation(.snappy) { metric = item }
+                } label: {
+                    Group {
+                        if showIcons {
+                            Label(item.shortTitle, systemImage: item.symbol)
+                        } else {
+                            Text(item.shortTitle)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .glassEffect(metric == item ? .regular.interactive() : .clear.interactive(), in: Capsule())
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(metric == item ? Color.primary : Color.secondary)
                 }
+                .buttonStyle(.plain)
+                .glassEffect(metric == item ? .regular.interactive() : .clear.interactive(), in: Capsule())
             }
-            .padding(.vertical, 2)
         }
     }
 

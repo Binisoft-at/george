@@ -807,3 +807,105 @@ final class V2Tests: XCTestCase {
         XCTAssertEqual(values[3], 0.5)
     }
 }
+
+final class V3Tests: XCTestCase {
+    func testPaceRecordsPlannedVersusActualRest() {
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        var pace = PaceTracker(slack: 30)
+        pace.setCompleted(at: t0, plannedRest: nil, workSeconds: 30)          // first set
+        XCTAssertTrue(pace.gaps.isEmpty)
+        // Planned 90 s rest, started after 130 s → 40 s behind.
+        XCTAssertEqual(pace.waitingDelta(at: t0.addingTimeInterval(100), plannedRest: 90) ?? 0, 10, accuracy: 0.001)
+        pace.setStarted(at: t0.addingTimeInterval(130), plannedRest: 90)
+        XCTAssertNil(pace.waitingDelta(at: t0.addingTimeInterval(140), plannedRest: 90))
+        XCTAssertEqual(pace.workingSeconds(at: t0.addingTimeInterval(160)), 30, accuracy: 0.001)
+        pace.setCompleted(at: t0.addingTimeInterval(160), plannedRest: 90, workSeconds: 30)
+        XCTAssertEqual(pace.gaps.count, 1)
+        XCTAssertEqual(pace.lastGap?.delta ?? 0, 40, accuracy: 0.001)
+        // Ticked without Start: start estimated as work seconds before the tick → 60 s rest, 30 s ahead.
+        pace.setCompleted(at: t0.addingTimeInterval(160 + 60 + 30), plannedRest: 90, workSeconds: 30)
+        XCTAssertEqual(pace.lastGap?.delta ?? 0, -30, accuracy: 0.001)
+        XCTAssertEqual(pace.totalDelta, 10, accuracy: 0.001)
+        XCTAssertEqual(WorkoutPace.deltaText(130), "2:10 behind plan")
+        XCTAssertEqual(WorkoutPace.deltaText(-40), "0:40 ahead of plan")
+        XCTAssertEqual(WorkoutPace.deltaText(5), "on plan")
+        XCTAssertEqual(WorkoutPace.signed(40), "+0:40")
+        XCTAssertFalse(WorkoutPace.tips(for: pace, restRange: 90...180).isEmpty)
+    }
+
+    func testRemainingAndPlannedTime() {
+        var content = WorkoutContent()
+        content.append(items: [WorkoutItem(name: "Bike", mode: .time, sets: [WorkoutSet(targetSeconds: 300)]),
+                               WorkoutItem(name: "Squat", sets: [WorkoutSet(targetReps: "5"), WorkoutSet(targetReps: "5")], restSeconds: 120)],
+                       asGroup: false)
+        let planned = WorkoutPace.plannedSeconds(of: content, defaultRest: 90)
+        // Bike 310 + rest after bike (item rest default 90) + squat 30 + 120 + 30
+        XCTAssertEqual(planned, 310 + 90 + 30 + 120 + 30, accuracy: 0.001)
+        let bikeID = content.allItems[0].sets[0].id
+        _ = content.toggleSet(id: bikeID)
+        XCTAssertEqual(WorkoutPace.remainingSeconds(in: content, defaultRest: 90), 30 + 120 + 30, accuracy: 0.001)
+    }
+
+    func testCoachScriptTalksAboutTheSetThatsDue() {
+        let item = WorkoutItem(name: "Bench Press", sets: [
+            WorkoutSet(kind: .warmup, targetReps: "10", targetWeight: 40),
+            WorkoutSet(targetReps: "8", targetWeight: 60), WorkoutSet(targetReps: "8", targetWeight: 62.5), WorkoutSet(targetReps: "8", targetWeight: 62.5),
+        ])
+        XCTAssertEqual(CoachScript.setUp(item: item, set: item.sets[1], unit: .kg, isFirst: false), "Bench Press, set 1 of 3: 8 reps at 60 kilos.")
+        XCTAssertEqual(CoachScript.setUp(item: item, set: item.sets[3], unit: .kg, isFirst: false), "Bench Press, last set: 8 reps at 62.5 kilos.")
+        XCTAssertEqual(CoachScript.setUp(item: item, set: item.sets[0], unit: .kg, isFirst: true), "First up: Bench Press, warm-up set: 10 reps at 40 kilos.")
+        let bike = WorkoutItem(name: "Bike", mode: .time, sets: [WorkoutSet(targetSeconds: 300)])
+        XCTAssertEqual(CoachScript.setUp(item: bike, set: bike.sets[0], unit: .kg, isFirst: true), "First up: Bike: 5 minutes.")
+        XCTAssertEqual(CoachScript.restStart(seconds: 90, next: (item, item.sets[2]), sameExercise: true), "Rest 90 seconds.")
+        XCTAssertEqual(CoachScript.restStart(seconds: 90, next: (bike, bike.sets[0]), sameExercise: false), "Rest 90 seconds. Up next: Bike.")
+        XCTAssertEqual(CoachScript.overRest(seconds: 42), "40 seconds over your rest.")
+        XCTAssertEqual(CoachScript.go(next: (item, item.sets[2]), unit: .kg), "Go! Bench Press, set 2 of 3.")
+        XCTAssertNil(CoachScript.cheer(streak: 1, seed: 3))
+        XCTAssertFalse(CoachCue.motivation.isOnByDefault)
+    }
+
+    func testStartedAtAndFatigueAreStoredAndOptional() throws {
+        var item = WorkoutItem(name: "Squat", sets: [WorkoutSet(targetReps: "5", startedAt: Date(timeIntervalSince1970: 100))])
+        item.fatigue = 0.75
+        let data = try JSONEncoder().encode(item)
+        let decoded = try JSONDecoder().decode(WorkoutItem.self, from: data)
+        XCTAssertEqual(decoded.fatigue, 0.75)
+        XCTAssertEqual(decoded.sets[0].startedAt, Date(timeIntervalSince1970: 100))
+        let old = try JSONDecoder().decode(WorkoutItem.self, from: Data(#"{"name":"Row","sets":[{"targetReps":"8"}]}"#.utf8))
+        XCTAssertNil(old.fatigue)
+        XCTAssertNil(old.sets[0].startedAt)
+        XCTAssertNil(item.sets[0].clearedCopy().startedAt)
+    }
+
+    func testSubjectiveFatigueScalesMuscleLoad() {
+        func load(fatigue: Double?) -> Double {
+            var item = WorkoutItem(name: "Squat", sets: [WorkoutSet(targetReps: "5", isDone: true)])
+            item.fatigue = fatigue
+            var content = WorkoutContent()
+            content.append(items: [item], asGroup: false)
+            let record = SessionRecord(id: UUID(), date: Date(timeIntervalSince1970: 0), title: "", kind: .gym, durationSeconds: 60, isCompleted: true, content: content)
+            let events = MuscleEngine.events(from: [record], contributions: { _ in [MuscleContribution(group: .quads, weight: 1)] })
+            return events.reduce(0) { $0 + $1.load }
+        }
+        XCTAssertEqual(load(fatigue: 0.5), load(fatigue: nil), accuracy: 0.0001)
+        XCTAssertGreaterThan(load(fatigue: 1), load(fatigue: nil))
+        XCTAssertLessThan(load(fatigue: 0), load(fatigue: nil))
+    }
+
+    func testFuzzyLibraryMatch() {
+        func ex(_ id: String, _ name: String, images: [String] = []) -> LibraryExercise {
+            LibraryExercise(id: id, name: name, kind: .gym, category: "strength", primary: ["chest"], images: images)
+        }
+        let catalog = ExerciseCatalog(file: LibraryFile(exercises: [
+            ex("a", "Barbell Bench Press - Medium Grip", images: ["a/0.jpg"]),
+            ex("b", "Barbell Incline Bench Press - Medium Grip", images: ["b/0.jpg"]),
+            ex("c", "Dumbbell Bicep Curl", images: ["c/0.jpg"]),
+            ex("d", "Plank"),
+        ]))
+        XCTAssertEqual(catalog.match(for: WorkoutItem(name: "Barbell Bench Press"))?.id, "a")
+        XCTAssertEqual(catalog.match(for: WorkoutItem(name: "DB Bicep Curls"))?.id, "c")
+        XCTAssertEqual(catalog.match(for: WorkoutItem(name: "plank"))?.id, "d")
+        XCTAssertNil(catalog.match(for: WorkoutItem(name: "Bike")))
+        XCTAssertNil(catalog.match(for: WorkoutItem(name: "Bench")), "one shared word of four isn't the same movement")
+    }
+}

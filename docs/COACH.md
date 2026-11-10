@@ -1,7 +1,63 @@
-# George – workout coach, energy and profile (v2)
+# George – workout coach, energy and profile
 
 Everything that makes live mode feel like training with a coach. Every extra can be switched off in
-**Settings → Workout Coach**.
+**Settings → Workout Coach** (voice: **Settings → Workout Coach → Voice Coach**).
+
+## Flow of a set (v3)
+
+Each set goes **ready → working → resting**:
+
+| Phase | Bottom bar | Ring |
+|---|---|---|
+| **Ready** | NOW + exercise, set 2 of 4, the numbers; “+0:23 over the 1:30 rest”; big **Start** | time since the last set, green → orange → red against the planned rest |
+| **Working** | IN PROGRESS / 3:12 LEFT; big **Done** | a timed set (warm-up bike, plank) counts down and ticks itself off at zero; a rep set shows how long it's going |
+| **Resting** | REST · UP NEXT + what's next; **Start** skips the rest | the rest countdown |
+
+- **Start** is the moment you really begin – George compares that with the planned rest (gap =
+  end of last set → start of this one) and keeps a running total: “2:10 behind plan”. Ticking a set
+  without Start works too: the start is then estimated from the set's typical work time. Off in
+  Settings → Workout Coach → *Start button between sets*.
+- The page you swipe to is the exercise you're doing – the current set follows it. Supersets go
+  round by round (A1 → A2 → A1 …).
+- **Tap the bar (or swipe up)** for the full panel: the big ring, NOW / NEXT / THEN, previous /
+  pause / next, ±15 s and skip rest, Start/Done, and **Pace**: behind or ahead of plan, this break
+  (planned vs. took), the average break, the finish time at this pace against the planned time, a
+  chart of every break (bar = actual, line = planned) and tips (“your breaks run 0:45 over – set up
+  the weight in the last 15 seconds”; rest guideline from your profile). Swipe down to close.
+- After an exercise's last set: **how fatigued are your chest, triceps?** 25 / 50 / 75 / 100 % (and,
+  for rep sets, reps left). The fatigue scales that exercise's muscular load (50 % neutral, 100 %
+  ×1.4) – so freshness reflects how hard it really was.
+- Apple Watch: the same **Start set** button after a rest, the planned rest with the delta, and the
+  running total.
+
+Rest guidelines behind the tips: rests longer than ~60–90 s are at least as good for muscle growth
+as short ones (Singer et al. 2024, Bayesian meta-analysis; Grgic et al. 2017 review), heavy compound
+lifts profit from 2–3 min (Schoenfeld et al. 2016). Your range comes from Settings → Your Profile.
+
+## Voice coach (v3)
+
+- **One queue, no chatter about the past**: every line belongs to a set; when you move on, lines
+  about other sets are dropped, and anything that waited more than a few seconds is skipped.
+- **You choose when it speaks** (Settings → Voice Coach → When the coach speaks): next set, rest
+  starts, countdown (10 s, 3-2-1), go, timed sets, exercise done, records, halfway/last set, over the
+  rest, cheers (off by default), start/finish.
+- **Music**: lower it while speaking (iOS ducking, given back 0.4 s after the last line), keep it as
+  it is, or pause it. Voice volume and speed sliders. **Mute** for one workout: ⋯ menu or the panel.
+- **Voices**: the best installed iPhone voice (premium/enhanced first, male preferred – download
+  “Evan (Premium)” or “Nathan (Premium)” in iPhone Settings → Accessibility → Spoken Content → Voices),
+  or **Natural (ElevenLabs)** with your own API key, stored only in this device's Keychain. Lines
+  are generated once and cached; if a line isn't ready in 1.6 s (or there's no internet) the iPhone
+  voice says it. Code: `VoiceCoach.swift`, `NaturalVoice.swift`, `GeorgeCore/CoachScript.swift`.
+- **Phone locked**: with *Keep coaching when the phone is locked* on and no Apple Watch recording,
+  George runs an iPhone workout session (iOS 26 HealthKit, no builder – nothing extra is saved;
+  `PhoneWorkoutSession.swift`) plus the `audio` background mode, so it keeps running and speaking.
+  As a fallback the rest-end notification plays the spoken “Go!” as its sound (rendered into
+  Library/Sounds). While George is open, that notification stays silent.
+
+## Sharing routines (v3)
+
+Any template → **Share** (toolbar): a **PDF** for anyone (numbered exercises with sets/holds, muscles
+and the key cues), a **George file** (`.csv` – opens straight in George as a template) or plain text.
 
 ## Live mode
 
