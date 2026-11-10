@@ -49,10 +49,12 @@ lifts profit from 2–3 min (Schoenfeld et al. 2016). Your range comes from Sett
   are generated once and cached; if a line isn't ready in 1.6 s (or there's no internet) the iPhone
   voice says it. Code: `VoiceCoach.swift`, `NaturalVoice.swift`, `GeorgeCore/CoachScript.swift`.
 - **Phone locked**: with *Keep coaching when the phone is locked* on and no Apple Watch recording,
-  George runs an iPhone workout session (iOS 26 HealthKit, no builder – nothing extra is saved;
-  `PhoneWorkoutSession.swift`) plus the `audio` background mode, so it keeps running and speaking.
-  As a fallback the rest-end notification plays the spoken “Go!” as its sound (rendered into
-  Library/Sounds). While George is open, that notification stays silent.
+  George starts an iPhone workout session (iOS 26 HealthKit, no builder – nothing extra is saved;
+  `PhoneWorkoutSession.swift`) and has the `audio` background mode, so cues can keep coming while
+  locked. (`workout-processing` is a watchOS-only background mode – App Store Connect rejects it on
+  iOS.) Whether iOS keeps George running between cues has to be checked on a device. As a fallback
+  the rest-end notification plays the spoken “Go!” as its sound (rendered into Library/Sounds);
+  while George is open, that notification stays silent.
 
 ## Stretch & yoga (v3)
 
