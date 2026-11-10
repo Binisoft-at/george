@@ -50,27 +50,30 @@ struct CoachBar: View {
                     HStack(spacing: 12) {
                         PhaseRing(date: date)
                             .frame(width: 58, height: 58)
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(headline(at: date))
-                                .font(.caption.weight(.heavy))
+                                .font(.caption2.weight(.heavy))
                                 .foregroundStyle(tint(at: date))
-                            Text(setLine)
+                                .lineLimit(1)
+                            Text(live.currentItem?.name ?? "")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.85)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(setLine)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             if let detail = detail(at: date) {
                                 Text(detail)
-                                    .font(.caption)
+                                    .font(.caption2)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.85)
+                                    .minimumScaleFactor(0.75)
                             }
                         }
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.up")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
                 }
@@ -128,17 +131,20 @@ struct CoachBar: View {
         }
     }
 
+    /// "set 2 of 4 · 8 × 60 kg"
     private var setLine: String {
         guard let item = live.currentItem, let set = live.currentSet else { return "" }
         let position = CoachScript.setPosition(set, in: item)
         let what = set.label(mode: item.mode, unit: live.unit)
-        return [item.name, position.isEmpty ? nil : position, what].compactMap { $0 }.joined(separator: " · ")
+        return [position.isEmpty ? nil : position, what].compactMap { $0 }.joined(separator: " · ")
     }
 
     private func headline(at date: Date) -> String {
         switch live.phase {
         case .resting: return live.restRemaining(at: date) <= 10 ? "GET READY · UP NEXT" : "REST · UP NEXT"
-        case .ready: return "NOW"
+        case .ready:
+            let total = live.paceSnapshot(at: date).totalDelta
+            return abs(total) >= 10 ? "NOW · \(WorkoutPace.deltaText(total).uppercased())" : "NOW"
         case .working:
             if let end = live.timedSetEndsAt { return "\(Format.clock(Int(max(0, end.timeIntervalSince(date)).rounded(.up)))) LEFT" }
             return "IN PROGRESS"
@@ -149,22 +155,19 @@ struct CoachBar: View {
         let snapshot = live.paceSnapshot(at: date)
         switch live.phase {
         case .resting:
-            return "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal))" + behind(snapshot)
+            return "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal)) · tap for pace"
         case .ready:
             if let waiting = snapshot.waitingDelta {
                 let planned = Format.clock(Int(snapshot.plannedRest))
                 return waiting > 0
-                    ? "\(WorkoutPace.signed(waiting)) over the \(planned) rest" + behind(snapshot)
-                    : "Rest \(planned) planned · \(Format.clock(Int(-waiting))) left"
+                    ? "\(WorkoutPace.signed(waiting)) over the \(planned) rest"
+                    : "\(Format.clock(Int(-waiting))) left of the \(planned) rest"
             }
             return "Tap Start when you begin"
         case .working:
-            return "Working \(Format.clock(Int(live.pace.workingSeconds(at: date))))" + behind(snapshot)
+            if abs(snapshot.totalDelta) >= 10 { return WorkoutPace.deltaText(snapshot.totalDelta) }
+            return "Working \(Format.clock(Int(live.pace.workingSeconds(at: date))))"
         }
-    }
-
-    private func behind(_ snapshot: LiveWorkoutController.PaceSnapshot) -> String {
-        abs(snapshot.totalDelta) < 10 ? "" : " · " + WorkoutPace.deltaText(snapshot.totalDelta)
     }
 
     private func tint(at date: Date) -> Color {

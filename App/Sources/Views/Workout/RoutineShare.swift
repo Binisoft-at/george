@@ -88,7 +88,9 @@ struct RoutineSheetView: View {
                             Text(row.muscles.capitalized).font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(row.steps, id: \.self) { step in
-                            Text("• \(step)").font(.callout)
+                            Text("• \(step)")
+                                .font(.callout)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -142,6 +144,7 @@ struct RoutineShareSheet: View {
     @Environment(ExerciseLibrary.self) private var library
     @Environment(\.dismiss) private var dismiss
     @State private var pdf: RoutinePDF?
+    @State private var preview: CGImage?
     @State private var copied = false
 
     var body: some View {
@@ -149,11 +152,15 @@ struct RoutineShareSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    RoutineSheetView(data: data)
-                        .scaleEffect(0.6, anchor: .top)
-                        .frame(height: previewHeight(data) * 0.6, alignment: .top)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+                    if let preview {
+                        Image(decorative: preview, scale: 2)
+                            .resizable()
+                            .scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+                    } else {
+                        ProgressView().frame(height: 200)
+                    }
                     VStack(spacing: 10) {
                         if let pdf {
                             ShareLink(item: pdf, preview: SharePreview("\(template.name).pdf")) {
@@ -190,11 +197,12 @@ struct RoutineShareSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .task { pdf = RoutinePDF.render(data) }
+            .task {
+                pdf = RoutinePDF.render(data)
+                let renderer = ImageRenderer(content: RoutineSheetView(data: data))
+                renderer.scale = 2
+                preview = renderer.cgImage
+            }
         }
-    }
-
-    private func previewHeight(_ data: RoutineSheetData) -> CGFloat {
-        CGFloat(180 + data.rows.reduce(0) { $0 + 70 + $1.steps.count * 22 })
     }
 }

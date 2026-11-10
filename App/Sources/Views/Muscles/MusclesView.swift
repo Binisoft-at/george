@@ -114,39 +114,16 @@ struct MusclesView: View {
 
     // MARK: Controls
 
-    /// All four metrics in one row: with icons when they fit, text only when they don't – never cut off.
+    /// The four metrics as one segmented control – always fully readable.
     private var metricPicker: some View {
-        ViewThatFits(in: .horizontal) {
-            metricRow(showIcons: true)
-            metricRow(showIcons: false)
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func metricRow(showIcons: Bool) -> some View {
-        HStack(spacing: 6) {
+        Picker("Metric", selection: Binding(get: { metric }, set: { new in withAnimation(.snappy) { metric = new } })) {
             ForEach(MuscleMetric.allCases) { item in
-                Button {
-                    withAnimation(.snappy) { metric = item }
-                } label: {
-                    Group {
-                        if showIcons {
-                            Label(item.shortTitle, systemImage: item.symbol)
-                        } else {
-                            Text(item.shortTitle)
-                        }
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .fixedSize()
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .foregroundStyle(metric == item ? Color.primary : Color.secondary)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(metric == item ? .regular.interactive() : .clear.interactive(), in: Capsule())
+                Text(item.shortTitle).tag(item)
             }
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.vertical, 2)
     }
 
     private func bucketChips(_ values: [MuscleValue]) -> some View {
