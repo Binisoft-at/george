@@ -908,4 +908,21 @@ final class V3Tests: XCTestCase {
         XCTAssertNil(catalog.match(for: WorkoutItem(name: "Bike")))
         XCTAssertNil(catalog.match(for: WorkoutItem(name: "Bench")), "one shared word of four isn't the same movement")
     }
+
+    func testReadyMadeRoutinesResolveAgainstTheBundledLibrary() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("App/Resources/exercises.json")
+        let catalog = try ExerciseCatalog(data: try Data(contentsOf: url))
+        XCTAssertGreaterThanOrEqual(catalog.exercises.filter { $0.kind == .yoga }.count, 100)
+        for routine in RoutineLibrary.all {
+            XCTAssertEqual(routine.missing(in: catalog), [], routine.name)
+            let content = routine.content(using: catalog)
+            XCTAssertEqual(content.allItems.count, routine.entries.count, routine.name)
+            XCTAssertGreaterThan(content.estimatedSeconds(), 180, routine.name)
+        }
+        let flow = RoutineLibrary.routine(id: "sun-salutations")!.content(using: catalog)
+        XCTAssertEqual(flow.allItems.first { $0.name == "Sun Salutation A" }?.sets.count, 3)
+    }
 }

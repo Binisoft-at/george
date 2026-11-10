@@ -92,6 +92,11 @@ struct PlansView: View {
                 ScreenLink(.library) {
                     Label("Exercise Library", systemImage: "books.vertical")
                 }
+                NavigationLink {
+                    RoutinesView()
+                } label: {
+                    Label("Stretch & Yoga Routines", systemImage: "figure.yoga")
+                }
                 Button {
                     router.showImport = true
                 } label: {

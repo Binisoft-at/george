@@ -54,6 +54,15 @@ lifts profit from 2–3 min (Schoenfeld et al. 2016). Your range comes from Sett
   As a fallback the rest-end notification plays the spoken “Go!” as its sound (rendered into
   Library/Sounds). While George is open, that notification stays silent.
 
+## Stretch & yoga (v3)
+
+The library has 162 stretches, 107 yoga poses (with Sanskrit names, Sun Salutation A/B and their
+parts, flows) and 56 mobility drills. **Plans → Stretch & Yoga Routines**: nine ready-made routines
+(Morning Mobility, Desk Break, After the Gym, After the Run, Hip Openers, Sun Salutation Flow,
+Evening Wind-Down, Tennis Warm-Up, Shoulders & Upper Back) – *Start Now* or *Add to My Templates*
+(program “Stretch & Yoga”), then edit, start or share like any template. Definitions:
+`GeorgeCore/Routines.swift` (a test checks every move exists in the library).
+
 ## Sharing routines (v3)
 
 Any template → **Share** (toolbar): a **PDF** for anyone (numbered exercises with sets/holds, muscles

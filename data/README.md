@@ -7,7 +7,9 @@ The app ships one bundled library, `App/Resources/exercises.json`. It is generat
 | File | Source | License |
 | --- | --- | --- |
 | `free-exercise-db.json` | [yuhonas/free-exercise-db](https://github.com/yuhonas/free-exercise-db), 876 entries | Unlicense (public domain) |
-| `curated_exercises.json` | George curated library: elastic band, yoga, mobility, stretching, core, tennis-conditioning and cardio entries that free-exercise-db lacks | Original content written for this project |
+| `curated_exercises.json` | George curated library, 296 entries: elastic band, yoga, mobility, stretching, core, tennis-conditioning and cardio entries that free-exercise-db lacks | Original content written for this project |
+
+The generated file holds 1,172 exercises (876 + 296). Per kind: gym 617, stretch 162, bodyweight 120, yoga 107, band 75, mobility 56, cardio 22, core 9, hiit 4.
 
 - free-exercise-db entries get ids of the form `fedb:<original id>`. Curated entries use `george:<kebab-case-slug>`.
 - Images are not bundled. Each entry's `images` holds paths relative to the `imageBase` URL in the output file (`https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/`).

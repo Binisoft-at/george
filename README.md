@@ -31,9 +31,9 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
 - **Finish & share** — confetti, counting stats, records, muscles worked and a share picture.
 - **Energy** — a one-tap check-in, weekly patterns, a rhythm if you have one, links with workouts,
   sleep and HRV (Apple Health).
-- **Exercise library** — 1,047 exercises: the public-domain [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
-  (gym, stretches, bands, with start/end images animated like a GIF) plus 171 curated elastic-band, yoga,
-  mobility and tennis-prehab moves. Every exercise has a one-tap YouTube tutorial search; save your own links.
+- **Exercise library** — 1,172 exercises: the public-domain [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+  (gym, stretches, bands, with start/end images animated like a GIF) plus 296 curated elastic-band, yoga,
+  stretching, mobility and tennis-prehab moves. Every exercise has a one-tap YouTube tutorial search; save your own links.
 - **Smart streaks** — weekly goal (days/week, history-aware), saves earned every 2 successful weeks (max 3,
   auto-used), a "rescue workout" that counts double, excused break weeks, and Apple Health workouts from
   other apps count too.
