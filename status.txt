@@ -1,0 +1,3 @@
+run 20 (push) commit e002467a0bc49816d034513b65d3bc9d991c7606
+prune=success upload=success build=20
+details: https://github.com/Binisoft-at/george/actions/runs/43394195549
