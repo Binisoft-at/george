@@ -1,0 +1,3 @@
+run 16 (push) commit e002467a0bc49816d034513b65d3bc9d991c7606
+core-tests=success build=success
+details: https://github.com/Binisoft-at/george/actions/runs/43394195637

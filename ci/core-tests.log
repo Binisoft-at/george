@@ -1,0 +1,225 @@
+Building for debugging...
+[0/15] Write sources
+[3/15] Write swift-version-24593BA9C3E375BF.txt
+[5/21] Compiling BinisoftKitCore AppEnvironment.swift
+[6/21] Compiling BinisoftKitCore AppLog.swift
+[7/21] Emitting module BinisoftKitCore
+[8/21] Compiling BinisoftKitCore SyncStatus.swift
+[9/21] Compiling BinisoftKitCore Import.swift
+[10/21] Compiling BinisoftKitCore Records.swift
+[11/22] Compiling BinisoftKitCore Tour.swift
+[12/23] Wrapping AST for BinisoftKitCore for debugging
+[14/42] Compiling GeorgeCore MuscleEngine.swift
+[15/42] Compiling GeorgeCore Muscles.swift
+[16/42] Compiling GeorgeCore ProgramCSV.swift
+[17/42] Compiling GeorgeCore Routines.swift
+[18/42] Compiling GeorgeCore SetEditing.swift
+[19/42] Compiling GeorgeCore Stats.swift
+[20/47] Compiling GeorgeCore StreakEngine.swift
+[21/47] Compiling GeorgeCore TrainingProfile.swift
+[22/47] Compiling GeorgeCore WatchProtocol.swift
+[23/47] Compiling GeorgeCore WorkoutContent.swift
+[24/47] Compiling GeorgeCore WorkoutKind.swift
+[25/47] Compiling GeorgeCore BodyMap.swift
+[26/47] Compiling GeorgeCore BodyMapData.swift
+[27/47] Compiling GeorgeCore CSVReader.swift
+[28/47] Compiling GeorgeCore Calendar+Weeks.swift
+[29/47] Compiling GeorgeCore CoachScript.swift
+[30/47] Compiling GeorgeCore Coaching.swift
+[31/47] Compiling GeorgeCore Energy.swift
+[32/47] Compiling GeorgeCore FinishQuotes.swift
+[33/47] Compiling GeorgeCore Format.swift
+[34/47] Compiling GeorgeCore GeorgeTour.swift
+[35/47] Compiling GeorgeCore HealthSignals.swift
+[36/47] Compiling GeorgeCore Library.swift
+[37/47] Emitting module GeorgeCore
+[38/48] Wrapping AST for GeorgeCore for debugging
+[40/50] Emitting module GeorgeCoreTests
+[41/50] Compiling GeorgeCoreTests GeorgeCoreTests.swift
+[42/51] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageDiscoveredTests.derived/all-discovered-tests.swift
+[43/51] Write sources
+[44/51] Wrapping AST for GeorgeCoreTests for debugging
+[46/54] Emitting module GeorgeCorePackageDiscoveredTests
+[47/54] Compiling GeorgeCorePackageDiscoveredTests GeorgeCoreTests.swift
+[48/54] Compiling GeorgeCorePackageDiscoveredTests all-discovered-tests.swift
+[49/55] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageTests.derived/runner.swift
+[50/55] Write sources
+[51/55] Wrapping AST for GeorgeCorePackageDiscoveredTests for debugging
+[53/57] Compiling GeorgeCorePackageTests runner.swift
+[54/57] Emitting module GeorgeCorePackageTests
+[55/58] Wrapping AST for GeorgeCorePackageTests for debugging
+[56/58] Write Objects.LinkFileList
+[57/58] Linking GeorgeCorePackageTests.xctest
+Build complete! (17.25s)
+Test Suite 'All tests' started at 2026-11-13 08:34:51.371
+Test Suite 'debug.xctest' started at 2026-11-13 08:34:51.372
+Test Suite 'ContentTests' started at 2026-11-13 08:34:51.372
+Test Case 'ContentTests.testCodableIsForwardCompatible' started at 2026-11-13 08:34:51.372
+Test Case 'ContentTests.testCodableIsForwardCompatible' passed (0.002 seconds)
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' started at 2026-11-13 08:34:51.374
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' passed (0.0 seconds)
+Test Case 'ContentTests.testGroupingOperations' started at 2026-11-13 08:34:51.375
+Test Case 'ContentTests.testGroupingOperations' passed (0.0 seconds)
+Test Case 'ContentTests.testMoveItemAcrossBlocks' started at 2026-11-13 08:34:51.375
+Test Case 'ContentTests.testMoveItemAcrossBlocks' passed (0.0 seconds)
+Test Case 'ContentTests.testNextPendingWraps' started at 2026-11-13 08:34:51.375
+Test Case 'ContentTests.testNextPendingWraps' passed (0.0 seconds)
+Test Case 'ContentTests.testPrescription' started at 2026-11-13 08:34:51.376
+Test Case 'ContentTests.testPrescription' passed (0.0 seconds)
+Test Case 'ContentTests.testRestRules' started at 2026-11-13 08:34:51.376
+Test Case 'ContentTests.testRestRules' passed (0.0 seconds)
+Test Case 'ContentTests.testToggleCopiesTargets' started at 2026-11-13 08:34:51.376
+Test Case 'ContentTests.testToggleCopiesTargets' passed (0.0 seconds)
+Test Suite 'ContentTests' passed at 2026-11-13 08:34:51.376
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'KindAndParsingTests' started at 2026-11-13 08:34:51.376
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' started at 2026-11-13 08:34:51.376
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' started at 2026-11-13 08:34:51.376
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testFormat' started at 2026-11-13 08:34:51.376
+Test Case 'KindAndParsingTests.testFormat' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testKindAliases' started at 2026-11-13 08:34:51.377
+Test Case 'KindAndParsingTests.testKindAliases' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseMeters' started at 2026-11-13 08:34:51.377
+Test Case 'KindAndParsingTests.testLooseMeters' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseSeconds' started at 2026-11-13 08:34:51.377
+Test Case 'KindAndParsingTests.testLooseSeconds' passed (0.0 seconds)
+Test Suite 'KindAndParsingTests' passed at 2026-11-13 08:34:51.377
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'LibraryTests' started at 2026-11-13 08:34:51.377
+Test Case 'LibraryTests.testBundledLibraryDecodes' started at 2026-11-13 08:34:51.377
+Test Case 'LibraryTests.testBundledLibraryDecodes' passed (0.099 seconds)
+Test Case 'LibraryTests.testYouTubeHelpers' started at 2026-11-13 08:34:51.477
+Test Case 'LibraryTests.testYouTubeHelpers' passed (0.0 seconds)
+Test Suite 'LibraryTests' passed at 2026-11-13 08:34:51.477
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.099 (0.099) seconds
+Test Suite 'MuscleTests' started at 2026-11-13 08:34:51.477
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' started at 2026-11-13 08:34:51.477
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' passed (0.001 seconds)
+Test Case 'MuscleTests.testEventsAndTotals' started at 2026-11-13 08:34:51.478
+Test Case 'MuscleTests.testEventsAndTotals' passed (0.001 seconds)
+Test Case 'MuscleTests.testFreshnessRecovers' started at 2026-11-13 08:34:51.479
+Test Case 'MuscleTests.testFreshnessRecovers' passed (0.0 seconds)
+Test Case 'MuscleTests.testLoadStatuses' started at 2026-11-13 08:34:51.479
+Test Case 'MuscleTests.testLoadStatuses' passed (0.014 seconds)
+Test Case 'MuscleTests.testRangesAndPlan' started at 2026-11-13 08:34:51.494
+Test Case 'MuscleTests.testRangesAndPlan' passed (0.0 seconds)
+Test Case 'MuscleTests.testResolver' started at 2026-11-13 08:34:51.494
+Test Case 'MuscleTests.testResolver' passed (0.0 seconds)
+Test Suite 'MuscleTests' passed at 2026-11-13 08:34:51.494
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.017 (0.017) seconds
+Test Suite 'NamingAndDatesTests' started at 2026-11-13 08:34:51.494
+Test Case 'NamingAndDatesTests.testBuckets' started at 2026-11-13 08:34:51.494
+Test Case 'NamingAndDatesTests.testBuckets' passed (0.0 seconds)
+Test Case 'NamingAndDatesTests.testSessionTitle' started at 2026-11-13 08:34:51.494
+Test Case 'NamingAndDatesTests.testSessionTitle' passed (0.0 seconds)
+Test Suite 'NamingAndDatesTests' passed at 2026-11-13 08:34:51.495
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ProgramCSVTests' started at 2026-11-13 08:34:51.495
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' started at 2026-11-13 08:34:51.495
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' passed (0.002 seconds)
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' started at 2026-11-13 08:34:51.496
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' passed (0.0 seconds)
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' started at 2026-11-13 08:34:51.497
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' passed (0.0 seconds)
+Test Case 'ProgramCSVTests.testRoundTrip' started at 2026-11-13 08:34:51.497
+Test Case 'ProgramCSVTests.testRoundTrip' passed (0.01 seconds)
+Test Case 'ProgramCSVTests.testSampleImport' started at 2026-11-13 08:34:51.507
+Test Case 'ProgramCSVTests.testSampleImport' passed (0.004 seconds)
+Test Suite 'ProgramCSVTests' passed at 2026-11-13 08:34:51.511
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.016 (0.016) seconds
+Test Suite 'StatsTests' started at 2026-11-13 08:34:51.511
+Test Case 'StatsTests.testEnergy' started at 2026-11-13 08:34:51.511
+Test Case 'StatsTests.testEnergy' passed (0.0 seconds)
+Test Case 'StatsTests.testRecordsAndHistory' started at 2026-11-13 08:34:51.511
+Test Case 'StatsTests.testRecordsAndHistory' passed (0.0 seconds)
+Test Suite 'StatsTests' passed at 2026-11-13 08:34:51.511
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'StreakTests' started at 2026-11-13 08:34:51.511
+Test Case 'StreakTests.testExcusedWeekIsNeutral' started at 2026-11-13 08:34:51.511
+Test Case 'StreakTests.testExcusedWeekIsNeutral' passed (0.0 seconds)
+Test Case 'StreakTests.testGoalHistory' started at 2026-11-13 08:34:51.512
+Test Case 'StreakTests.testGoalHistory' passed (0.0 seconds)
+Test Case 'StreakTests.testMetWeeksEarnCredits' started at 2026-11-13 08:34:51.512
+Test Case 'StreakTests.testMetWeeksEarnCredits' passed (0.0 seconds)
+Test Case 'StreakTests.testMissWithoutCreditResets' started at 2026-11-13 08:34:51.512
+Test Case 'StreakTests.testMissWithoutCreditResets' passed (0.0 seconds)
+Test Case 'StreakTests.testMissedWeekSpendsCredit' started at 2026-11-13 08:34:51.513
+Test Case 'StreakTests.testMissedWeekSpendsCredit' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueCountsDouble' started at 2026-11-13 08:34:51.513
+Test Case 'StreakTests.testRescueCountsDouble' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueStatusOnSunday' started at 2026-11-13 08:34:51.513
+Test Case 'StreakTests.testRescueStatusOnSunday' passed (0.0 seconds)
+Test Suite 'StreakTests' passed at 2026-11-13 08:34:51.513
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'TourTests' started at 2026-11-13 08:34:51.513
+Test Case 'TourTests.testCatalogIsValid' started at 2026-11-13 08:34:51.513
+Test Case 'TourTests.testCatalogIsValid' passed (0.0 seconds)
+Test Case 'TourTests.testSnapshotFollowsContent' started at 2026-11-13 08:34:51.514
+Test Case 'TourTests.testSnapshotFollowsContent' passed (0.0 seconds)
+Test Suite 'TourTests' passed at 2026-11-13 08:34:51.514
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V2Tests' started at 2026-11-13 08:34:51.514
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' started at 2026-11-13 08:34:51.514
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' passed (0.0 seconds)
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' started at 2026-11-13 08:34:51.514
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' passed (0.001 seconds)
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' started at 2026-11-13 08:34:51.514
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' passed (0.0 seconds)
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' started at 2026-11-13 08:34:51.515
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' passed (0.004 seconds)
+Test Case 'V2Tests.testMatchSetCounts' started at 2026-11-13 08:34:51.518
+Test Case 'V2Tests.testMatchSetCounts' passed (0.0 seconds)
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' started at 2026-11-13 08:34:51.518
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' passed (0.0 seconds)
+Test Case 'V2Tests.testPaceTrackerMomentum' started at 2026-11-13 08:34:51.519
+Test Case 'V2Tests.testPaceTrackerMomentum' passed (0.0 seconds)
+Test Case 'V2Tests.testProfileRecommendations' started at 2026-11-13 08:34:51.519
+Test Case 'V2Tests.testProfileRecommendations' passed (0.0 seconds)
+Test Case 'V2Tests.testProgression' started at 2026-11-13 08:34:51.519
+Test Case 'V2Tests.testProgression' passed (0.0 seconds)
+Test Case 'V2Tests.testRelativePerformance' started at 2026-11-13 08:34:51.519
+Test Case 'V2Tests.testRelativePerformance' passed (0.0 seconds)
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' started at 2026-11-13 08:34:51.520
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' passed (0.0 seconds)
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' started at 2026-11-13 08:34:51.520
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' passed (0.0 seconds)
+Test Case 'V2Tests.testValenceAndCorrelation' started at 2026-11-13 08:34:51.520
+Test Case 'V2Tests.testValenceAndCorrelation' passed (0.0 seconds)
+Test Suite 'V2Tests' passed at 2026-11-13 08:34:51.520
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.007 (0.007) seconds
+Test Suite 'V3Tests' started at 2026-11-13 08:34:51.520
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' started at 2026-11-13 08:34:51.520
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' passed (0.0 seconds)
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' started at 2026-11-13 08:34:51.521
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' passed (0.0 seconds)
+Test Case 'V3Tests.testFuzzyLibraryMatch' started at 2026-11-13 08:34:51.521
+Test Case 'V3Tests.testFuzzyLibraryMatch' passed (0.001 seconds)
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' started at 2026-11-13 08:34:51.521
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' passed (0.0 seconds)
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' started at 2026-11-13 08:34:51.522
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' passed (0.101 seconds)
+Test Case 'V3Tests.testRemainingAndPlannedTime' started at 2026-11-13 08:34:51.623
+Test Case 'V3Tests.testRemainingAndPlannedTime' passed (0.0 seconds)
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' started at 2026-11-13 08:34:51.623
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' passed (0.0 seconds)
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' started at 2026-11-13 08:34:51.624
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' passed (0.0 seconds)
+Test Suite 'V3Tests' passed at 2026-11-13 08:34:51.624
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.104 (0.104) seconds
+Test Suite 'WatchProtocolTests' started at 2026-11-13 08:34:51.624
+Test Case 'WatchProtocolTests.testCommandRoundTrip' started at 2026-11-13 08:34:51.624
+Test Case 'WatchProtocolTests.testCommandRoundTrip' passed (0.101 seconds)
+Test Case 'WatchProtocolTests.testLiveElapsed' started at 2026-11-13 08:34:51.725
+Test Case 'WatchProtocolTests.testLiveElapsed' passed (0.0 seconds)
+Test Suite 'WatchProtocolTests' passed at 2026-11-13 08:34:51.725
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.101 (0.101) seconds
+Test Suite 'debug.xctest' passed at 2026-11-13 08:34:51.725
+	 Executed 63 tests, with 0 failures (0 unexpected) in 0.352 (0.352) seconds
+Test Suite 'All tests' passed at 2026-11-13 08:34:51.725
+	 Executed 63 tests, with 0 failures (0 unexpected) in 0.352 (0.352) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.2.4 (5ee435b15ad40ec)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

@@ -1,0 +1,3 @@
+Bundle layout of George.app:
+Debug-iphonesimulator/George.app
+Debug-iphonesimulator/George.app/Watch/GeorgeWatch.app

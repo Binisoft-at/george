@@ -1,0 +1,748 @@
+Timestamp               Ty Process[PID:TID]
+2026-11-13 09:05:23.677 A  George[44785:1eaba] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:05:23.678 A  George[44785:1eaba] (libsystem_info.dylib) Resolve user group list
+2026-11-13 09:05:23.679 A  George[44785:1eaba] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:05:24.301 A  George[44785:1eabb] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:05:24.311 Df George[44785:1eabb] [com.apple.xpc:connection] [0x103020fb0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-13 09:05:24.312 Df George[44785:1eafb] [com.apple.xpc:connection] [0x103021650] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-13 09:05:24.335 Df George[44785:1eabb] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-13 09:05:24.339 Df George[44785:1eafb] [com.apple.TipKit:TipKit • Log] Tips configuring shared environment
+2026-11-13 09:05:24.339 Df George[44785:1eafb] [com.apple.TipKit:TipKit • Log] Tips configuring shared datastore
+2026-11-13 09:05:24.340 Df George[44785:1eabb] [com.apple.UserNotifications:Connections] [at.binisoft.george] Creating a user notification center
+2026-11-13 09:05:24.342 Df George[44785:1eafc] [com.apple.xpc:connection] [0x103027e00] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-11-13 09:05:24.404 A  George[44785:1eabb] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:05:24.430 Df George[44785:1eafc] [com.apple.TipKit:TipKit • Datastore] <private>
+2026-11-13 09:05:24.904 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1040] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-13 09:05:24.910 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb17c0] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-13 09:05:24.918 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1900] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-13 09:05:24.965 Df George[44785:1eabb] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:05:24.974 A  George[44785:1eabb] (TCC) TCCAccessRequest() IPC
+2026-11-13 09:05:24.974 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-13 09:05:24.987 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] invalidated after the last release of the connection object
+2026-11-13 09:05:24.992 Df George[44785:1eabb] [com.apple.SkyLight:default] server port 0x00004107, session port 0x00004107
+2026-11-13 09:05:25.015 Df George[44785:1eabb] [com.apple.SkyLight:default] New connection 0x41627 main
+2026-11-13 09:05:25.019 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] CHECKIN: pid=44785
+2026-11-13 09:05:25.027 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=44785 asn=0x0-0x32032 foreground=1
+2026-11-13 09:05:25.027 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:25.027 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] Connection returned listener port: 0x4d03
+2026-11-13 09:05:25.030 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-13 09:05:25.030 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] Registered, pid=44785 ASN=0x0,0x32032
+2026-11-13 09:05:25.030 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1b80] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-13 09:05:25.033 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaaf70480] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0xbaadb1a40.peer[127].0xbaaf70480
+2026-11-13 09:05:25.038 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] Connection returned listener port: 0x4d03
+2026-11-13 09:05:25.038 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] BringForward: pid=44785 asn=0x0-0x32032 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-13 09:05:25.038 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=44785 asn=0x0-0x32032 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-13 09:05:25.038 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] BringForward: pid=44785 asn=0x0-0x32032
+2026-11-13 09:05:25.038 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x32032 options=0
+2026-11-13 09:05:25.150 Df George[44785:1eabb] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-13 09:05:25.181 Df George[44785:1eabb] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-13 09:05:25.234 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] Connection returned listener port: 0x4d03
+2026-11-13 09:05:25.252 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb1f40] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-13 09:05:25.413 Df George[44785:1eabb] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:05:25.427 Df George[44785:1eabb] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-13 09:05:25.444 Df George[44785:1eabb] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-13 09:05:25.444 Df George[44785:1eabb] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-13 09:05:25.445 Df George[44785:1eabb] [com.apple.runningboard:connection] Initializing connection
+2026-11-13 09:05:25.445 Df George[44785:1eabb] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-13 09:05:25.445 Df George[44785:1eafb] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-13 09:05:25.445 Df George[44785:1eafb] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-13 09:05:25.445 Df George[44785:1eafb] [com.apple.xpc:connection] [0xbaadb2080] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-13 09:05:25.446 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] Connection returned listener port: 0x4d03
+2026-11-13 09:05:25.446 A  George[44785:1eb01] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:05:25.447 Df George[44785:1eafb] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-13 09:05:25.447 Df George[44785:1eafb] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.george.3021700.3029307(501)>
+2026-11-13 09:05:25.683 A  George[44785:1eafc] (AppIntents) appintents:register process
+2026-11-13 09:05:25.733 A  George[44785:1eb01] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:25.737 Df George[44785:1eabb] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-13 09:05:25.738 Df George[44785:1eabb] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:25.738 Df George[44785:1eabb] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:25.738 Df George[44785:1eabb] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:25.816 Df George[44785:1eafc] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:25.816 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb21c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:25.816 Df George[44785:1eafc] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:25.853 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb2440] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:26.229 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb2440] Connection returned listener port: 0xa603
+2026-11-13 09:05:26.282 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaadb21c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:26.917 Df George[44785:1eb01] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:26.917 E  George[44785:1eafc] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.917 E  George[44785:1eafc] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-13 09:05:26.917 Df George[44785:1eb64] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.917 A  George[44785:1eb64] (AppIntents) appintents:register process
+2026-11-13 09:05:26.917 Df George[44785:1eb64] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.917 Df George[44785:1eb64] [com.apple.xpc:connection] [0xbaadb26c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:26.918 Df George[44785:1eb64] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:26.918 Df George[44785:1eb64] [com.apple.xpc:connection] [0xbaadb2440] Connection returned listener port: 0xa603
+2026-11-13 09:05:26.918 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb26c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:26.918 Df George[44785:1eafc] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:26.918 E  George[44785:1eb64] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.918 E  George[44785:1eb64] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.918 Df George[44785:1eb01] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.918 A  George[44785:1eb01] (AppIntents) appintents:register process
+2026-11-13 09:05:26.918 Df George[44785:1eb01] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.918 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaadb2940] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:26.918 Df George[44785:1eb01] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:26.918 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaadb2440] Connection returned listener port: 0xa603
+2026-11-13 09:05:26.919 Df George[44785:1eb64] [com.apple.xpc:connection] [0xbaadb2940] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:26.919 Df George[44785:1eb64] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:26.919 E  George[44785:1eb01] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.919 E  George[44785:1eb01] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.919 Df George[44785:1eafc] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.919 A  George[44785:1eafc] (AppIntents) appintents:register process
+2026-11-13 09:05:26.919 Df George[44785:1eafc] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:26.919 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb2bc0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:26.919 Df George[44785:1eafc] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:26.919 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb2440] Connection returned listener port: 0xa603
+2026-11-13 09:05:26.919 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaadb2bc0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:26.919 Df George[44785:1eb01] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:26.919 E  George[44785:1eb01] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-13 09:05:26.919 E  George[44785:1eafc] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.920 E  George[44785:1eafc] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:26.924 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:05:26.947 Df George[44785:1eabb] (libMobileGestalt.dylib) couldn't load support library
+2026-11-13 09:05:26.947 Df George[44785:1eabb] (libMobileGestalt.dylib) called dummy function!
+2026-11-13 09:05:26.954 Df George[44785:1eabb] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-13 09:05:26.954 Df George[44785:1eabb] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-13 09:05:26.954 Df George[44785:1eabb] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-13 09:05:26.954 Df George[44785:1eabb] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-13 09:05:26.965 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:27.020 Df George[44785:1eabb] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0xbaac6d860
+ (
+    "<NSAquaAppearance: 0xbaac6d7c0>",
+    "<NSSystemAppearance: 0xbaac6d400>"
+)>
+2026-11-13 09:05:27.049 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:27.049 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:27.106 Df George[44785:1eafc] [com.apple.xpc:connection] [0xbaadb2f80] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-13 09:05:27.120 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb30c0] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-13 09:05:27.300 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3200] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-13 09:05:27.303 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3340] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-13 09:05:27.304 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb1a40] Connection returned listener port: 0x4d03
+2026-11-13 09:05:27.305 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] SignalReady: pid=44785 asn=0x0-0x32032
+2026-11-13 09:05:27.306 Df George[44785:1eabb] [com.apple.processmanager:front-35286506] SIGNAL: pid=44785 asn=0x0x-0x32032
+2026-11-13 09:05:27.322 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:05:27.351 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb35c0] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-13 09:05:27.371 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3480] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:05:27.372 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3700] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:27.372 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3700] Connection returned listener port: 0xb803
+2026-11-13 09:05:27.380 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb35c0] invalidated after the last release of the connection object
+2026-11-13 09:05:27.391 Df George[44785:1eabb] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:05:27.395 Df George[44785:1eabb] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-13 09:05:27.397 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb35c0] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-13 09:05:27.398 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb35c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-13 09:05:27.401 Df George[44785:1eabb] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:05:27.441 Df George[44785:1eb64] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-13 09:05:27.443 A  George[44785:1eb64] (CoreSpotlight) delete-domains
+2026-11-13 09:05:27.444 Df George[44785:1eb01] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:27.444 Df George[44785:1eb01] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-13 09:05:27.444 Df George[44785:1eb01] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-13 09:05:27.444 Df George[44785:1eb01] [com.apple.xpc:connection] [0xbaadb35c0] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-13 09:05:27.654 Df George[44785:1eb64] [com.apple.BoardServices:XPCErrors] [C:1] Alloc <private>
+2026-11-13 09:05:27.654 Df George[44785:1eb64] [com.apple.xpc:connection] [0xbaadb3840] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:05:27.667 Df George[44785:1eabb] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-13 09:05:27.667 Df George[44785:1eabb] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-13 09:05:27.670 Df George[44785:1eabb] [com.apple.xpc:connection] [0xbaadb3ac0] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-13 09:05:27.885 A  George[44785:1ec61] (CoreSpotlight) end-index-batch
+2026-11-13 09:05:27.885 Df George[44785:1ec61] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-13 09:05:27.885 A  George[44785:1ec61] (CoreSpotlight) index-items
+2026-11-13 09:05:27.885 Df George[44785:1ec61] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:27.886 Df George[44785:1ec61] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:29.354 Df George[44785:1eabb] [at.binisoft.george:app] launch: No window after launch – sending a reopen event
+2026-11-13 09:05:29.450 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:29.501 Df George[44785:1eafc] [com.apple.CoreAnalytics:client] Received configuration update from daemon (initial)
+2026-11-13 09:05:29.733 A  George[44785:1eabb] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-13 09:05:29.899 A  George[44785:1eabb] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:30.495 Df George[44785:1eabb] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:05:30.507 Df George[44785:1eb64] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-13 09:05:30.507 Df George[44785:1eb64] [com.apple.xpc:session] [0xbabc7c820] Session created.
+2026-11-13 09:05:30.507 Df George[44785:1eb64] [com.apple.xpc:session] [0xbabc7c820] Session created from connection [0xbaa5fa940]
+2026-11-13 09:05:30.507 Df George[44785:1eb64] [com.apple.xpc:connection] [0xbaa5fa940] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-13 09:05:30.507 Df George[44785:1eb64] [com.apple.xpc:session] [0xbabc7c820] Session activated
+2026-11-13 09:05:31.634 A  George[44785:1eb64] (CoreSpotlight) end-index-batch
+2026-11-13 09:05:31.639 A  George[44785:1eb64] (CoreSpotlight) index-items
+2026-11-13 09:05:31.642 Df George[44785:1eb64] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:31.643 Df George[44785:1eb64] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:31.814 Df George[44785:1eafc] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:05:31.814 Df George[44785:1eafc] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:05:31.817 Df George[44785:1eafc] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:05:31.853 A  George[44785:1eb01] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:05:32.100 Df George[44785:1eabb] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-13 09:05:32.959 Df George[44785:1eafb] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(user.uid.501.com.apple.LaunchServices.database) fired for session key <private>
+2026-11-13 09:05:38.043 Df George[44785:1eb01] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
+2026-11-13 09:05:41.963 A  George[45221:1efad] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:05:41.971 Df George[45221:1efad] [com.apple.xpc:connection] [0x1033b40f0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-13 09:05:41.972 Df George[45221:1efb3] [com.apple.xpc:connection] [0x1033b46d0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-13 09:05:41.980 Df George[45221:1efad] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-13 09:05:41.980 Df George[45221:1efb3] [com.apple.TipKit:TipKit • Log] Tips configuring shared environment
+2026-11-13 09:05:41.980 Df George[45221:1efb3] [com.apple.TipKit:TipKit • Log] Tips configuring shared datastore
+2026-11-13 09:05:41.980 Df George[45221:1efad] [com.apple.UserNotifications:Connections] [at.binisoft.george] Creating a user notification center
+2026-11-13 09:05:41.983 Df George[45221:1efb4] [com.apple.xpc:connection] [0x1033b4f50] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-11-13 09:05:42.011 A  George[45221:1efad] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:05:42.016 Df George[45221:1efb4] [com.apple.TipKit:TipKit • Datastore] <private>
+2026-11-13 09:05:42.210 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1680] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-13 09:05:42.211 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db17c0] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-13 09:05:42.212 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1900] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-13 09:05:42.217 Df George[45221:1efad] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:05:42.217 A  George[45221:1efad] (TCC) TCCAccessRequest() IPC
+2026-11-13 09:05:42.218 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-13 09:05:42.222 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] invalidated after the last release of the connection object
+2026-11-13 09:05:42.224 Df George[45221:1efad] [com.apple.SkyLight:default] server port 0x0000400b, session port 0x0000400b
+2026-11-13 09:05:42.230 Df George[45221:1efad] [com.apple.SkyLight:default] New connection 0x52313 main
+2026-11-13 09:05:42.233 Df George[45221:1efad] [com.apple.processmanager:front-35286506] CHECKIN: pid=45221
+2026-11-13 09:05:42.237 Df George[45221:1efad] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=45221 asn=0x0-0x33033 foreground=1
+2026-11-13 09:05:42.237 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:42.237 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] Connection returned listener port: 0x4b03
+2026-11-13 09:05:42.238 Df George[45221:1efb3] [com.apple.xpc:connection] [0x836f50480] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x836db1a40.peer[127].0x836f50480
+2026-11-13 09:05:42.238 Df George[45221:1efad] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-13 09:05:42.238 Df George[45221:1efad] [com.apple.processmanager:front-35286506] Registered, pid=45221 ASN=0x0,0x33033
+2026-11-13 09:05:42.238 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1b80] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-13 09:05:42.242 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] Connection returned listener port: 0x4b03
+2026-11-13 09:05:42.242 Df George[45221:1efad] [com.apple.processmanager:front-35286506] BringForward: pid=45221 asn=0x0-0x33033 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-13 09:05:42.242 Df George[45221:1efad] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=45221 asn=0x0-0x33033 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-13 09:05:42.242 Df George[45221:1efad] [com.apple.processmanager:front-35286506] BringForward: pid=45221 asn=0x0-0x33033
+2026-11-13 09:05:42.242 Df George[45221:1efad] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x33033 options=0
+2026-11-13 09:05:42.251 Df George[45221:1efad] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-13 09:05:42.257 Df George[45221:1efad] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-13 09:05:42.263 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] Connection returned listener port: 0x4b03
+2026-11-13 09:05:42.265 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1e00] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-13 09:05:42.274 Df George[45221:1efad] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:05:42.276 Df George[45221:1efad] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-13 09:05:42.281 Df George[45221:1efad] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-13 09:05:42.281 Df George[45221:1efad] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-13 09:05:42.281 Df George[45221:1efad] [com.apple.runningboard:connection] Initializing connection
+2026-11-13 09:05:42.281 Df George[45221:1efad] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-13 09:05:42.281 Df George[45221:1efb4] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-13 09:05:42.281 Df George[45221:1efb4] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-13 09:05:42.281 Df George[45221:1efb4] [com.apple.xpc:connection] [0x836db2080] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-13 09:05:42.282 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] Connection returned listener port: 0x4b03
+2026-11-13 09:05:42.282 A  George[45221:1efd7] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:05:42.283 Df George[45221:1efb4] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-13 09:05:42.283 Df George[45221:1efb4] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.george.3021700.3029307(501)>
+2026-11-13 09:05:42.311 A  George[45221:1efb6] (AppIntents) appintents:register process
+2026-11-13 09:05:42.313 Df George[45221:1efb6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.313 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db21c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:42.313 Df George[45221:1efb6] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:42.313 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2300] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:42.316 A  George[45221:1efb4] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:42.317 Df George[45221:1efad] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-13 09:05:42.317 Df George[45221:1efad] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:42.317 Df George[45221:1efad] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:42.317 Df George[45221:1efad] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:05:42.317 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2300] Connection returned listener port: 0x8003
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.xpc:connection] [0x836db21c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.324 A  George[45221:1efb4] (AppIntents) appintents:register process
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.xpc:connection] [0x836db2580] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:42.324 Df George[45221:1efb4] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:42.325 Df George[45221:1efb4] [com.apple.xpc:connection] [0x836db2300] Connection returned listener port: 0x8003
+2026-11-13 09:05:42.325 E  George[45221:1efb6] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.325 E  George[45221:1efb6] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2580] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.325 A  George[45221:1efb6] (AppIntents) appintents:register process
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2800] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:42.325 E  George[45221:1efb4] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.325 E  George[45221:1efb4] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:42.325 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2300] Connection returned listener port: 0x8003
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.xpc:connection] [0x836db2800] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:42.326 E  George[45221:1efb6] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.326 E  George[45221:1efb6] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.326 A  George[45221:1efd7] (AppIntents) appintents:register process
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.xpc:connection] [0x836db2a80] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:05:42.326 Df George[45221:1efd7] [com.apple.xpc:connection] [0x836db2300] Connection returned listener port: 0x8003
+2026-11-13 09:05:42.326 Df George[45221:1efb4] [com.apple.xpc:connection] [0x836db2a80] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:05:42.326 Df George[45221:1efb4] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:05:42.326 E  George[45221:1efb4] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-13 09:05:42.326 E  George[45221:1efd7] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.326 E  George[45221:1efd7] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:05:42.348 A  George[45221:1efb3] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:05:42.507 A  George[45221:1efad] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:05:42.511 Df George[45221:1efad] (libMobileGestalt.dylib) couldn't load support library
+2026-11-13 09:05:42.511 Df George[45221:1efad] (libMobileGestalt.dylib) called dummy function!
+2026-11-13 09:05:42.512 Df George[45221:1efad] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-13 09:05:42.512 Df George[45221:1efad] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-13 09:05:42.512 Df George[45221:1efad] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-13 09:05:42.512 Df George[45221:1efad] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-13 09:05:42.515 A  George[45221:1efad] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:42.524 Df George[45221:1efad] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0x836cbd900
+ (
+    "<NSAquaAppearance: 0x836cbd9a0>",
+    "<NSSystemAppearance: 0x836cbd400>"
+)>
+2026-11-13 09:05:42.533 A  George[45221:1efad] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:42.533 A  George[45221:1efad] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:42.546 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db2f80] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-13 09:05:42.554 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db30c0] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-13 09:05:42.581 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3200] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-13 09:05:42.582 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3340] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-13 09:05:42.582 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db1a40] Connection returned listener port: 0x4b03
+2026-11-13 09:05:42.583 Df George[45221:1efad] [com.apple.processmanager:front-35286506] SignalReady: pid=45221 asn=0x0-0x33033
+2026-11-13 09:05:42.583 Df George[45221:1efad] [com.apple.processmanager:front-35286506] SIGNAL: pid=45221 asn=0x0x-0x33033
+2026-11-13 09:05:42.585 A  George[45221:1efad] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:05:42.593 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db35c0] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-13 09:05:42.617 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3480] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:05:42.619 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3700] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:05:42.619 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3700] Connection returned listener port: 0xba03
+2026-11-13 09:05:42.620 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db35c0] invalidated after the last release of the connection object
+2026-11-13 09:05:42.624 Df George[45221:1efad] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:05:42.624 Df George[45221:1efad] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-13 09:05:42.624 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db35c0] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-13 09:05:42.624 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db35c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-13 09:05:42.626 Df George[45221:1efad] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:05:42.639 Df George[45221:1efd7] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-13 09:05:42.639 A  George[45221:1efd7] (CoreSpotlight) delete-domains
+2026-11-13 09:05:42.640 Df George[45221:1efb6] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:42.640 Df George[45221:1efb6] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-13 09:05:42.640 Df George[45221:1efb6] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-13 09:05:42.640 Df George[45221:1efb6] [com.apple.xpc:connection] [0x836db35c0] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-13 09:05:42.677 Df George[45221:1efd7] [com.apple.BoardServices:XPCErrors] [C:1] Alloc <private>
+2026-11-13 09:05:42.677 Df George[45221:1efd7] [com.apple.xpc:connection] [0x836db3840] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:05:42.678 Df George[45221:1efad] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-13 09:05:42.678 Df George[45221:1efad] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-13 09:05:42.775 A  George[45221:1efb3] (CoreSpotlight) end-index-batch
+2026-11-13 09:05:42.775 Df George[45221:1efb3] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-13 09:05:42.775 A  George[45221:1efb3] (CoreSpotlight) index-items
+2026-11-13 09:05:42.775 Df George[45221:1efb3] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:42.776 Df George[45221:1efb3] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:42.889 Df George[45221:1efad] [com.apple.xpc:connection] [0x836db3ac0] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-13 09:05:44.241 Df George[45221:1efad] [at.binisoft.george:app] launch: No window after launch – sending a reopen event
+2026-11-13 09:05:44.254 A  George[45221:1efad] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:44.317 A  George[45221:1efad] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-13 09:05:44.352 A  George[45221:1efad] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:05:44.612 Df George[45221:1efad] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:05:44.613 Df George[45221:1efb4] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-13 09:05:44.613 Df George[45221:1efb4] [com.apple.xpc:session] [0x837c848c0] Session created.
+2026-11-13 09:05:44.613 Df George[45221:1efb4] [com.apple.xpc:session] [0x837c848c0] Session created from connection [0x83661a940]
+2026-11-13 09:05:44.614 Df George[45221:1efb4] [com.apple.xpc:connection] [0x83661a940] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-13 09:05:44.614 Df George[45221:1efb4] [com.apple.xpc:session] [0x837c848c0] Session activated
+2026-11-13 09:05:45.297 A  George[45221:1efb3] (CoreSpotlight) end-index-batch
+2026-11-13 09:05:45.298 A  George[45221:1efb3] (CoreSpotlight) index-items
+2026-11-13 09:05:45.298 Df George[45221:1efb3] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:45.299 Df George[45221:1efb6] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:45.306 Df George[45221:1efb3] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:05:45.338 A  George[45221:1efd7] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:05:46.094 A  George[45221:1efb4] (CoreSpotlight) end-index-batch
+2026-11-13 09:05:46.094 A  George[45221:1efb4] (CoreSpotlight) index-items
+2026-11-13 09:05:46.094 Df George[45221:1efb4] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:46.095 Df George[45221:1efd7] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:05:47.547 Df George[45221:1efad] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-13 09:05:53.533 Df George[45221:1efd7] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
+2026-11-13 09:06:00.389 A  George[45555:1f34f] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:06:00.390 A  George[45555:1f34f] (libsystem_info.dylib) Resolve user group list
+2026-11-13 09:06:00.390 A  George[45555:1f34f] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:06:00.738 A  George[45555:1f351] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:06:00.750 Df George[45555:1f351] [com.apple.xpc:connection] [0x105558150] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-13 09:06:00.751 Df George[45555:1f354] [com.apple.xpc:connection] [0x105558730] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-13 09:06:00.758 Df George[45555:1f351] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-13 09:06:00.759 Df George[45555:1f351] [com.apple.UserNotifications:Connections] [at.binisoft.george] Creating a user notification center
+2026-11-13 09:06:00.760 Df George[45555:1f355] [com.apple.TipKit:TipKit • Log] Tips configuring shared environment
+2026-11-13 09:06:00.760 Df George[45555:1f355] [com.apple.TipKit:TipKit • Log] Tips configuring shared datastore
+2026-11-13 09:06:00.768 Df George[45555:1f354] [com.apple.xpc:connection] [0x10555ba10] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-11-13 09:06:00.801 A  George[45555:1f355] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:06:00.814 Df George[45555:1f356] [com.apple.TipKit:TipKit • Datastore] <private>
+2026-11-13 09:06:01.091 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9680] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-13 09:06:01.092 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb97c0] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-13 09:06:01.095 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9900] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-13 09:06:01.103 Df George[45555:1f351] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:06:01.103 A  George[45555:1f351] (TCC) TCCAccessRequest() IPC
+2026-11-13 09:06:01.103 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-13 09:06:01.109 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] invalidated after the last release of the connection object
+2026-11-13 09:06:01.110 Df George[45555:1f351] [com.apple.SkyLight:default] server port 0x00004013, session port 0x00004013
+2026-11-13 09:06:01.131 Df George[45555:1f351] [com.apple.SkyLight:default] New connection 0x42dfb main
+2026-11-13 09:06:01.135 Df George[45555:1f351] [com.apple.processmanager:front-35286506] CHECKIN: pid=45555
+2026-11-13 09:06:01.141 Df George[45555:1f351] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=45555 asn=0x0-0x34034 foreground=1
+2026-11-13 09:06:01.142 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:01.142 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] Connection returned listener port: 0x4e03
+2026-11-13 09:06:01.143 Df George[45555:1f351] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-13 09:06:01.143 Df George[45555:1f351] [com.apple.processmanager:front-35286506] Registered, pid=45555 ASN=0x0,0x34034
+2026-11-13 09:06:01.143 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9b80] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-13 09:06:01.145 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] Connection returned listener port: 0x4e03
+2026-11-13 09:06:01.145 Df George[45555:1f351] [com.apple.processmanager:front-35286506] BringForward: pid=45555 asn=0x0-0x34034 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-13 09:06:01.145 Df George[45555:1f351] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=45555 asn=0x0-0x34034 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-13 09:06:01.145 Df George[45555:1f351] [com.apple.processmanager:front-35286506] BringForward: pid=45555 asn=0x0-0x34034
+2026-11-13 09:06:01.145 Df George[45555:1f351] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x34034 options=0
+2026-11-13 09:06:01.147 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4af64480] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0xc4adb9a40.peer[127].0xc4af64480
+2026-11-13 09:06:01.162 Df George[45555:1f351] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-13 09:06:01.169 Df George[45555:1f351] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-13 09:06:01.177 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] Connection returned listener port: 0x4e03
+2026-11-13 09:06:01.179 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9f40] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-13 09:06:01.183 Df George[45555:1f351] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:06:01.194 Df George[45555:1f351] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-13 09:06:01.200 Df George[45555:1f351] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-13 09:06:01.200 Df George[45555:1f351] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-13 09:06:01.200 Df George[45555:1f351] [com.apple.runningboard:connection] Initializing connection
+2026-11-13 09:06:01.200 Df George[45555:1f351] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-13 09:06:01.200 Df George[45555:1f355] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-13 09:06:01.200 Df George[45555:1f355] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-13 09:06:01.200 Df George[45555:1f355] [com.apple.xpc:connection] [0xc4adba080] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-13 09:06:01.200 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] Connection returned listener port: 0x4e03
+2026-11-13 09:06:01.201 A  George[45555:1f354] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:01.201 Df George[45555:1f355] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-13 09:06:01.201 Df George[45555:1f355] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.george.3021700.3029307(501)>
+2026-11-13 09:06:01.207 A  George[45555:1f356] (AppIntents) appintents:register process
+2026-11-13 09:06:01.208 Df George[45555:1f356] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:01.208 Df George[45555:1f356] [com.apple.xpc:connection] [0xc4adba1c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:01.216 A  George[45555:1f364] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:01.217 Df George[45555:1f351] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-13 09:06:01.217 Df George[45555:1f351] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:01.217 Df George[45555:1f351] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:01.217 Df George[45555:1f351] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:01.251 Df George[45555:1f356] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:01.251 Df George[45555:1f356] [com.apple.xpc:connection] [0xc4adba300] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:01.253 Df George[45555:1f356] [com.apple.xpc:connection] [0xc4adba300] Connection returned listener port: 0xa403
+2026-11-13 09:06:01.402 A  George[45555:1f351] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:06:01.405 Df George[45555:1f351] (libMobileGestalt.dylib) couldn't load support library
+2026-11-13 09:06:01.405 Df George[45555:1f351] (libMobileGestalt.dylib) called dummy function!
+2026-11-13 09:06:01.407 Df George[45555:1f351] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-13 09:06:01.407 Df George[45555:1f351] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-13 09:06:01.408 Df George[45555:1f351] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-13 09:06:01.408 Df George[45555:1f351] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-13 09:06:01.411 A  George[45555:1f351] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:01.422 Df George[45555:1f351] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0xc4acc5860
+ (
+    "<NSAquaAppearance: 0xc4acc5720>",
+    "<NSSystemAppearance: 0xc4acc5400>"
+)>
+2026-11-13 09:06:01.432 A  George[45555:1f351] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:01.433 A  George[45555:1f351] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:01.445 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adba1c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:01.460 Df George[45555:1f36b] [com.apple.xpc:connection] [0xc4adba800] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-13 09:06:01.469 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adba940] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-13 09:06:01.499 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbaa80] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-13 09:06:01.500 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbabc0] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-13 09:06:01.501 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adb9a40] Connection returned listener port: 0x4e03
+2026-11-13 09:06:01.501 Df George[45555:1f351] [com.apple.processmanager:front-35286506] SignalReady: pid=45555 asn=0x0-0x34034
+2026-11-13 09:06:01.501 Df George[45555:1f351] [com.apple.processmanager:front-35286506] SIGNAL: pid=45555 asn=0x0x-0x34034
+2026-11-13 09:06:01.504 A  George[45555:1f351] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:06:01.526 Df George[45555:1f354] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:01.526 E  George[45555:1f356] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:01.527 E  George[45555:1f356] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-13 09:06:01.527 Df George[45555:1f354] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:01.527 A  George[45555:1f354] (AppIntents) appintents:register process
+2026-11-13 09:06:01.527 Df George[45555:1f354] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:01.527 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adbad00] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:01.527 Df George[45555:1f354] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:01.527 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adba300] Connection returned listener port: 0xa403
+2026-11-13 09:06:01.530 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbaf80] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-13 09:06:01.548 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbb0c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:06:01.548 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbb200] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:01.548 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbb200] Connection returned listener port: 0xf203
+2026-11-13 09:06:01.549 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbaf80] invalidated after the last release of the connection object
+2026-11-13 09:06:01.552 Df George[45555:1f351] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:06:01.555 Df George[45555:1f351] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-13 09:06:01.555 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbaf80] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-13 09:06:01.556 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbaf80] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-13 09:06:01.557 Df George[45555:1f351] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:06:01.571 Df George[45555:1f36b] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-13 09:06:01.571 A  George[45555:1f36b] (CoreSpotlight) delete-domains
+2026-11-13 09:06:01.572 Df George[45555:1f36c] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:01.572 Df George[45555:1f36c] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-13 09:06:01.572 Df George[45555:1f36c] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-13 09:06:01.572 Df George[45555:1f36c] [com.apple.xpc:connection] [0xc4adbaf80] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-13 09:06:01.612 Df George[45555:1f36c] [com.apple.BoardServices:XPCErrors] [C:1] Alloc <private>
+2026-11-13 09:06:01.612 Df George[45555:1f36c] [com.apple.xpc:connection] [0xc4adbb340] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:06:01.713 A  George[45555:1f356] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:01.713 Df George[45555:1f356] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-13 09:06:01.713 A  George[45555:1f356] (CoreSpotlight) index-items
+2026-11-13 09:06:01.713 Df George[45555:1f355] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:01.714 Df George[45555:1f355] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:01.789 Df George[45555:1f355] [com.apple.xpc:connection] [0xc4adbad00] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:01.789 Df George[45555:1f355] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:01.790 Df George[45555:1f355] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:01.790 A  George[45555:1f355] (AppIntents) appintents:register process
+2026-11-13 09:06:01.809 Df George[45555:1f355] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:01.809 Df George[45555:1f355] [com.apple.xpc:connection] [0xc4adbb5c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:01.822 Df George[45555:1f351] [com.apple.xpc:connection] [0xc4adbb840] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-13 09:06:01.890 E  George[45555:1f354] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:01.890 E  George[45555:1f354] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:01.891 Df George[45555:1f355] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:01.891 Df George[45555:1f355] [com.apple.xpc:connection] [0xc4adba300] Connection returned listener port: 0xa403
+2026-11-13 09:06:01.989 Df George[45555:1f351] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-13 09:06:01.989 Df George[45555:1f351] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-13 09:06:02.061 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adbb5c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:02.062 Df George[45555:1f354] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:02.062 A  George[45555:1f354] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:02.062 Df George[45555:1f354] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:02.062 A  George[45555:1f354] (AppIntents) appintents:register process
+2026-11-13 09:06:02.062 Df George[45555:1f354] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:02.062 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adbb980] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:02.140 E  George[45555:1f355] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:02.140 E  George[45555:1f355] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:02.140 Df George[45555:1f354] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:02.140 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4adba300] Connection returned listener port: 0xa403
+2026-11-13 09:06:02.248 Df George[45555:1f355] [com.apple.xpc:connection] [0xc4adbb980] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:02.248 Df George[45555:1f355] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:02.248 E  George[45555:1f355] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-13 09:06:02.257 E  George[45555:1f354] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:02.257 E  George[45555:1f354] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:03.132 Df George[45555:1f351] [at.binisoft.george:app] launch: No window after launch – sending a reopen event
+2026-11-13 09:06:03.143 A  George[45555:1f351] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:03.196 A  George[45555:1f351] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-13 09:06:03.223 A  George[45555:1f351] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:03.508 Df George[45555:1f351] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:06:03.510 Df George[45555:1f354] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-13 09:06:03.510 Df George[45555:1f354] [com.apple.xpc:session] [0xc4bc7cdc0] Session created.
+2026-11-13 09:06:03.510 Df George[45555:1f354] [com.apple.xpc:session] [0xc4bc7cdc0] Session created from connection [0xc4a5ee940]
+2026-11-13 09:06:03.510 Df George[45555:1f354] [com.apple.xpc:connection] [0xc4a5ee940] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-13 09:06:03.510 Df George[45555:1f354] [com.apple.xpc:session] [0xc4bc7cdc0] Session activated
+2026-11-13 09:06:04.210 A  George[45555:1f354] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:04.212 A  George[45555:1f354] (CoreSpotlight) index-items
+2026-11-13 09:06:04.212 Df George[45555:1f354] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:04.213 Df George[45555:1f355] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:04.261 A  George[45555:1f356] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:04.262 Df George[45555:1f354] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:06:04.830 E  George[45555:1f355] (Metal) unable to find air64_v27 slice or a compatible one in binary archive '<private>' 
+ available slices: <private>
+2026-11-13 09:06:04.830 E  George[45555:1f355] (Metal) unable to find air64_v27 slice or a compatible one in binary archive '<private>' 
+ available slices: <private>
+2026-11-13 09:06:04.831 E  George[45555:1f355] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-13 09:06:04.831 Df George[45555:1f355] (libCoreFSCache.dylib) Invalidating cache
+2026-11-13 09:06:04.832 Df George[45555:1f355] [com.apple.xpc:connection] [0xc49b78dc0] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-13 09:06:04.832 Df George[45555:1f355] [com.apple.xpc:connection] [0xc49b79040] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-13 09:06:04.833 A  George[45555:1f364] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.264 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.431 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.444 E  George[45555:1f351] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-13 09:06:05.444 Df George[45555:1f351] (libCoreFSCache.dylib) Invalidating cache
+2026-11-13 09:06:05.444 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.472 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.481 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.497 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.501 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.503 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.506 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.511 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.514 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.521 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.531 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.535 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.538 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.559 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.564 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.599 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.603 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.623 A  George[45555:1f36b] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.626 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.628 A  George[45555:1f36b] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.633 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.636 A  George[45555:1f36b] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.642 A  George[45555:1f355] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.647 A  George[45555:1f36b] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.667 A  George[45555:1f354] (Metal) Metal Compiling Shader
+2026-11-13 09:06:05.678 A  George[45555:1f354] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:05.679 A  George[45555:1f354] (CoreSpotlight) index-items
+2026-11-13 09:06:05.679 Df George[45555:1f354] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:05.680 Df George[45555:1f354] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:06.456 Df George[45555:1f351] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-13 09:06:15.092 Df George[45555:1f36c] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
+2026-11-13 09:06:17.687 A  George[46139:1f908] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:06:17.687 A  George[46139:1f908] (libsystem_info.dylib) Resolve user group list
+2026-11-13 09:06:17.688 A  George[46139:1f908] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:06:18.051 A  George[46139:1f909] (libsystem_info.dylib) Retrieve User by ID
+2026-11-13 09:06:18.064 Df George[46139:1f909] [com.apple.xpc:connection] [0x1036442c0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-13 09:06:18.064 Df George[46139:1f911] [com.apple.xpc:connection] [0x1036448a0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-13 09:06:18.073 Df George[46139:1f909] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-13 09:06:18.074 Df George[46139:1f912] [com.apple.TipKit:TipKit • Log] Tips configuring shared environment
+2026-11-13 09:06:18.074 Df George[46139:1f912] [com.apple.TipKit:TipKit • Log] Tips configuring shared datastore
+2026-11-13 09:06:18.075 Df George[46139:1f909] [com.apple.UserNotifications:Connections] [at.binisoft.george] Creating a user notification center
+2026-11-13 09:06:18.076 Df George[46139:1f911] [com.apple.xpc:connection] [0x1036476d0] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-11-13 09:06:18.112 A  George[46139:1f909] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-13 09:06:18.118 Df George[46139:1f913] [com.apple.TipKit:TipKit • Datastore] <private>
+2026-11-13 09:06:18.367 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1680] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-13 09:06:18.368 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd17c0] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-13 09:06:18.370 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1900] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-13 09:06:18.404 Df George[46139:1f909] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:06:18.405 A  George[46139:1f909] (TCC) TCCAccessRequest() IPC
+2026-11-13 09:06:18.405 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-13 09:06:18.414 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] invalidated after the last release of the connection object
+2026-11-13 09:06:18.415 Df George[46139:1f909] [com.apple.SkyLight:default] server port 0x0000410b, session port 0x0000410b
+2026-11-13 09:06:18.430 Df George[46139:1f909] [com.apple.SkyLight:default] New connection 0xb483 main
+2026-11-13 09:06:18.438 Df George[46139:1f909] [com.apple.processmanager:front-35286506] CHECKIN: pid=46139
+2026-11-13 09:06:18.445 Df George[46139:1f909] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=46139 asn=0x0-0x35035 foreground=1
+2026-11-13 09:06:18.445 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:18.445 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] Connection returned listener port: 0x4a03
+2026-11-13 09:06:18.445 Df George[46139:1f913] [com.apple.xpc:connection] [0x898f48480] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x898dd1a40.peer[127].0x898f48480
+2026-11-13 09:06:18.447 Df George[46139:1f909] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-13 09:06:18.447 Df George[46139:1f909] [com.apple.processmanager:front-35286506] Registered, pid=46139 ASN=0x0,0x35035
+2026-11-13 09:06:18.447 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1b80] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-13 09:06:18.449 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] Connection returned listener port: 0x4a03
+2026-11-13 09:06:18.450 Df George[46139:1f909] [com.apple.processmanager:front-35286506] BringForward: pid=46139 asn=0x0-0x35035 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-13 09:06:18.450 Df George[46139:1f909] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=46139 asn=0x0-0x35035 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-13 09:06:18.450 Df George[46139:1f909] [com.apple.processmanager:front-35286506] BringForward: pid=46139 asn=0x0-0x35035
+2026-11-13 09:06:18.450 Df George[46139:1f909] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x35035 options=0
+2026-11-13 09:06:18.460 Df George[46139:1f909] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:06:18.471 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd1cc0] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-13 09:06:18.471 Df George[46139:1f909] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-13 09:06:18.471 Df George[46139:1f909] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-13 09:06:18.471 Df George[46139:1f909] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-13 09:06:18.471 Df George[46139:1f909] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-13 09:06:18.472 Df George[46139:1f909] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-13 09:06:18.472 Df George[46139:1f909] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-13 09:06:18.479 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] Connection returned listener port: 0x4a03
+2026-11-13 09:06:18.491 Df George[46139:1f909] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-13 09:06:18.494 Df George[46139:1f909] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-13 09:06:18.497 Df George[46139:1f909] [com.apple.FrontBoard:Common] FBSWorkspace: endpoint monitoring is disabled.
+2026-11-13 09:06:18.497 Df George[46139:1f909] [com.apple.FrontBoard:Common] FBSWorkspace: default shell endpoint is disabled.
+2026-11-13 09:06:18.498 Df George[46139:1f909] [com.apple.runningboard:connection] Initializing connection
+2026-11-13 09:06:18.498 Df George[46139:1f909] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-13 09:06:18.498 Df George[46139:1f911] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-13 09:06:18.498 Df George[46139:1f911] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-13 09:06:18.498 Df George[46139:1f911] [com.apple.xpc:connection] [0x898dd2080] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-13 09:06:18.498 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] Connection returned listener port: 0x4a03
+2026-11-13 09:06:18.499 A  George[46139:1f912] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:18.500 Df George[46139:1f911] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-13 09:06:18.500 Df George[46139:1f911] [com.apple.runningboard:connection] Identity resolved as app<application.at.binisoft.george.3021700.3029307(501)>
+2026-11-13 09:06:18.524 A  George[46139:1f91d] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:18.524 Df George[46139:1f909] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-13 09:06:18.524 Df George[46139:1f909] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:18.525 Df George[46139:1f909] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:18.525 Df George[46139:1f909] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-13 09:06:18.553 A  George[46139:1f913] (AppIntents) appintents:register process
+2026-11-13 09:06:18.554 Df George[46139:1f913] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.554 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd21c0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:18.554 Df George[46139:1f913] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:18.554 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2440] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:18.557 A  George[46139:1f91e] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:18.558 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2440] Connection returned listener port: 0xa203
+2026-11-13 09:06:18.563 Df George[46139:1f91c] [com.apple.xpc:connection] [0x898dd21c0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:18.563 Df George[46139:1f91c] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:18.563 E  George[46139:1f913] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.563 E  George[46139:1f913] [com.apple.AppKit:Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 UserInfo={NSDebugDescription=<private>}
+2026-11-13 09:06:18.563 Df George[46139:1f91e] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.563 A  George[46139:1f91e] (AppIntents) appintents:register process
+2026-11-13 09:06:18.563 Df George[46139:1f91e] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.563 Df George[46139:1f91e] [com.apple.xpc:connection] [0x898dd2940] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:18.564 Df George[46139:1f91e] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:18.564 Df George[46139:1f91e] [com.apple.xpc:connection] [0x898dd2440] Connection returned listener port: 0xa203
+2026-11-13 09:06:18.565 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2940] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:18.565 Df George[46139:1f913] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:18.565 E  George[46139:1f91e] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.565 E  George[46139:1f91e] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.565 Df George[46139:1f913] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.565 A  George[46139:1f913] (AppIntents) appintents:register process
+2026-11-13 09:06:18.565 Df George[46139:1f913] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.565 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2bc0] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:18.566 Df George[46139:1f913] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:18.566 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2440] Connection returned listener port: 0xa203
+2026-11-13 09:06:18.566 Df George[46139:1f91e] [com.apple.xpc:connection] [0x898dd2bc0] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:18.566 Df George[46139:1f91e] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:18.566 E  George[46139:1f913] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.566 E  George[46139:1f913] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.566 Df George[46139:1f91e] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.566 A  George[46139:1f91e] (AppIntents) appintents:register process
+2026-11-13 09:06:18.566 Df George[46139:1f91e] [com.apple.appintents:Connection] Created a new Process Instance Registry XPC connection (inactive)
+2026-11-13 09:06:18.566 Df George[46139:1f91e] [com.apple.xpc:connection] [0x898dd2e40] activating connection: mach=true listener=false peer=false name=com.apple.linkd.autoShortcut
+2026-11-13 09:06:18.567 Df George[46139:1f91e] [com.apple.appintents:Connection] Activated connection to linkd (ApplicationService)
+2026-11-13 09:06:18.567 Df George[46139:1f91e] [com.apple.xpc:connection] [0x898dd2440] Connection returned listener port: 0xa203
+2026-11-13 09:06:18.567 Df George[46139:1f913] [com.apple.xpc:connection] [0x898dd2e40] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-13 09:06:18.567 Df George[46139:1f913] [com.apple.appintents:Connection] Process Instance Registry XPC connection has been interrupted
+2026-11-13 09:06:18.567 E  George[46139:1f913] [com.apple.appintents:Connection] Will NOT re-try to establish the connection
+2026-11-13 09:06:18.567 E  George[46139:1f91e] [com.apple.appintents:Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.567 E  George[46139:1f91e] [com.apple.appintents:Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-11-13 09:06:18.680 A  George[46139:1f909] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:06:18.682 Df George[46139:1f909] (libMobileGestalt.dylib) couldn't load support library
+2026-11-13 09:06:18.682 Df George[46139:1f909] (libMobileGestalt.dylib) called dummy function!
+2026-11-13 09:06:18.683 Df George[46139:1f909] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-13 09:06:18.683 Df George[46139:1f909] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-13 09:06:18.683 Df George[46139:1f909] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-13 09:06:18.683 Df George[46139:1f909] [com.apple.WritingTools:Default] isAvailable value changed: isMDMAllowed = true, gmAvailable (current) = false
+2026-11-13 09:06:18.686 A  George[46139:1f909] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:18.721 Df George[46139:1f909] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0x898cc57c0
+ (
+    "<NSAquaAppearance: 0x898cc5720>",
+    "<NSSystemAppearance: 0x898cc5400>"
+)>
+2026-11-13 09:06:18.741 A  George[46139:1f909] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:18.742 A  George[46139:1f909] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:18.870 Df George[46139:1f912] [com.apple.xpc:connection] [0x898dd2f80] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-13 09:06:18.876 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd30c0] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-13 09:06:18.901 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3200] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-13 09:06:18.902 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3340] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-13 09:06:18.902 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd1a40] Connection returned listener port: 0x4a03
+2026-11-13 09:06:18.903 Df George[46139:1f909] [com.apple.processmanager:front-35286506] SignalReady: pid=46139 asn=0x0-0x35035
+2026-11-13 09:06:18.903 Df George[46139:1f909] [com.apple.processmanager:front-35286506] SIGNAL: pid=46139 asn=0x0x-0x35035
+2026-11-13 09:06:18.905 A  George[46139:1f909] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-13 09:06:18.917 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd35c0] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-13 09:06:18.936 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3480] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:06:18.936 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3700] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-13 09:06:18.936 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3700] Connection returned listener port: 0xed03
+2026-11-13 09:06:18.938 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd35c0] invalidated after the last release of the connection object
+2026-11-13 09:06:18.943 Df George[46139:1f909] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:06:18.943 Df George[46139:1f909] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-13 09:06:18.943 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd35c0] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-13 09:06:18.943 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd35c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-13 09:06:18.946 Df George[46139:1f909] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-13 09:06:18.954 Df George[46139:1f913] [com.apple.corespotlight:index] (<private>) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-13 09:06:18.954 A  George[46139:1f913] (CoreSpotlight) delete-domains
+2026-11-13 09:06:18.954 Df George[46139:1f912] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:18.954 Df George[46139:1f912] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-13 09:06:18.954 Df George[46139:1f912] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-13 09:06:18.954 Df George[46139:1f912] [com.apple.xpc:connection] [0x898dd35c0] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
+2026-11-13 09:06:18.984 Df George[46139:1f912] [com.apple.BoardServices:XPCErrors] [C:1] Alloc <private>
+2026-11-13 09:06:18.984 Df George[46139:1f912] [com.apple.xpc:connection] [0x898dd3840] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-13 09:06:19.085 A  George[46139:1f913] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:19.085 Df George[46139:1f913] [com.apple.corespotlight:index] *warn* MailCS ======%%% _setMailMessageAttributes skip:1
+2026-11-13 09:06:19.085 A  George[46139:1f913] (CoreSpotlight) index-items
+2026-11-13 09:06:19.085 Df George[46139:1f913] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:19.085 Df George[46139:1f913] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:19.140 Df George[46139:1f909] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-11-13 09:06:19.140 Df George[46139:1f909] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-11-13 09:06:19.206 Df George[46139:1f909] [com.apple.xpc:connection] [0x898dd3ac0] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-13 09:06:19.600 Df George[46139:1f912] [com.apple.CoreAnalytics:client] Received configuration update from daemon (initial)
+2026-11-13 09:06:20.533 Df George[46139:1f909] [at.binisoft.george:app] launch: No window after launch – sending a reopen event
+2026-11-13 09:06:20.550 A  George[46139:1f909] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:20.663 A  George[46139:1f909] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-13 09:06:20.710 A  George[46139:1f909] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-13 09:06:21.048 Df George[46139:1f909] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-13 09:06:21.049 Df George[46139:1f912] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-13 09:06:21.049 Df George[46139:1f912] [com.apple.xpc:session] [0x899c64870] Session created.
+2026-11-13 09:06:21.049 Df George[46139:1f912] [com.apple.xpc:session] [0x899c64870] Session created from connection [0x89861a940]
+2026-11-13 09:06:21.049 Df George[46139:1f912] [com.apple.xpc:connection] [0x89861a940] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-13 09:06:21.050 Df George[46139:1f912] [com.apple.xpc:session] [0x899c64870] Session activated
+2026-11-13 09:06:21.892 A  George[46139:1f91e] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:21.893 A  George[46139:1f91e] (CoreSpotlight) index-items
+2026-11-13 09:06:21.893 Df George[46139:1f91e] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:21.898 Df George[46139:1f91e] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:21.940 Df George[46139:1f912] [com.apple.TipKit:TipKit • Core] <private>
+2026-11-13 09:06:21.975 A  George[46139:1f912] (RunningBoardServices) didChangeInheritances
+2026-11-13 09:06:22.956 A  George[46139:1f91d] (CoreSpotlight) end-index-batch
+2026-11-13 09:06:22.957 A  George[46139:1f91d] (CoreSpotlight) index-items
+2026-11-13 09:06:22.957 Df George[46139:1f91d] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:22.959 Df George[46139:1f91d] [com.apple.corespotlight:index] CSInlineDonation:<private>: Skipping donation (feature flag disabled)
+2026-11-13 09:06:23.871 Df George[46139:1f909] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-13 09:06:29.955 Df George[46139:1f91d] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
