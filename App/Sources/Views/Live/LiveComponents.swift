@@ -244,7 +244,8 @@ struct ConfettiView: View {
 
     /// Fixed pseudo-random pieces: spread across the width, each falling, swaying and spinning a bit differently.
     nonisolated static func seeds(_ count: Int) -> [Seed] {
-        let palette: [Color] = [.accentColor, .orange, .yellow, .green, .pink, .purple]
+        // George's blues with a little gold – the same family as the finish screen.
+        let palette: [Color] = [Color(hex: "#6CC4FF"), Color(hex: "#2E7BFF"), Color(hex: "#6A5CFF"), Color(hex: "#FFD15C"), .white, Color(hex: "#DCEBFF")]
         return (0..<count).map { index in
             let phase = Double((index * 7919) % 1000) / 1000
             return Seed(id: index, column: Double((index * 104729) % 1000) / 1000, phase: phase,

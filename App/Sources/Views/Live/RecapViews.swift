@@ -240,105 +240,184 @@ struct RecapHighlightsCard: View {
 
 // MARK: - Share card
 
-/// A 4:5 picture of the workout for Messages, Instagram & co. Only takes plain data, so it can be
-/// rendered off-screen with `ImageRenderer`.
+/// The share picture's look: dark midnight blue or clean white – both in George's blues.
+enum ShareCardStyle: String, CaseIterable, Identifiable {
+    case midnight, clean
+    var id: String { rawValue }
+    var title: String { self == .midnight ? "Midnight" : "Clean" }
+}
+
+/// Feed post (4:5) or story (9:16).
+enum ShareCardFormat: String, CaseIterable, Identifiable {
+    case post, story
+    var id: String { rawValue }
+    var title: String { self == .post ? "Post 4:5" : "Story 9:16" }
+    /// Points; rendered at 3× → 1080 × 1350 / 1080 × 1920 pixels.
+    var size: CGSize { self == .post ? CGSize(width: 360, height: 450) : CGSize(width: 360, height: 640) }
+}
+
+/// The workout as a picture for Messages, Instagram & co. Only takes plain data, so it renders
+/// off-screen with `ImageRenderer`. One colour family (George's blues, gold only for records),
+/// numbers big, everything else quiet.
 struct ShareCardView: View {
     let recap: WorkoutRecap
+    var style: ShareCardStyle = .midnight
+    var format: ShareCardFormat = .post
+
+    private var dark: Bool { style == .midnight }
+    private var primary: Color { dark ? .white : BrandPalette.ink }
+    private var secondary: Color { dark ? .white.opacity(0.62) : BrandPalette.ink.opacity(0.55) }
+    private var accent: Color { dark ? BrandPalette.sky : BrandPalette.blue }
+    private var hairline: Color { dark ? .white.opacity(0.14) : BrandPalette.ink.opacity(0.1) }
 
     var body: some View {
         let maxSets = max(1, recap.muscleSets.values.max() ?? 1)
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(recap.date.formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.7))
-                    Text(recap.title)
-                        .font(.system(size: 30, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.6)
-                }
-                Spacer()
-                if recap.streakWeeks > 0 {
-                    VStack(spacing: 0) {
-                        Image(systemName: "flame.fill")
-                            .font(.title)
-                            .foregroundStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
-                        Text("\(recap.streakWeeks) wk")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                    }
-                }
+        VStack(alignment: .leading, spacing: format == .story ? 22 : 16) {
+            header
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recap.title)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                Text(recap.headline)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accent)
             }
-
+            statsRow
             HStack(alignment: .center, spacing: 14) {
                 BodyMapPair(fill: { group in
-                    let sets = recap.muscleSets[group] ?? 0
-                    return sets > 0 ? MusclePalette.heat(0.25 + 0.75 * sets / maxSets) : Color.white.opacity(0.12)
+                    let t = (recap.muscleSets[group] ?? 0) / maxSets
+                    return dark ? BrandPalette.muscleOnDark(t) : BrandPalette.muscleOnLight(t)
                 }, spacing: 4)
-                .frame(height: 170)
-                VStack(alignment: .leading, spacing: 10) {
-                    stat(Format.minutes(recap.duration), "time")
-                    stat("\(recap.completedSets)", "sets")
-                    if recap.volumeKg > 0 { stat(Format.volume(recap.volumeKg, unit: recap.unit), "lifted") }
-                    if recap.energyKcal > 0 { stat("\(Int(recap.energyKcal))", "kcal") }
+                .frame(height: format == .story ? 200 : 150)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("TOP LIFTS")
+                        .font(.caption2.weight(.heavy))
+                        .foregroundStyle(secondary)
+                    ForEach(recap.highlights.prefix(format == .story ? 4 : 3)) { highlight in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(highlight.name)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            Text(highlight.detail)
+                                .font(.caption2)
+                                .foregroundStyle(secondary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
             if let record = recap.records.first {
                 HStack(spacing: 8) {
-                    Image(systemName: "trophy.fill").foregroundStyle(.yellow)
-                    Text("PR · \(record.exerciseName) \(recap.recordText(record))")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                    Image(systemName: "trophy.fill")
+                        .foregroundStyle(BrandPalette.gold)
+                    Text("PR · \(record.exerciseName)")
+                        .foregroundStyle(primary)
                         .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(recap.recordText(record))
+                        .foregroundStyle(dark ? BrandPalette.gold : Color(hex: "#B07D00"))
+                        .monospacedDigit()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.white.opacity(0.12), in: Capsule())
+                .font(.subheadline.weight(.bold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(BrandPalette.gold.opacity(dark ? 0.14 : 0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(recap.highlights.prefix(3)) { highlight in
-                    HStack {
-                        Text(highlight.name).lineLimit(1)
-                        Spacer()
-                        Text(highlight.detail).monospacedDigit().lineLimit(1)
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.85))
-                }
-            }
-
             Spacer(minLength: 0)
-            HStack(spacing: 6) {
-                Image(systemName: "dumbbell.fill")
-                Text("George · your gym buddy")
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.6))
+            footer
         }
-        .padding(24)
-        .frame(width: 360, height: 450)
-        .background(
-            LinearGradient(colors: [Color(hex: "#0B1B3F"), Color(hex: "#2E7BFF"), Color(hex: "#7A3CFF")],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .environment(\.colorScheme, .dark)
+        .padding(26)
+        .frame(width: format.size.width, height: format.size.height, alignment: .topLeading)
+        .background(background)
+        .environment(\.colorScheme, dark ? .dark : .light)
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Image("GeorgeMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            Text("GEORGE")
+                .font(.caption.weight(.heavy))
+                .tracking(2)
+                .foregroundStyle(primary)
+            Spacer()
+            Text(recap.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)).uppercased())
+                .font(.caption2.weight(.semibold))
+                .tracking(1)
+                .foregroundStyle(secondary)
+        }
+    }
+
+    private var statsRow: some View {
+        HStack(spacing: 0) {
+            stat(Format.minutes(recap.duration), "TIME")
+            divider
+            stat("\(recap.completedSets)", "SETS")
+            if recap.volumeKg > 0 {
+                divider
+                stat(Format.volume(recap.volumeKg, unit: recap.unit), "LIFTED")
+            } else if recap.energyKcal > 0 {
+                divider
+                stat("\(Int(recap.energyKcal))", "KCAL")
+            }
+        }
+        .padding(.vertical, 12)
+        .background(dark ? Color.white.opacity(0.07) : BrandPalette.ice.opacity(0.7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var divider: some View {
+        Rectangle().fill(hairline).frame(width: 1, height: 34)
     }
 
     private func stat(_ value: String, _ caption: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(spacing: 2) {
             Text(value)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white)
+                .foregroundStyle(primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.5)
             Text(caption)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.65))
+                .font(.caption2.weight(.heavy))
+                .tracking(1)
+                .foregroundStyle(accent)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var footer: some View {
+        HStack {
+            if recap.streakWeeks > 0 {
+                Label("\(recap.streakWeeks)-week streak", systemImage: "flame.fill")
+                    .foregroundStyle(dark ? BrandPalette.gold : Color(hex: "#B07D00"))
+            }
+            Spacer()
+            Text("your gym buddy")
+                .foregroundStyle(secondary)
+        }
+        .font(.caption.weight(.semibold))
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        if dark {
+            ZStack {
+                LinearGradient(colors: [BrandPalette.midnight, BrandPalette.navy, BrandPalette.royal], startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [BrandPalette.blue.opacity(0.45), .clear], center: .topTrailing, startRadius: 10, endRadius: 320)
+            }
+        } else {
+            ZStack {
+                Color.white
+                RadialGradient(colors: [BrandPalette.ice, .white.opacity(0)], center: .topTrailing, startRadius: 10, endRadius: 340)
+            }
         }
     }
 }
@@ -365,46 +444,62 @@ struct ShareRecapButton: View {
     }
 }
 
+/// Pick format and style, see the picture, share it.
 struct ShareCardSheet: View {
     let recap: WorkoutRecap
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("shareCardStyle") private var styleRaw = ShareCardStyle.midnight.rawValue
+    @AppStorage("shareCardFormat") private var formatRaw = ShareCardFormat.post.rawValue
     @State private var image: Image?
+
+    private var style: ShareCardStyle { ShareCardStyle(rawValue: styleRaw) ?? .midnight }
+    private var format: ShareCardFormat { ShareCardFormat(rawValue: formatRaw) ?? .post }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                ShareCardView(recap: recap)
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
-                    .scaleEffect(0.9)
-                if let image {
-                    ShareLink(item: image, preview: SharePreview(recap.title, image: image)) {
-                        Label("Share Picture", systemImage: "square.and.arrow.up")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 48)
+            ScrollView {
+                VStack(spacing: 16) {
+                    Picker("Format", selection: $formatRaw) {
+                        ForEach(ShareCardFormat.allCases) { Text($0.title).tag($0.rawValue) }
                     }
-                    .buttonStyle(.glassProminent)
-                    .padding(.horizontal)
-                } else {
-                    ProgressView()
+                    .pickerStyle(.segmented)
+                    Picker("Style", selection: $styleRaw) {
+                        ForEach(ShareCardStyle.allCases) { Text($0.title).tag($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
+                    ShareCardView(recap: recap, style: style, format: format)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .shadow(color: .black.opacity(0.25), radius: 20, y: 10)
+                        .scaleEffect(format == .story ? 0.82 : 0.92)
+                        .frame(height: format.size.height * (format == .story ? 0.82 : 0.92))
+                    if let image {
+                        ShareLink(item: image, preview: SharePreview(recap.title, image: image)) {
+                            Label("Share Picture", systemImage: "square.and.arrow.up")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.glassProminent)
+                    } else {
+                        ProgressView()
+                    }
+                    Text("Only what's on the picture is shared – no account, no link to your data.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text("Only what's on the picture is shared – no account, no link to your data.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .padding()
             }
-            .padding(.vertical)
             .navigationTitle("Share Workout")
             .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .task { image = render() }
+            .task(id: styleRaw + formatRaw) { image = render() }
         }
     }
 
     @MainActor
     private func render() -> Image? {
-        let renderer = ImageRenderer(content: ShareCardView(recap: recap))
+        let renderer = ImageRenderer(content: ShareCardView(recap: recap, style: style, format: format))
         renderer.scale = 3
         #if os(iOS)
         return renderer.uiImage.map { Image(uiImage: $0) }

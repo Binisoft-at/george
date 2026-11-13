@@ -49,7 +49,8 @@ profile targets, set editing) is in GeorgeCore and tested; the app holds only vi
 
 `-Demo` (sample data in memory, nothing syncs, no hints, no automatic welcome), `-DemoScreen <name>`
 (`today`, `workouts`, `plans`, `templates`, `template`, `session`, `live`, `live-mid` (a few sets
-ticked), `live-superset`, `muscles`, `energy`, `stats`, `streak`, `library`, `create`, `settings`,
+ticked), `live-superset`, `live-panel`, `live-feedback`, `live-looking`, `live-offplan`, `finish`,
+`share-card`, `share`, `voice`, `muscles`, `energy`, `stats`, `streak`, `library`, `create`, `settings`,
 `welcome`), `-Tour`, `-TourStep <id>`, `-ResetTour`. Demo launches also get sample energy
 check-ins and Health signals.
 Screens for `[screenshots]` runs are listed in [`Config/ci.env`](../Config/ci.env).

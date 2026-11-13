@@ -69,7 +69,7 @@ struct LiveWorkoutView: View {
                         content.append(items: items, asGroup: asGroup)
                     }
                 }
-                if let first = items.first { live.focus(itemID: first.id) }
+                if let first = items.first { live.view(itemID: first.id) }
             }
         }
         .sheet(item: $valuePad) { request in
@@ -229,7 +229,7 @@ struct LiveWorkoutView: View {
         .animation(.snappy, value: live.focusedItemID)
         #else
         HStack(spacing: 0) {
-            List(selection: Binding(get: { live.focusedItem?.id }, set: { if let id = $0 { live.focus(itemID: id) } })) {
+            List(selection: Binding(get: { live.focusedItem?.id }, set: { if let id = $0 { live.view(itemID: id) } })) {
                 ForEach(live.content.allItems) { item in
                     HStack {
                         Image(systemName: item.isComplete ? "checkmark.circle.fill" : "circle")
@@ -264,8 +264,8 @@ struct LiveWorkoutView: View {
             set: { id in
                 guard let id, id != focusedBlock?.id, let block = live.content.blocks.first(where: { $0.id == id }) else { return }
                 let target = block.items.first { !$0.isComplete } ?? block.items.first
-                // The page you swipe to is what you're doing now.
-                if let target { live.focus(itemID: target.id) }
+                // Swiping only looks – the plan decides what's due.
+                if let target { live.view(itemID: target.id) }
             }
         )
     }
@@ -282,6 +282,13 @@ struct LiveWorkoutView: View {
     private var bottomPanel: some View {
         GlassEffectContainer(spacing: 12) {
             VStack(spacing: 10) {
+                if let notice = live.offPlanNotice {
+                    OffPlanCard(notice: notice)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if live.isViewingElsewhere {
+                    ViewingPill()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 if let request = live.effortRequest {
                     FeedbackCard(request: request)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -294,6 +301,8 @@ struct LiveWorkoutView: View {
         }
         .animation(.snappy, value: live.restEndsAt)
         .animation(.snappy, value: live.effortRequest)
+        .animation(.snappy, value: live.offPlanNotice)
+        .animation(.snappy, value: live.isViewingElsewhere)
     }
 
     // MARK: Overlays
@@ -323,7 +332,7 @@ struct LiveWorkoutView: View {
         guard let current = focusedBlock, let index = blocks.firstIndex(where: { $0.id == current.id }) else { return }
         let target = max(0, min(blocks.count - 1, index + offset))
         guard let item = blocks[target].items.first(where: { !$0.isComplete }) ?? blocks[target].items.first else { return }
-        withAnimation(.snappy) { live.focus(itemID: item.id) }
+        withAnimation(.snappy) { live.view(itemID: item.id) }
         Haptics.tap()
     }
 }
@@ -382,6 +391,7 @@ struct LiveExerciseCard: View {
                 .onTapGesture(count: 2) { live.completeCurrentSet() }
 
             VStack(alignment: .leading, spacing: 4) {
+                PlanPositionChip(position: live.planPosition(of: item))
                 Text(item.name)
                     .font(.largeTitle.weight(.bold))
                     .lineLimit(3)
@@ -971,7 +981,7 @@ struct ExerciseStrip: View {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         let isFocused = item.id == focused
                         Button {
-                            withAnimation(.snappy) { live.focus(itemID: item.id) }
+                            withAnimation(.snappy) { live.view(itemID: item.id) }
                             Haptics.tap()
                         } label: {
                             HStack(spacing: 5) {

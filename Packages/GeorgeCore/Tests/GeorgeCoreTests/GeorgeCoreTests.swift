@@ -925,4 +925,12 @@ final class V3Tests: XCTestCase {
         let flow = RoutineLibrary.routine(id: "sun-salutations")!.content(using: catalog)
         XCTAssertEqual(flow.allItems.first { $0.name == "Sun Salutation A" }?.sets.count, 3)
     }
+
+    func testFinishQuoteFitsTheWorkout() {
+        XCTAssertTrue(FinishQuote.records.contains(FinishQuote.pick(.init(hasRecord: true, energyBefore: 1), seed: 5)))
+        XCTAssertTrue(FinishQuote.lowEnergy.contains(FinishQuote.pick(.init(energyBefore: 2), seed: 1)))
+        XCTAssertTrue(FinishQuote.partial.contains(FinishQuote.pick(.init(completion: 0.5), seed: 1)))
+        XCTAssertEqual(FinishQuote.pick(.init(streakWeeks: 6), seed: 2), "Week 6 of your streak. Consistency is your superpower.")
+        XCTAssertTrue(FinishQuote.general.contains(FinishQuote.pick(.init(), seed: -7)))
+    }
 }

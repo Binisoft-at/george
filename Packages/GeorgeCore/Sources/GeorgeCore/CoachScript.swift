@@ -24,6 +24,8 @@ public enum CoachCue: String, CaseIterable, Sendable, Identifiable {
     case motivation
     /// Start and end of the workout.
     case summary
+    /// A set done outside the planned order, skipping ahead.
+    case offPlan
 
     public var id: String { rawValue }
 
@@ -40,6 +42,7 @@ public enum CoachCue: String, CaseIterable, Sendable, Identifiable {
         case .pace: return "Over the rest"
         case .motivation: return "Cheers"
         case .summary: return "Start and finish"
+        case .offPlan: return "Off the plan"
         }
     }
 
@@ -56,6 +59,7 @@ public enum CoachCue: String, CaseIterable, Sendable, Identifiable {
         case .pace: return "“40 seconds over your rest.”"
         case .motivation: return "“Strong set.”"
         case .summary: return "“Let's go.” “Workout complete.”"
+        case .offPlan: return "“Off plan: Rows. Next on plan: Bench Press.”"
         }
     }
 

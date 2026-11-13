@@ -228,6 +228,39 @@ final class Router {
                     }
                 }
             }
+        case "live-offplan", "live-looking":
+            // Looking ahead at the second exercise ("live-looking"), and ticking one of its sets
+            // out of order ("live-offplan").
+            if let template = store.suggestedTemplate(in: store.activeProgram) {
+                live.start(template: template)
+                let screen = launch.screen ?? ""
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    let items = live.content.allItems
+                    guard items.count > 1 else { return }
+                    live.view(itemID: items[1].id)
+                    if screen == "live-offplan", let set = items[1].sets.first {
+                        live.toggleSet(set.id)
+                        live.skipRest()
+                    }
+                }
+            }
+        case "finish":
+            // The finish screen for the last workout of the demo history.
+            if let session = store.fetchSessions().filter({ $0.status.isPerformed }).max(by: { $0.date < $1.date }) {
+                let content = session.content
+                live.summary = LiveWorkoutController.FinishSummary(
+                    sessionID: session.id, title: session.title, duration: session.durationSeconds,
+                    completedSets: content.completedSets, totalSets: content.totalSets, volumeKg: content.volumeKg,
+                    energyKcal: session.energyKcal, averageHeartRate: 128,
+                    records: StatsEngine.newRecords(in: session.record(), comparedTo: store.performedRecords()),
+                    canUpdateTemplate: false, templateName: session.templateName, savedToHealth: true
+                )
+            }
+        case "share-card":
+            if let session = store.fetchSessions().filter({ $0.status.isPerformed }).max(by: { $0.date < $1.date }) {
+                demoSheet = .shareCard(session.id)
+            }
         case "voice":
             demoSheet = .voice
         case "share":
@@ -260,10 +293,26 @@ final class Router {
 enum DemoSheet: Identifiable, Hashable {
     case voice
     case share(UUID)
+    case shareCard(UUID)
     var id: String {
         switch self {
         case .voice: return "voice"
         case .share(let id): return "share-\(id)"
+        case .shareCard(let id): return "card-\(id)"
+        }
+    }
+}
+
+/// `-DemoScreen share-card`: the share sheet of a workout.
+struct DemoShareCard: View {
+    let sessionID: UUID
+    @Environment(GeorgeStore.self) private var store
+    @Environment(MuscleAnalytics.self) private var muscles
+    @Environment(HealthKitManager.self) private var health
+
+    var body: some View {
+        if let session = store.session(id: sessionID) {
+            ShareCardSheet(recap: WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health))
         }
     }
 }
@@ -473,15 +522,24 @@ struct RootPresentation: ViewModifier {
                     .frame(minWidth: 760, idealWidth: 900, minHeight: 680, idealHeight: 780)
             }
             #endif
-            .sheet(item: $live.summary) { summary in
-                WorkoutSummarySheet(summary: summary)
+            #if os(iOS)
+            .fullScreenCover(item: $live.summary) { summary in
+                FinishCelebrationView(summary: summary)
             }
+            #else
+            .sheet(item: $live.summary) { summary in
+                FinishCelebrationView(summary: summary)
+                    .frame(minWidth: 520, minHeight: 720)
+            }
+            #endif
             .sheet(item: $router.demoSheet) { sheet in
                 switch sheet {
                 case .voice:
                     NavigationStack { VoiceSettingsView() }
                 case .share(let id):
                     if let template = store.template(id: id) { RoutineShareSheet(template: template) }
+                case .shareCard(let id):
+                    DemoShareCard(sessionID: id)
                 }
             }
             .sheet(isPresented: $router.showImport) {

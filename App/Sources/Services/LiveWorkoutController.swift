@@ -42,6 +42,9 @@ final class LiveWorkoutController {
     var isPresented = false
     /// The expanded coach panel (tap the bar at the bottom of live mode).
     var showPanel = false
+    /// The last set done out of the planned order (banner with "stay on plan" / "continue here").
+    private(set) var offPlanNotice: OffPlanNotice?
+    @ObservationIgnored private var offPlanTask: Task<Void, Never>?
     private(set) var restEndsAt: Date?
     private(set) var restTotal = 0
     private(set) var heartRate: Double?
@@ -73,6 +76,18 @@ final class LiveWorkoutController {
         /// "chest, triceps"
         var muscles: String
         var asksReps: Bool
+    }
+
+    /// A set was done outside the planned order. George counts it, says so, and asks whether to
+    /// stay on the plan or continue from here.
+    struct OffPlanNotice: Identifiable, Equatable {
+        let id = UUID()
+        var itemID: UUID
+        var itemName: String
+        var setText: String
+        /// What the plan has next (nil when nothing is left).
+        var plannedName: String?
+        var plannedSetText: String?
     }
 
     /// Where the current set is.
@@ -371,6 +386,9 @@ final class LiveWorkoutController {
         if isPaused { resume() }
         let ref = content.locate(setID: id)
         let wasCurrent = id == currentSet?.id
+        // Another exercise than the planned one (a superset counts as one): done anyway, but the
+        // plan keeps its place.
+        let offPlan = !wasCurrent && ref != nil && currentRef != nil && ref?.blockIndex != currentRef?.blockIndex
         let nowDone = content.toggleSet(id: id)
         if nowDone, let ref {
             let now = Date()
@@ -394,22 +412,29 @@ final class LiveWorkoutController {
             nudgesGiven = 0
             completionPulse += 1
             Haptics.success()
-            let next = content.nextPendingSet(after: ref)
+            // On plan: the thread moves on. Off plan: it stays where it was (still the next open set).
+            let next = offPlan ? (currentRef.flatMap { content.set(at: $0)?.isDone == false ? $0 : nil } ?? content.nextPendingSet(after: ref))
+                               : content.nextPendingSet(after: ref)
             let autoRest = UserDefaults.standard.object(forKey: Prefs.autoRest) as? Bool ?? true
             let rest = next != nil ? content.restAfter(ref, defaultRest: store.settings.defaultRestSeconds) : nil
             restBeforeNext = Double(rest ?? 0)
             currentRef = next
-            if let next, let nextItem = content.item(at: next) {
+            if !offPlan, let next, let nextItem = content.item(at: next) {
                 // Follow along unless the user is looking at another exercise.
                 if focusedItemID == nil || focusedItemID == content.item(at: ref)?.id {
                     focusedItemID = nextItem.id
                 }
             }
             VoiceCoach.shared.moveOn(to: currentSet?.id)
+            if offPlan, let item = content.item(at: ref), let set = content.set(at: ref) {
+                noteOffPlan(item: item, set: set)
+            } else {
+                clearOffPlan()
+            }
             celebrate(afterSetAt: ref)
             if autoRest, let rest {
                 startRest(rest)
-            } else if next != nil {
+            } else if next != nil && !offPlan {
                 announceSetUp(isFirst: false)
             }
             askForFeedbackIfUseful(afterSet: id)
@@ -660,7 +685,36 @@ final class LiveWorkoutController {
         edit { $0 = newContent }
     }
 
-    /// The exercise you're looking at is the one you're doing: its first open set becomes current.
+    /// Just looking: shows another exercise without touching the plan (swiping, the strip).
+    func view(itemID: UUID) {
+        guard focusedItemID != itemID else { return }
+        focusedItemID = itemID
+    }
+
+    /// Looking at another exercise (or superset) than the one that's due.
+    var isViewingElsewhere: Bool {
+        guard let current = currentRef, let viewed = focusedItem, let loc = content.locate(itemID: viewed.id) else { return false }
+        return loc.block != current.blockIndex
+    }
+
+    /// Back to the exercise that's due.
+    func returnToCurrent() {
+        guard let item = currentItem else { return }
+        withAnimation(.snappy) { focusedItemID = item.id }
+        Haptics.tap()
+    }
+
+    /// Where an exercise sits relative to the plan: done, due now, still open from earlier, later.
+    enum PlanPosition { case done, now, skipped, later }
+
+    func planPosition(of item: WorkoutItem) -> PlanPosition {
+        if item.isComplete { return .done }
+        guard let current = currentRef, let loc = content.locate(itemID: item.id) else { return .later }
+        if loc.block == current.blockIndex { return .now }
+        return loc.block < current.blockIndex ? .skipped : .later
+    }
+
+    /// Changes the plan's thread on purpose: this exercise's first open set is due now.
     func focus(itemID: UUID) {
         guard focusedItemID != itemID || currentItem?.id != itemID else { return }
         focusedItemID = itemID
@@ -680,16 +734,70 @@ final class LiveWorkoutController {
         syncLive()
     }
 
-    /// Previous / next exercise (block) from the live panel.
-    func focusExercise(offset: Int) {
+    /// Panel → Back / Skip: moves the plan to the previous or next exercise that still has open sets
+    /// (open sets stay open for later) and says so.
+    func moveThread(by offset: Int) {
         let blocks = content.blocks
-        guard let current = focusedItem, let loc = content.locate(itemID: current.id) else { return }
-        let target = max(0, min(blocks.count - 1, loc.block + offset))
-        guard target != loc.block || offset == 0 else { return }
-        if let item = blocks[target].items.first(where: { !$0.isComplete }) ?? blocks[target].items.first {
-            withAnimation(.snappy) { focus(itemID: item.id) }
-            Haptics.tap()
+        guard let current = currentRef else { return }
+        var target = current.blockIndex + offset
+        while blocks.indices.contains(target), blocks[target].items.allSatisfy(\.isComplete) { target += offset }
+        guard blocks.indices.contains(target), target != current.blockIndex,
+              let item = blocks[target].items.first(where: { !$0.isComplete }) else { return }
+        let leaving = currentItem
+        withAnimation(.snappy) { focus(itemID: item.id) }
+        clearOffPlan()
+        Haptics.tap()
+        if let leaving, !leaving.isComplete {
+            VoiceCoach.shared.say("\(offset > 0 ? "Skipping" : "Back") to \(item.name). \(leaving.name) stays open for later.", cue: .offPlan, context: currentSet?.id)
         }
+        announceSetUp(isFirst: false)
+    }
+
+    /// Previous / next exercise from the panel (kept for older call sites).
+    func focusExercise(offset: Int) { moveThread(by: offset) }
+
+    // MARK: Off plan
+
+    private func noteOffPlan(item: WorkoutItem, set: WorkoutSet) {
+        let planned = currentItem
+        let notice = OffPlanNotice(
+            itemID: item.id, itemName: item.name, setText: set.label(mode: item.mode, unit: unit),
+            plannedName: planned?.name, plannedSetText: currentSet.map { s in planned.map { CoachScript.setPosition(s, in: $0) } ?? "" }
+        )
+        withAnimation(.snappy) { offPlanNotice = notice }
+        Haptics.warning()
+        var line = "Off plan: \(item.name)."
+        if let planned { line += " Next on plan: \(planned.name)." }
+        VoiceCoach.shared.say(line, cue: .offPlan, context: currentSet?.id)
+        AppLog.info("Set done off plan (\(item.name))", category: "workout")
+        offPlanTask?.cancel()
+        offPlanTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { self?.offPlanNotice = nil }
+        }
+    }
+
+    private func clearOffPlan() {
+        offPlanTask?.cancel()
+        if offPlanNotice != nil { withAnimation(.snappy) { offPlanNotice = nil } }
+    }
+
+    /// "Stay on plan": the banner goes, the plan's next set stays due.
+    func stayOnPlan() {
+        clearOffPlan()
+        returnToCurrent()
+    }
+
+    /// "Continue here": the exercise done off plan becomes the plan's thread.
+    func continueOffPlan() {
+        guard let notice = offPlanNotice else { return }
+        clearOffPlan()
+        if let item = content.item(id: notice.itemID), !item.isComplete {
+            withAnimation(.snappy) { focus(itemID: item.id) }
+            announceSetUp(isFirst: false)
+        }
+        Haptics.success()
     }
 
     /// The voice is muted for this workout (speaker button / menu).
@@ -938,6 +1046,8 @@ final class LiveWorkoutController {
     private func detach() {
         timedSetTask?.cancel()
         timedSetEndsAt = nil
+        offPlanTask?.cancel()
+        offPlanNotice = nil
         PhoneWorkoutSession.shared.end()
         VoiceCoach.shared.isMuted = false
         isVoiceMuted = false

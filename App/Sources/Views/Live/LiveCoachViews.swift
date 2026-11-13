@@ -442,9 +442,9 @@ struct LivePanelSheet: View {
     private var mainControls: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                control("backward.end.fill", "Previous") { live.focusExercise(offset: -1) }
+                control("backward.end.fill", "Back") { live.moveThread(by: -1) }
                 control(live.isPaused ? "play.fill" : "pause.fill", live.isPaused ? "Resume" : "Pause") { live.togglePause() }
-                control("forward.end.fill", "Next") { live.focusExercise(offset: 1) }
+                control("forward.end.fill", "Skip") { live.moveThread(by: 1) }
             }
             if live.phase == .resting {
                 HStack(spacing: 12) {
@@ -650,4 +650,142 @@ struct GapChart: View {
 
 private extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
+// MARK: - Plan thread
+
+/// Shown while you look at another exercise than the one that's due: swiping only looks.
+struct ViewingPill: View {
+    @Environment(LiveWorkoutController.self) private var live
+
+    var body: some View {
+        Button {
+            live.returnToCurrent()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "eye")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Just looking")
+                        .font(.caption.weight(.bold))
+                    if let item = live.currentItem {
+                        Text("Due now: \(item.name)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 4)
+                Label("Back", systemImage: "arrow.uturn.backward")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .floatingGlass(cornerRadius: 20)
+        .accessibilityHint("Shows the exercise that's due now")
+    }
+}
+
+/// A set was done outside the planned order: it counts – stay on the plan, or continue from here?
+struct OffPlanCard: View {
+    let notice: LiveWorkoutController.OffPlanNotice
+    @Environment(LiveWorkoutController.self) private var live
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Off plan: \(notice.itemName)")
+                        .font(.subheadline.weight(.bold))
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(spacing: 8) {
+                if notice.plannedName != nil {
+                    Button {
+                        live.stayOnPlan()
+                    } label: {
+                        Text("Stay on plan")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                    }
+                    .buttonStyle(.glass)
+                }
+                Button {
+                    live.continueOffPlan()
+                } label: {
+                    Text("Continue with \(notice.itemName)")
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(.orange)
+            }
+        }
+        .padding(14)
+        .floatingGlass(cornerRadius: 24, tint: .orange)
+    }
+
+    private var detail: String {
+        var text = "\(notice.setText) counted."
+        if let planned = notice.plannedName {
+            text += " Next on plan: \(planned)"
+            if let position = notice.plannedSetText, !position.isEmpty { text += ", \(position)" }
+            text += "."
+        }
+        return text
+    }
+}
+
+/// Where an exercise sits in the plan: done, due now, still open from earlier, or later.
+struct PlanPositionChip: View {
+    let position: LiveWorkoutController.PlanPosition
+
+    var body: some View {
+        Label(text, systemImage: symbol)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.12), in: Capsule())
+    }
+
+    private var text: String {
+        switch position {
+        case .done: return "Done"
+        case .now: return "Due now"
+        case .skipped: return "Still open – skipped earlier"
+        case .later: return "Later in the plan"
+        }
+    }
+
+    private var symbol: String {
+        switch position {
+        case .done: return "checkmark.circle.fill"
+        case .now: return "play.circle.fill"
+        case .skipped: return "arrow.uturn.backward.circle"
+        case .later: return "clock"
+        }
+    }
+
+    private var tint: Color {
+        switch position {
+        case .done: return .green
+        case .now: return .accentColor
+        case .skipped: return .orange
+        case .later: return .secondary
+        }
+    }
 }

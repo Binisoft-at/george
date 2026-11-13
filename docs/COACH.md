@@ -17,8 +17,13 @@ Each set goes **ready → working → resting**:
   end of last set → start of this one) and keeps a running total: “2:10 behind plan”. Ticking a set
   without Start works too: the start is then estimated from the set's typical work time. Off in
   Settings → Workout Coach → *Start button between sets*.
-- The page you swipe to is the exercise you're doing – the current set follows it. Supersets go
-  round by round (A1 → A2 → A1 …).
+- **The plan leads, swiping only looks** (v4). Swiping pages or tapping the strip shows another
+  exercise without changing what's due; a "Just looking · Due now: Bench Press · Back" pill takes
+  you back, and each exercise shows where it sits: *Due now*, *Later in the plan*, *Still open –
+  skipped earlier* or *Done*. Supersets go round by round (A1 → A2 → A1 …).
+- **Off plan**: tick a set of another exercise and it counts – George says so ("Off plan: Rows. Next
+  on plan: Bench Press.") and asks: *Stay on plan* or *Continue with Rows* (the plan then goes on
+  from there). The panel's **Back / Skip** move the plan on purpose; skipped sets stay open.
 - **Tap the bar (or swipe up)** for the full panel: the big ring, NOW / NEXT / THEN, previous /
   pause / next, ±15 s and skip rest, Start/Done, and **Pace**: behind or ahead of plan, this break
   (planned vs. took), the average break, the finish time at this pace against the planned time, a
@@ -88,10 +93,18 @@ and the key cues), a **George file** (`.csv` – opens straight in George as a t
 ## Finish
 
 Finish sheet: progress ring, effort pre-filled from the reps-in-reserve answers, a big "Finish &
-Celebrate" button. Summary: confetti, ring and numbers that count up, records, muscles worked,
-highlights, streak, and **Share** – a 4:5 picture (body map, time, sets, volume, a record, top
-exercises) rendered with `ImageRenderer`, shared through the share sheet. Only the picture is shared.
-Finished workouts show the same overview at the top of their page (`RecapOverviewSection`).
+Celebrate" button. Then **full screen** (v4, `FinishCelebrationView`): a moving George-blue mesh,
+the ring fills up, check (or trophy) springs in with confetti, the numbers count up, records light up
+in gold, the muscles worked in blue, and a line that fits the workout (`FinishQuote` – written for
+George: records, low-energy days, streaks, stopping early, long sessions). Then Share, View Workout,
+Done, and "update the template?". Motivation *Calm* drops the confetti, *Off* shows it all at once
+without animation.
+
+**Share** (v4): a picture in George's blues – *Midnight* (dark) or *Clean* (white), as a post (4:5,
+1080 × 1350) or story (9:16, 1080 × 1920): the George mark, date, title, time / sets / lifted, the
+body map in one blue ramp, top lifts, a record in gold, the streak. Only the picture is shared.
+The routine PDF uses the same palette (`BrandPalette`). Finished workouts show an overview at the top
+of their page (`RecapOverviewSection`).
 
 ## Energy over the weeks
 
