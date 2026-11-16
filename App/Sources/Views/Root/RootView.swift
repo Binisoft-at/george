@@ -245,6 +245,15 @@ final class Router {
                     }
                 }
             }
+        case "live-drop", "live-swap":
+            if let template = store.suggestedTemplate(in: store.activeProgram) {
+                live.start(template: template)
+                let screen = launch.screen ?? ""
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_400_000_000)
+                    live.demoSheetRequest = screen == "live-drop" ? "drop" : "swap"
+                }
+            }
         case "finish":
             // The finish screen for the last workout of the demo history.
             if let session = store.fetchSessions().filter({ $0.status.isPerformed }).max(by: { $0.date < $1.date }) {

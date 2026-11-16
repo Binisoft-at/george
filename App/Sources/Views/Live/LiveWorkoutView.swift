@@ -19,6 +19,8 @@ struct LiveWorkoutView: View {
     @State private var valuePad: ValuePadRequest?
     @State private var tutorial: URL?
     @State private var dragOffset: CGFloat = 0
+    @State private var dropRequest: DropWeightRequest?
+    @State private var swapItem: URLItemID?
 
     private var motivation: MotivationStyle { MotivationStyle(rawValue: motivationRaw) ?? .full }
 
@@ -40,8 +42,24 @@ struct LiveWorkoutView: View {
         .environment(\.liveActions, LiveActions(
             editValue: { setID, itemID, field in valuePad = ValuePadRequest(setID: setID, itemID: itemID, field: field) },
             editSet: { setID, itemID in editingSet = SetEditRequest(setID: setID, itemID: itemID) },
-            tutorial: { tutorial = $0 }
+            tutorial: { tutorial = $0 },
+            dropWeight: { setID, itemID in dropRequest = DropWeightRequest(setID: setID, itemID: itemID) },
+            swap: { itemID in swapItem = URLItemID(id: itemID) }
         ))
+        .onChange(of: live.demoSheetRequest) { _, request in
+            guard let request, let item = live.currentItem, let set = live.currentSet else { return }
+            live.demoSheetRequest = nil
+            if request == "drop" { dropRequest = DropWeightRequest(setID: set.id, itemID: item.id) }
+            if request == "swap" { swapItem = URLItemID(id: item.id) }
+        }
+        .sheet(item: $dropRequest) { request in
+            DropWeightSheet(request: request)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $swapItem) { wrapper in
+            LiveSwapSheet(itemID: wrapper.id)
+                .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: Binding(get: { live.showPanel }, set: { live.showPanel = $0 })) {
             LivePanelSheet(onFinish: {
                 live.showPanel = false
@@ -344,6 +362,10 @@ struct LiveActions {
     var editValue: (UUID, UUID, SetField) -> Void = { _, _, _ in }
     var editSet: (UUID, UUID) -> Void = { _, _ in }
     var tutorial: (URL) -> Void = { _ in }
+    /// "Can't finish": lower the weight mid-set (set id, item id).
+    var dropWeight: (UUID, UUID) -> Void = { _, _ in }
+    /// "Not available": swap the exercise (item id).
+    var swap: (UUID) -> Void = { _ in }
 }
 
 private struct LiveActionsKey: EnvironmentKey {
@@ -391,7 +413,20 @@ struct LiveExerciseCard: View {
                 .onTapGesture(count: 2) { live.completeCurrentSet() }
 
             VStack(alignment: .leading, spacing: 4) {
-                PlanPositionChip(position: live.planPosition(of: item))
+                HStack {
+                    PlanPositionChip(position: live.planPosition(of: item))
+                    Spacer()
+                    if !item.isComplete {
+                        Button {
+                            actions.swap(item.id)
+                        } label: {
+                            Label("Swap", systemImage: "arrow.triangle.swap")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.glass)
+                        .accessibilityHint("Pick another exercise for the same muscles")
+                    }
+                }
                 Text(item.name)
                     .font(.largeTitle.weight(.bold))
                     .lineLimit(3)
@@ -591,6 +626,17 @@ struct LiveSetRow: View {
                     TimedSetDial(item: item, set: set)
                 }
                 ValueTiles(item: item, set: set)
+                if (set.effectiveWeight ?? 0) > 0 {
+                    Button {
+                        actions.dropWeight(set.id, item.id)
+                    } label: {
+                        Label("Can't finish? Lower the weight", systemImage: "arrow.down.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                    }
+                    .buttonStyle(.glass)
+                    .tint(.orange)
+                }
             }
         }
         .padding(12)
@@ -822,6 +868,11 @@ struct SupersetCard: View {
                 ForEach(Array(block.items.enumerated()), id: \.element.id) { index, item in
                     VStack(spacing: 6) {
                         ExerciseThumb(urls: library.imageURLs(for: item), symbol: (item.kind ?? .gym).symbol, tint: .accentColor, size: 56)
+                            .contextMenu {
+                                if !item.isComplete {
+                                    Button { actions.swap(item.id) } label: { Label("Swap Exercise…", systemImage: "arrow.triangle.swap") }
+                                }
+                            }
                         Text("\(letter)\(index + 1)")
                             .font(.caption2.weight(.heavy))
                             .padding(.horizontal, 6)
@@ -862,6 +913,17 @@ struct SupersetCard: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.accentColor)
                     ValueTiles(item: current, set: set)
+                    if (set.effectiveWeight ?? 0) > 0 {
+                        Button {
+                            actions.dropWeight(set.id, current.id)
+                        } label: {
+                            Label("Can't finish? Lower the weight", systemImage: "arrow.down.circle")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                        .buttonStyle(.glass)
+                        .tint(.orange)
+                    }
                 }
             }
             HStack {
@@ -1049,4 +1111,9 @@ struct LiveEditSheet: View {
             }
         }
     }
+}
+
+/// Identifiable wrapper for a sheet keyed by an exercise id.
+struct URLItemID: Identifiable {
+    let id: UUID
 }

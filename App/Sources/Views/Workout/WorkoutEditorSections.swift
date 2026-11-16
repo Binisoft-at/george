@@ -368,7 +368,11 @@ struct WorkoutEditorSheets: ViewModifier {
         view
             .sheet(isPresented: $state.showPicker) {
                 ExercisePickerSheet(defaultKind: defaultKind, singleSelection: state.swapItemID != nil) { items, asGroup in
-                    if let swapID = state.swapItemID, let replacement = items.first {
+                    if let swapID = state.swapItemID, let replacement = items.first, mode.isSession,
+                       content.item(id: swapID)?.sets.contains(where: \.isDone) == true {
+                        // Mid-workout: the sets already done stay with the old exercise.
+                        content.swapRemaining(itemID: swapID, with: replacement)
+                    } else if let swapID = state.swapItemID, let replacement = items.first {
                         content.replaceExercise(
                             itemID: swapID, exerciseID: replacement.exerciseID, name: replacement.name,
                             kind: replacement.kind, mode: replacement.mode, muscles: replacement.muscles,

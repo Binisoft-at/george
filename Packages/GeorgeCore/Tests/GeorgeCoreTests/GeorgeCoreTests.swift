@@ -933,4 +933,64 @@ final class V3Tests: XCTestCase {
         XCTAssertEqual(FinishQuote.pick(.init(streakWeeks: 6), seed: 2), "Week 6 of your streak. Consistency is your superpower.")
         XCTAssertTrue(FinishQuote.general.contains(FinishQuote.pick(.init(), seed: -7)))
     }
+
+    func testDropWeightMidSet() throws {
+        var content = WorkoutContent()
+        let sets = [WorkoutSet(targetReps: "10", targetWeight: 60), WorkoutSet(targetReps: "10", targetWeight: 60), WorkoutSet(targetReps: "10", targetWeight: 60)]
+        content.append(items: [WorkoutItem(name: "Bench", sets: sets)], asGroup: false)
+        let first = content.allItems[0].sets[0].id
+        let dropID = try XCTUnwrap(content.dropWeight(setID: first, repsDone: 6, newWeightKg: 50, applyToRemaining: true))
+        let item = content.allItems[0]
+        XCTAssertEqual(item.sets.count, 4)
+        XCTAssertTrue(item.sets[0].isDone)
+        XCTAssertEqual(item.sets[0].reps, 6)
+        XCTAssertEqual(item.sets[0].weight, 60)
+        XCTAssertEqual(item.sets[1].id, dropID)
+        XCTAssertEqual(item.sets[1].kind, .drop)
+        XCTAssertEqual(item.sets[1].targetWeight, 50)
+        XCTAssertEqual(item.sets[1].targetReps, "4")
+        XCTAssertEqual(item.sets[2].targetWeight, 50)
+        XCTAssertEqual(item.sets[3].effectiveWeight, 50)
+        // Without applying to the rest, the later sets keep their weight.
+        var other = WorkoutContent()
+        other.append(items: [WorkoutItem(name: "Row", sets: sets)], asGroup: false)
+        other.dropWeight(setID: other.allItems[0].sets[0].id, repsDone: 8, newWeightKg: 50, applyToRemaining: false)
+        XCTAssertEqual(other.allItems[0].sets[2].targetWeight, 60)
+    }
+
+    func testSwapRemainingKeepsDoneSets() throws {
+        var content = WorkoutContent()
+        let sets = [WorkoutSet(targetReps: "8", targetWeight: 80), WorkoutSet(targetReps: "8", targetWeight: 80), WorkoutSet(targetReps: "8", targetWeight: 80)]
+        content.append(items: [WorkoutItem(name: "Leg Press", sets: sets), WorkoutItem(name: "Curl")], asGroup: false)
+        let legPress = content.allItems[0]
+        _ = content.toggleSet(id: legPress.sets[0].id)
+        let replacement = WorkoutItem(exerciseID: "fedb:Barbell_Squat", name: "Barbell Squat", sets: [WorkoutSet(targetReps: "5")], muscles: ["quadriceps"])
+        let newID = try XCTUnwrap(content.swapRemaining(itemID: legPress.id, with: replacement))
+        XCTAssertEqual(content.allItems.map(\.name), ["Leg Press", "Barbell Squat", "Curl"])
+        XCTAssertEqual(content.allItems[0].sets.count, 1)
+        XCTAssertTrue(content.allItems[0].sets[0].isDone)
+        XCTAssertEqual(content.allItems[1].id, newID)
+        XCTAssertEqual(content.allItems[1].sets.count, 2)
+        XCTAssertEqual(content.allItems[1].sets[0].targetReps, "8")
+        XCTAssertNil(content.allItems[1].sets[0].targetWeight)
+        // Nothing done yet: replaced in place, same id.
+        let curl = content.allItems[2]
+        XCTAssertEqual(content.swapRemaining(itemID: curl.id, with: WorkoutItem(name: "Hammer Curl")), curl.id)
+        XCTAssertEqual(content.allItems.count, 3)
+        XCTAssertEqual(content.allItems[2].name, "Hammer Curl")
+    }
+
+    func testAlternativesTrainTheSameMuscles() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("App/Resources/exercises.json")
+        let catalog = try ExerciseCatalog(data: try Data(contentsOf: url))
+        let bench = WorkoutItem(name: "Barbell Bench Press")
+        let alternatives = catalog.alternatives(for: bench)
+        XCTAssertEqual(alternatives.count, 8)
+        XCTAssertTrue(alternatives.allSatisfy { $0.primary.contains("chest") })
+        XCTAssertFalse(alternatives.contains { $0.name == "Barbell Bench Press - Medium Grip" })
+        XCTAssertTrue(catalog.alternatives(for: WorkoutItem(name: "Something Unknown")).isEmpty)
+    }
 }

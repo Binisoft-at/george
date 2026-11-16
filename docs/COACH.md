@@ -29,6 +29,15 @@ Each set goes **ready → working → resting**:
   (planned vs. took), the average break, the finish time at this pace against the planned time, a
   chart of every break (bar = actual, line = planned) and tips (“your breaks run 0:45 over – set up
   the weight in the last 15 seconds”; rest guideline from your profile). Swipe down to close.
+- **Can't finish a set?** (v5) *Lower the weight* under the current set (and in the panel): tap the
+  reps you managed, pick a lighter weight (−1 step, −2 steps, −20 %, −30 %) – the set counts, a
+  drop set starts right away without rest, and (by default) the remaining sets get the lighter
+  weight too. `WorkoutContent.dropWeight`.
+- **Exercise not available?** (v5) *Swap* on the exercise card (long-press a superset column, or
+  the panel): alternatives for the same muscles, a different machine first
+  (`ExerciseCatalog.alternatives`), or the whole library. Sets already done stay with the old
+  exercise; the open ones move over with their reps (weights cleared). `WorkoutContent.swapRemaining`.
+- Countdowns say “Three – Two – One” one per second, each with a tap.
 - After an exercise's last set: **how fatigued are your chest, triceps?** 25 / 50 / 75 / 100 % (and,
   for rep sets, reps left). The fatigue scales that exercise's muscular load (50 % neutral, 100 %
   ×1.4) – so freshness reflects how hard it really was.

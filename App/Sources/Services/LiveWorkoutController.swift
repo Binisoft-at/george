@@ -42,6 +42,8 @@ final class LiveWorkoutController {
     var isPresented = false
     /// The expanded coach panel (tap the bar at the bottom of live mode).
     var showPanel = false
+    /// Screenshots: open the "lower the weight" ("drop") or "swap" sheet in live mode.
+    var demoSheetRequest: String?
     /// The last set done out of the planned order (banner with "stay on plan" / "continue here").
     private(set) var offPlanNotice: OffPlanNotice?
     @ObservationIgnored private var offPlanTask: Task<Void, Never>?
@@ -369,9 +371,7 @@ final class LiveWorkoutController {
                 guard !Task.isCancelled else { return }
                 VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
             }
-            await sleep(until: end.addingTimeInterval(-3))
-            guard !Task.isCancelled else { return }
-            VoiceCoach.shared.say("3, 2, 1.", cue: .countdown, context: setID, priority: .high)
+            await self?.countdown(to: end, setID: setID)
             await sleep(until: end)
             guard !Task.isCancelled, let self, self.currentSet?.id == setID, self.currentSet?.isDone == false else { return }
             VoiceCoach.shared.say("Done.", cue: .timedSet, context: setID, priority: .high)
@@ -756,6 +756,61 @@ final class LiveWorkoutController {
     /// Previous / next exercise from the panel (kept for older call sites).
     func focusExercise(offset: Int) { moveThread(by: offset) }
 
+    // MARK: Changing things mid-set
+
+    /// "I can't finish this set": it counts with the reps you managed, a drop set with the lighter
+    /// weight starts right away (no rest), optionally with the lighter weight for the remaining sets.
+    func dropWeight(repsDone: Int, newWeightKg: Double, applyToRemaining: Bool) {
+        guard let item = currentItem, let set = currentSet else { return }
+        if isPaused { resume() }
+        let now = Date()
+        var updated = content
+        guard let dropID = updated.dropWeight(setID: set.id, repsDone: repsDone, newWeightKg: newWeightKg, applyToRemaining: applyToRemaining, at: now) else { return }
+        content = updated
+        let work = PaceTracker.workSeconds(for: set, mode: item.mode)
+        pace.setCompleted(at: now, plannedRest: pace.lastSetAt == nil ? nil : restBeforeNext, workSeconds: work)
+        restBeforeNext = 0
+        cancelRest()
+        timedSetTask?.cancel()
+        timedSetEndsAt = nil
+        lastCompletedSetID = set.id
+        currentRef = content.locate(setID: dropID)
+        pace.setStarted(at: now, plannedRest: 0)
+        content.updateSet(id: dropID) { $0.startedAt = now }
+        completionPulse += 1
+        clearOffPlan()
+        Haptics.heavy()
+        VoiceCoach.shared.moveOn(to: dropID)
+        VoiceCoach.shared.say("Down to \(Format.number(unit.fromKilograms(newWeightKg))) \(unit == .kg ? "kilos" : "pounds"). Keep going.",
+                              cue: .setUp, context: dropID, priority: .high)
+        AppLog.info("Dropped weight mid-set (\(repsDone) reps done)", category: "workout")
+        persist()
+    }
+
+    /// "Not available": the open sets go to `replacement` (done sets stay with the old exercise).
+    func swapExercise(itemID: UUID, with replacement: WorkoutItem) {
+        let wasCurrent = currentItem?.id == itemID
+        var newID: UUID?
+        edit { newID = $0.swapRemaining(itemID: itemID, with: replacement) }
+        guard let newID, let item = content.item(id: newID) else { return }
+        if wasCurrent || currentRef == nil {
+            if let loc = content.locate(itemID: newID), let s = item.sets.firstIndex(where: { !$0.isDone }) {
+                currentRef = WorkoutContent.SetRef(blockIndex: loc.block, itemIndex: loc.item, setIndex: s)
+            }
+            timedSetTask?.cancel()
+            timedSetEndsAt = nil
+            pace.setUndone(previous: pace.lastSetAt)
+        }
+        focusedItemID = newID
+        Haptics.success()
+        VoiceCoach.shared.moveOn(to: currentSet?.id)
+        VoiceCoach.shared.say("Swapped to \(item.name).", cue: .setUp, context: currentSet?.id)
+        AppLog.info("Swapped an exercise mid-workout", category: "workout")
+        let pictures = library.imageURLs(for: item)
+        Task.detached(priority: .utility) { await ImageCache.shared.prefetch(pictures) }
+        persist()
+    }
+
     // MARK: Off plan
 
     private func noteOffPlan(item: WorkoutItem, set: WorkoutSet) {
@@ -879,10 +934,8 @@ final class LiveWorkoutController {
                 Haptics.tap()
                 VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
             }
-            if end.timeIntervalSinceNow > 4 {
-                try? await Task.sleep(nanoseconds: UInt64(max(0, end.timeIntervalSinceNow - 3.2) * 1_000_000_000))
-                guard !Task.isCancelled, self?.restEndsAt != nil else { return }
-                VoiceCoach.shared.say("3, 2, 1.", cue: .countdown, context: setID)
+            if end.timeIntervalSinceNow > 4, self?.restEndsAt != nil {
+                await self?.countdown(to: end, setID: setID)
             }
         }
         restTask = Task { [weak self] in
@@ -892,6 +945,19 @@ final class LiveWorkoutController {
             }
             guard !Task.isCancelled else { return }
             self?.restFinished()
+        }
+    }
+
+    /// "3" – "2" – "1", one per second before `end` (a tap on each), instead of one rushed phrase.
+    private func countdown(to end: Date, setID: UUID?) async {
+        for number in [3, 2, 1] {
+            let at = end.addingTimeInterval(-Double(number))
+            let delay = at.timeIntervalSinceNow
+            if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+            guard !Task.isCancelled else { return }
+            guard delay > -0.5 else { continue } // already past this second
+            Haptics.tap()
+            VoiceCoach.shared.say(["", "One", "Two", "Three"][number], cue: .countdown, context: setID, priority: .high)
         }
     }
 

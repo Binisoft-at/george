@@ -394,6 +394,7 @@ struct FeedbackCard: View {
 struct LivePanelSheet: View {
     let onFinish: () -> Void
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(\.liveActions) private var actions
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -446,6 +447,14 @@ struct LivePanelSheet: View {
                 control(live.isPaused ? "play.fill" : "pause.fill", live.isPaused ? "Resume" : "Pause") { live.togglePause() }
                 control("forward.end.fill", "Skip") { live.moveThread(by: 1) }
             }
+            if let item = live.currentItem, let set = live.currentSet {
+                HStack(spacing: 12) {
+                    if (set.effectiveWeight ?? 0) > 0 {
+                        control("arrow.down.circle", "Lower weight") { afterClosing { actions.dropWeight(set.id, item.id) } }
+                    }
+                    control("arrow.triangle.swap", "Swap exercise") { afterClosing { actions.swap(item.id) } }
+                }
+            }
             if live.phase == .resting {
                 HStack(spacing: 12) {
                     control("gobackward.15", "−15 s") { live.addRest(-15) }
@@ -472,6 +481,15 @@ struct LivePanelSheet: View {
                 .buttonStyle(.glassProminent)
                 .tint(.green)
             }
+        }
+    }
+
+    /// Closes the panel first – the next sheet opens from the live screen.
+    private func afterClosing(_ action: @escaping @MainActor () -> Void) {
+        live.showPanel = false
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            action()
         }
     }
 
