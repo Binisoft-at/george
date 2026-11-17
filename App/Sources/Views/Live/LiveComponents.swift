@@ -28,7 +28,12 @@ struct MomentumHeader: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                     Spacer(minLength: 4)
-                    if motivation == .full {
+                    if live.isFlow {
+                        // Stretch, yoga, mobility: no race against the clock.
+                        Label("Calm flow", systemImage: "leaf.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.teal)
+                    } else if motivation == .full {
                         FlameBadge(pace: live.pace, intensity: live.intensity, pulse: live.completionPulse)
                     } else if live.intensity == .calm {
                         Label("Easy day", systemImage: "leaf.fill")

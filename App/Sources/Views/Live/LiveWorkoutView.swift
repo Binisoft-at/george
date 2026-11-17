@@ -376,11 +376,16 @@ struct LiveWorkoutView: View {
     /// Keeps the set that's due in view (its numbers and the tick start below the top of the page).
     private func scrollToCurrent(in block: WorkoutBlock, proxy: ScrollViewProxy, animated: Bool) {
         guard let set = live.currentSet, block.items.contains(where: { $0.sets.contains { $0.id == set.id } }) else { return }
-        let target: AnyHashable = block.style.isGrouped && block.items.count > 1 ? AnyHashable("now-\(block.id)") : AnyHashable(set.id)
-        if animated {
-            withAnimation(.snappy) { proxy.scrollTo(target, anchor: .center) }
-        } else {
-            DispatchQueue.main.async { proxy.scrollTo(target, anchor: .center) }
+        let grouped = block.style.isGrouped && block.items.count > 1
+        // After the layout settles (the picture shrinks after the first set, rows change height).
+        DispatchQueue.main.asyncAfter(deadline: .now() + (animated ? 0.35 : 0.1)) {
+            if grouped {
+                if animated { withAnimation(.snappy) { proxy.scrollTo("now-\(block.id)", anchor: .center) } }
+                else { proxy.scrollTo("now-\(block.id)", anchor: .center) }
+            } else {
+                if animated { withAnimation(.snappy) { proxy.scrollTo(set.id, anchor: .center) } }
+                else { proxy.scrollTo(set.id, anchor: .center) }
+            }
         }
     }
 
@@ -588,6 +593,7 @@ struct LiveExerciseCard: View {
             VStack(spacing: 8) {
                 ForEach(item.sets) { set in
                     LiveSetRow(item: item, set: set, previous: previous(for: set), isCurrent: set.id == live.currentSet?.id)
+                        .id(set.id)
                 }
                 Button {
                     live.edit { $0.addSet(to: item.id) }

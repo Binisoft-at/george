@@ -158,8 +158,12 @@ struct FinishCelebrationView: View {
                         .tint(.white.opacity(0.25))
                     }
                     .padding(.horizontal, 20)
+                    .padding(.top, 12)
                     .padding(.bottom, 8)
                     .frame(maxWidth: 560)
+                    .frame(maxWidth: .infinity)
+                    // A calm band behind the buttons, so the cards scrolling underneath don't show through.
+                    .background(.ultraThinMaterial)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }

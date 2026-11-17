@@ -89,10 +89,14 @@ struct CoachBar: View {
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
                             if let detail = detail(at: date, snapshot: snapshot) {
-                                Text(detail)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                                // The long form when it fits, otherwise the short one – never "…".
+                                ViewThatFits(in: .horizontal) {
+                                    Text(detail.long)
+                                    Text(detail.short)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                             }
                         }
                         .fixedSize(horizontal: false, vertical: true)
@@ -167,27 +171,36 @@ struct CoachBar: View {
         case .ready: return "NOW"
         case .working:
             if let end = live.timedSetEndsAt {
-                let left = Format.clock(Int(max(0, end.timeIntervalSince(date)).rounded(.up)))
-                if let side = live.timedSide { return "SIDE \(side) OF 2 · \(left) LEFT" }
-                return "\(left) LEFT"
+                let total = max(0, end.timeIntervalSince(date))
+                if let side = live.timedSide, let target = live.timedTarget {
+                    // The side that's running, the same number as the ring.
+                    let sideLeft = max(0, total - (side == 1 ? Double(target) / 2 : 0))
+                    return "SIDE \(side) OF 2 · \(Format.clock(Int(sideLeft.rounded(.up)))) LEFT"
+                }
+                return "\(Format.clock(Int(total.rounded(.up)))) LEFT"
             }
             return "IN PROGRESS"
         }
     }
 
-    private func detail(at date: Date, snapshot: LiveWorkoutController.PaceSnapshot) -> String? {
-        if live.isPaused { return "Clock and rest stopped · Resume to go on" }
+    private func detail(at date: Date, snapshot: LiveWorkoutController.PaceSnapshot) -> (long: String, short: String)? {
+        if live.isPaused { return ("Clock and rest stopped", "Stopped") }
         switch live.phase {
         case .resting:
-            return "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal))"
+            let text = "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal))"
+            return (text, text)
         case .ready:
-            guard snapshot.plannedRest > 0 else { return live.primaryIsStart ? "Tap Start when you begin" : nil }
-            var text = "Planned rest \(Format.clock(Int(snapshot.plannedRest)))"
+            guard snapshot.plannedRest > 0 else { return live.primaryIsStart ? ("Tap Start when you begin", "Tap Start") : nil }
+            let planned = "Planned rest \(Format.clock(Int(snapshot.plannedRest)))"
             // The running total only when it matters – the full pace is in the panel.
-            if abs(snapshot.totalDelta) >= 60 { text += " · \(WorkoutPace.deltaText(snapshot.totalDelta))" }
-            return text
+            if abs(snapshot.totalDelta) >= 60 {
+                let delta = "\(Format.clock(Int(abs(snapshot.totalDelta).rounded()))) \(snapshot.totalDelta > 0 ? "behind" : "ahead")"
+                return ("\(planned) · \(delta)", "Rest \(Format.clock(Int(snapshot.plannedRest))) · \(delta)")
+            }
+            return (planned, planned)
         case .working:
-            return "Working \(Format.clock(Int(live.pace.workingSeconds(at: date))))"
+            let text = "Working \(Format.clock(Int(live.pace.workingSeconds(at: date))))"
+            return (text, text)
         }
     }
 
