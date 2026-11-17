@@ -1,0 +1,327 @@
+Building for debugging...
+[0/15] Write sources
+[3/15] Write swift-version-24593BA9C3E375BF.txt
+[5/21] Emitting module BinisoftKitCore
+[6/21] Compiling BinisoftKitCore AppEnvironment.swift
+[7/21] Compiling BinisoftKitCore AppLog.swift
+[8/21] Compiling BinisoftKitCore SyncStatus.swift
+[9/21] Compiling BinisoftKitCore Import.swift
+[10/21] Compiling BinisoftKitCore Records.swift
+[11/22] Compiling BinisoftKitCore Tour.swift
+[12/23] Wrapping AST for BinisoftKitCore for debugging
+[14/45] Emitting module GeorgeCore
+[15/51] Compiling GeorgeCore Stats.swift
+[16/51] Compiling GeorgeCore StreakEngine.swift
+[17/51] Compiling GeorgeCore TrainingProfile.swift
+[18/51] Compiling GeorgeCore WatchProtocol.swift
+[19/51] Compiling GeorgeCore WorkoutContent.swift
+[20/51] Compiling GeorgeCore WorkoutKind.swift
+[21/51] Compiling GeorgeCore BodyMap.swift
+[22/51] Compiling GeorgeCore BodyMapData.swift
+[23/51] Compiling GeorgeCore CSVReader.swift
+[24/51] Compiling GeorgeCore Calendar+Weeks.swift
+[25/51] Compiling GeorgeCore CoachScript.swift
+[26/51] Compiling GeorgeCore Coaching.swift
+[27/51] Compiling GeorgeCore Energy.swift
+[28/51] Compiling GeorgeCore ExerciseProgress.swift
+[29/51] Compiling GeorgeCore FinishQuotes.swift
+[30/51] Compiling GeorgeCore Format.swift
+[31/51] Compiling GeorgeCore GeorgeTour.swift
+[32/51] Compiling GeorgeCore HealthSignals.swift
+[33/51] Compiling GeorgeCore Library.swift
+[34/51] Compiling GeorgeCore MuscleEngine.swift
+[35/51] Compiling GeorgeCore Muscles.swift
+[36/51] Compiling GeorgeCore PlanTools.swift
+[37/51] Compiling GeorgeCore Planning.swift
+[38/51] Compiling GeorgeCore ProgramCSV.swift
+[39/51] Compiling GeorgeCore Routines.swift
+[40/51] Compiling GeorgeCore SetEditing.swift
+[41/51] Compiling GeorgeCore SportLoad.swift
+[42/52] Wrapping AST for GeorgeCore for debugging
+[44/56] Compiling GeorgeCoreTests InsightsTests.swift
+[45/56] Compiling GeorgeCoreTests GeorgeCoreTests.swift
+[46/56] Emitting module GeorgeCoreTests
+[47/56] Compiling GeorgeCoreTests PlanToolsTests.swift
+[48/57] Compiling GeorgeCoreTests V6Tests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[49/58] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageDiscoveredTests.derived/all-discovered-tests.swift
+[50/58] Write sources
+[51/58] Wrapping AST for GeorgeCoreTests for debugging
+[53/61] Compiling GeorgeCorePackageDiscoveredTests GeorgeCoreTests.swift
+[54/61] Emitting module GeorgeCorePackageDiscoveredTests
+[55/61] Compiling GeorgeCorePackageDiscoveredTests all-discovered-tests.swift
+[56/62] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageTests.derived/runner.swift
+[57/62] Write sources
+[58/62] Wrapping AST for GeorgeCorePackageDiscoveredTests for debugging
+[60/64] Emitting module GeorgeCorePackageTests
+[61/64] Compiling GeorgeCorePackageTests runner.swift
+[62/65] Wrapping AST for GeorgeCorePackageTests for debugging
+[63/65] Write Objects.LinkFileList
+[64/65] Linking GeorgeCorePackageTests.xctest
+Build complete! (19.86s)
+Test Suite 'All tests' started at 2026-11-17 20:29:01.318
+Test Suite 'debug.xctest' started at 2026-11-17 20:29:01.319
+Test Suite 'ContentTests' started at 2026-11-17 20:29:01.319
+Test Case 'ContentTests.testCodableIsForwardCompatible' started at 2026-11-17 20:29:01.319
+Test Case 'ContentTests.testCodableIsForwardCompatible' passed (0.002 seconds)
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' started at 2026-11-17 20:29:01.321
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' passed (0.0 seconds)
+Test Case 'ContentTests.testGroupingOperations' started at 2026-11-17 20:29:01.321
+Test Case 'ContentTests.testGroupingOperations' passed (0.0 seconds)
+Test Case 'ContentTests.testMoveItemAcrossBlocks' started at 2026-11-17 20:29:01.322
+Test Case 'ContentTests.testMoveItemAcrossBlocks' passed (0.0 seconds)
+Test Case 'ContentTests.testNextPendingWraps' started at 2026-11-17 20:29:01.322
+Test Case 'ContentTests.testNextPendingWraps' passed (0.101 seconds)
+Test Case 'ContentTests.testPrescription' started at 2026-11-17 20:29:01.423
+Test Case 'ContentTests.testPrescription' passed (0.0 seconds)
+Test Case 'ContentTests.testRestRules' started at 2026-11-17 20:29:01.423
+Test Case 'ContentTests.testRestRules' passed (0.0 seconds)
+Test Case 'ContentTests.testToggleCopiesTargets' started at 2026-11-17 20:29:01.423
+Test Case 'ContentTests.testToggleCopiesTargets' passed (0.101 seconds)
+Test Suite 'ContentTests' passed at 2026-11-17 20:29:01.524
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.205 (0.205) seconds
+Test Suite 'InsightsTests' started at 2026-11-17 20:29:01.524
+Test Case 'InsightsTests.testBodyweightSessionsAreTheirOwnRepsSeries' started at 2026-11-17 20:29:01.524
+Test Case 'InsightsTests.testBodyweightSessionsAreTheirOwnRepsSeries' passed (0.001 seconds)
+Test Case 'InsightsTests.testFreshnessSeriesMatchesSinglePoints' started at 2026-11-17 20:29:01.525
+Test Case 'InsightsTests.testFreshnessSeriesMatchesSinglePoints' passed (0.001 seconds)
+Test Case 'InsightsTests.testHeavierTripleAfterTenRepsIsNotAnE1RMRecord' started at 2026-11-17 20:29:01.526
+Test Case 'InsightsTests.testHeavierTripleAfterTenRepsIsNotAnE1RMRecord' passed (0.0 seconds)
+Test Case 'InsightsTests.testHoldsChartTheLongestHold' started at 2026-11-17 20:29:01.526
+Test Case 'InsightsTests.testHoldsChartTheLongestHold' passed (0.0 seconds)
+Test Case 'InsightsTests.testPeriodTotalsAndRecordsInTheRange' started at 2026-11-17 20:29:01.527
+Test Case 'InsightsTests.testPeriodTotalsAndRecordsInTheRange' passed (0.0 seconds)
+Test Case 'InsightsTests.testTenThousandEventsStayFast' started at 2026-11-17 20:29:01.527
+Test Case 'InsightsTests.testTenThousandEventsStayFast' passed (0.293 seconds)
+Test Case 'InsightsTests.testTimeByTypeIncludesHealthWorkouts' started at 2026-11-17 20:29:01.820
+Test Case 'InsightsTests.testTimeByTypeIncludesHealthWorkouts' passed (0.001 seconds)
+Test Suite 'InsightsTests' passed at 2026-11-17 20:29:01.821
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.297 (0.297) seconds
+Test Suite 'KindAndParsingTests' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testFormat' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testFormat' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testKindAliases' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testKindAliases' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseMeters' started at 2026-11-17 20:29:01.821
+Test Case 'KindAndParsingTests.testLooseMeters' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseSeconds' started at 2026-11-17 20:29:01.822
+Test Case 'KindAndParsingTests.testLooseSeconds' passed (0.0 seconds)
+Test Suite 'KindAndParsingTests' passed at 2026-11-17 20:29:01.822
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'LibraryTests' started at 2026-11-17 20:29:01.822
+Test Case 'LibraryTests.testBundledLibraryDecodes' started at 2026-11-17 20:29:01.822
+Test Case 'LibraryTests.testBundledLibraryDecodes' passed (0.085 seconds)
+Test Case 'LibraryTests.testYouTubeHelpers' started at 2026-11-17 20:29:01.907
+Test Case 'LibraryTests.testYouTubeHelpers' passed (0.0 seconds)
+Test Suite 'LibraryTests' passed at 2026-11-17 20:29:01.907
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.085 (0.085) seconds
+Test Suite 'MuscleTests' started at 2026-11-17 20:29:01.907
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' started at 2026-11-17 20:29:01.907
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' passed (0.001 seconds)
+Test Case 'MuscleTests.testEventsAndTotals' started at 2026-11-17 20:29:01.908
+Test Case 'MuscleTests.testEventsAndTotals' passed (0.0 seconds)
+Test Case 'MuscleTests.testFreshnessRecovers' started at 2026-11-17 20:29:01.909
+Test Case 'MuscleTests.testFreshnessRecovers' passed (0.0 seconds)
+Test Case 'MuscleTests.testLoadStatuses' started at 2026-11-17 20:29:01.909
+Test Case 'MuscleTests.testLoadStatuses' passed (0.026 seconds)
+Test Case 'MuscleTests.testRangesAndPlan' started at 2026-11-17 20:29:01.935
+Test Case 'MuscleTests.testRangesAndPlan' passed (0.0 seconds)
+Test Case 'MuscleTests.testResolver' started at 2026-11-17 20:29:01.936
+Test Case 'MuscleTests.testResolver' passed (0.0 seconds)
+Test Suite 'MuscleTests' passed at 2026-11-17 20:29:01.936
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.028 (0.028) seconds
+Test Suite 'NamingAndDatesTests' started at 2026-11-17 20:29:01.936
+Test Case 'NamingAndDatesTests.testBuckets' started at 2026-11-17 20:29:01.936
+Test Case 'NamingAndDatesTests.testBuckets' passed (0.0 seconds)
+Test Case 'NamingAndDatesTests.testSessionTitle' started at 2026-11-17 20:29:01.936
+Test Case 'NamingAndDatesTests.testSessionTitle' passed (0.0 seconds)
+Test Suite 'NamingAndDatesTests' passed at 2026-11-17 20:29:01.936
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'PlanToolsTests' started at 2026-11-17 20:29:01.936
+Test Case 'PlanToolsTests.testAllSetsChangesOnlyOpenWorkingSets' started at 2026-11-17 20:29:01.936
+Test Case 'PlanToolsTests.testAllSetsChangesOnlyOpenWorkingSets' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testAutoTitleIsRecognisedButTypedTitlesAreNot' started at 2026-11-17 20:29:01.936
+Test Case 'PlanToolsTests.testAutoTitleIsRecognisedButTypedTitlesAreNot' passed (0.002 seconds)
+Test Case 'PlanToolsTests.testGymSampleParses' started at 2026-11-17 20:29:01.938
+Test Case 'PlanToolsTests.testGymSampleParses' passed (0.002 seconds)
+Test Case 'PlanToolsTests.testImportNamesGetANumberWhenTaken' started at 2026-11-17 20:29:01.941
+Test Case 'PlanToolsTests.testImportNamesGetANumberWhenTaken' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testMovedBlockJoinsTheSectionItLandsIn' started at 2026-11-17 20:29:01.941
+Test Case 'PlanToolsTests.testMovedBlockJoinsTheSectionItLandsIn' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testPerformedStateFollowsTicks' started at 2026-11-17 20:29:01.941
+Test Case 'PlanToolsTests.testPerformedStateFollowsTicks' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testRescueRoutinesAreTheClosestInLength' started at 2026-11-17 20:29:01.941
+Test Case 'PlanToolsTests.testRescueRoutinesAreTheClosestInLength' passed (0.086 seconds)
+Test Case 'PlanToolsTests.testShortCompletedRoutinesNeedTheMinutes' started at 2026-11-17 20:29:02.028
+Test Case 'PlanToolsTests.testShortCompletedRoutinesNeedTheMinutes' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testTrainingRemindersAndStreakAtRisk' started at 2026-11-17 20:29:02.028
+Test Case 'PlanToolsTests.testTrainingRemindersAndStreakAtRisk' passed (0.0 seconds)
+Test Suite 'PlanToolsTests' passed at 2026-11-17 20:29:02.028
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.092 (0.092) seconds
+Test Suite 'ProgramCSVTests' started at 2026-11-17 20:29:02.028
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' started at 2026-11-17 20:29:02.028
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' passed (0.002 seconds)
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' started at 2026-11-17 20:29:02.030
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' passed (0.001 seconds)
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' started at 2026-11-17 20:29:02.031
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' passed (0.001 seconds)
+Test Case 'ProgramCSVTests.testRoundTrip' started at 2026-11-17 20:29:02.031
+Test Case 'ProgramCSVTests.testRoundTrip' passed (0.009 seconds)
+Test Case 'ProgramCSVTests.testSampleImport' started at 2026-11-17 20:29:02.040
+Test Case 'ProgramCSVTests.testSampleImport' passed (0.104 seconds)
+Test Suite 'ProgramCSVTests' passed at 2026-11-17 20:29:02.145
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.116 (0.116) seconds
+Test Suite 'StatsTests' started at 2026-11-17 20:29:02.145
+Test Case 'StatsTests.testEnergy' started at 2026-11-17 20:29:02.145
+Test Case 'StatsTests.testEnergy' passed (0.0 seconds)
+Test Case 'StatsTests.testRecordsAndHistory' started at 2026-11-17 20:29:02.145
+Test Case 'StatsTests.testRecordsAndHistory' passed (0.0 seconds)
+Test Suite 'StatsTests' passed at 2026-11-17 20:29:02.145
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'StreakTests' started at 2026-11-17 20:29:02.145
+Test Case 'StreakTests.testExcusedWeekIsNeutral' started at 2026-11-17 20:29:02.145
+Test Case 'StreakTests.testExcusedWeekIsNeutral' passed (0.0 seconds)
+Test Case 'StreakTests.testGoalHistory' started at 2026-11-17 20:29:02.146
+Test Case 'StreakTests.testGoalHistory' passed (0.0 seconds)
+Test Case 'StreakTests.testMetWeeksEarnCredits' started at 2026-11-17 20:29:02.146
+Test Case 'StreakTests.testMetWeeksEarnCredits' passed (0.0 seconds)
+Test Case 'StreakTests.testMissWithoutCreditResets' started at 2026-11-17 20:29:02.146
+Test Case 'StreakTests.testMissWithoutCreditResets' passed (0.0 seconds)
+Test Case 'StreakTests.testMissedWeekSpendsCredit' started at 2026-11-17 20:29:02.146
+Test Case 'StreakTests.testMissedWeekSpendsCredit' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueCountsDouble' started at 2026-11-17 20:29:02.147
+Test Case 'StreakTests.testRescueCountsDouble' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueStatusOnSunday' started at 2026-11-17 20:29:02.147
+Test Case 'StreakTests.testRescueStatusOnSunday' passed (0.0 seconds)
+Test Suite 'StreakTests' passed at 2026-11-17 20:29:02.147
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'TourTests' started at 2026-11-17 20:29:02.147
+Test Case 'TourTests.testCatalogIsValid' started at 2026-11-17 20:29:02.147
+Test Case 'TourTests.testCatalogIsValid' passed (0.0 seconds)
+Test Case 'TourTests.testSnapshotFollowsContent' started at 2026-11-17 20:29:02.147
+Test Case 'TourTests.testSnapshotFollowsContent' passed (0.0 seconds)
+Test Suite 'TourTests' passed at 2026-11-17 20:29:02.148
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V2Tests' started at 2026-11-17 20:29:02.148
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' started at 2026-11-17 20:29:02.148
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' passed (0.0 seconds)
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' started at 2026-11-17 20:29:02.148
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' passed (0.0 seconds)
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' started at 2026-11-17 20:29:02.148
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' passed (0.0 seconds)
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' started at 2026-11-17 20:29:02.148
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' passed (0.003 seconds)
+Test Case 'V2Tests.testMatchSetCounts' started at 2026-11-17 20:29:02.151
+Test Case 'V2Tests.testMatchSetCounts' passed (0.0 seconds)
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' passed (0.0 seconds)
+Test Case 'V2Tests.testPaceTrackerMomentum' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testPaceTrackerMomentum' passed (0.0 seconds)
+Test Case 'V2Tests.testProfileRecommendations' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testProfileRecommendations' passed (0.0 seconds)
+Test Case 'V2Tests.testProgression' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testProgression' passed (0.0 seconds)
+Test Case 'V2Tests.testRelativePerformance' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testRelativePerformance' passed (0.0 seconds)
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' started at 2026-11-17 20:29:02.152
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' passed (0.0 seconds)
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' started at 2026-11-17 20:29:02.153
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' passed (0.0 seconds)
+Test Case 'V2Tests.testValenceAndCorrelation' started at 2026-11-17 20:29:02.153
+Test Case 'V2Tests.testValenceAndCorrelation' passed (0.0 seconds)
+Test Suite 'V2Tests' passed at 2026-11-17 20:29:02.153
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'V3Tests' started at 2026-11-17 20:29:02.153
+Test Case 'V3Tests.testAlternativesTrainTheSameMuscles' started at 2026-11-17 20:29:02.153
+Test Case 'V3Tests.testAlternativesTrainTheSameMuscles' passed (0.086 seconds)
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' started at 2026-11-17 20:29:02.240
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' passed (0.0 seconds)
+Test Case 'V3Tests.testDropWeightMidSet' started at 2026-11-17 20:29:02.240
+Test Case 'V3Tests.testDropWeightMidSet' passed (0.0 seconds)
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' started at 2026-11-17 20:29:02.240
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' passed (0.0 seconds)
+Test Case 'V3Tests.testFuzzyLibraryMatch' started at 2026-11-17 20:29:02.240
+Test Case 'V3Tests.testFuzzyLibraryMatch' passed (0.0 seconds)
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' started at 2026-11-17 20:29:02.241
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' passed (0.0 seconds)
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' started at 2026-11-17 20:29:02.241
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' passed (0.084 seconds)
+Test Case 'V3Tests.testRemainingAndPlannedTime' started at 2026-11-17 20:29:02.325
+Test Case 'V3Tests.testRemainingAndPlannedTime' passed (0.0 seconds)
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' started at 2026-11-17 20:29:02.325
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' passed (0.0 seconds)
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' started at 2026-11-17 20:29:02.326
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' passed (0.0 seconds)
+Test Case 'V3Tests.testSwapRemainingKeepsDoneSets' started at 2026-11-17 20:29:02.326
+Test Case 'V3Tests.testSwapRemainingKeepsDoneSets' passed (0.0 seconds)
+Test Suite 'V3Tests' passed at 2026-11-17 20:29:02.326
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.173 (0.173) seconds
+Test Suite 'V6TemplateTests' started at 2026-11-17 20:29:02.326
+Test Case 'V6TemplateTests.testLoadChangesAgainstTheTemplate' started at 2026-11-17 20:29:02.326
+Test Case 'V6TemplateTests.testLoadChangesAgainstTheTemplate' passed (0.0 seconds)
+Test Suite 'V6TemplateTests' passed at 2026-11-17 20:29:02.326
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V6Tests' started at 2026-11-17 20:29:02.326
+Test Case 'V6Tests.testComparisonWithLastTimeAndTrend' started at 2026-11-17 20:29:02.326
+Test Case 'V6Tests.testComparisonWithLastTimeAndTrend' passed (0.0 seconds)
+Test Case 'V6Tests.testCoolDownFitsTheWorkout' started at 2026-11-17 20:29:02.327
+Test Case 'V6Tests.testCoolDownFitsTheWorkout' passed (0.082 seconds)
+Test Case 'V6Tests.testCurrentSetSurvivesEdits' started at 2026-11-17 20:29:02.409
+Test Case 'V6Tests.testCurrentSetSurvivesEdits' passed (0.0 seconds)
+Test Case 'V6Tests.testDropSetInSupersetFollowsItsSetWithoutRest' started at 2026-11-17 20:29:02.409
+Test Case 'V6Tests.testDropSetInSupersetFollowsItsSetWithoutRest' passed (0.0 seconds)
+Test Case 'V6Tests.testOneHeavierSetIsOneRecordAndRepRecordsCount' started at 2026-11-17 20:29:02.409
+Test Case 'V6Tests.testOneHeavierSetIsOneRecordAndRepRecordsCount' passed (0.001 seconds)
+Test Case 'V6Tests.testOtherSportsLoadMusclesWithoutSets' started at 2026-11-17 20:29:02.410
+Test Case 'V6Tests.testOtherSportsLoadMusclesWithoutSets' passed (0.0 seconds)
+Test Case 'V6Tests.testPauseShiftsThePace' started at 2026-11-17 20:29:02.410
+Test Case 'V6Tests.testPauseShiftsThePace' passed (0.0 seconds)
+Test Case 'V6Tests.testPerformedState' started at 2026-11-17 20:29:02.410
+Test Case 'V6Tests.testPerformedState' passed (0.1 seconds)
+Test Case 'V6Tests.testProfileBandChangesTheVerdict' started at 2026-11-17 20:29:02.510
+Test Case 'V6Tests.testProfileBandChangesTheVerdict' passed (0.0 seconds)
+Test Case 'V6Tests.testProgressionRespectsTheDay' started at 2026-11-17 20:29:02.511
+Test Case 'V6Tests.testProgressionRespectsTheDay' passed (0.0 seconds)
+Test Case 'V6Tests.testSteadyTrainingInTheFirstWeeksIsNotOverload' started at 2026-11-17 20:29:02.511
+Test Case 'V6Tests.testSteadyTrainingInTheFirstWeeksIsNotOverload' passed (0.03 seconds)
+Test Case 'V6Tests.testStreakRulesNeedTheMinutesForShortRoutines' started at 2026-11-17 20:29:02.540
+Test Case 'V6Tests.testStreakRulesNeedTheMinutesForShortRoutines' passed (0.0 seconds)
+Test Case 'V6Tests.testStretchingAddsLoadButNoSets' started at 2026-11-17 20:29:02.541
+Test Case 'V6Tests.testStretchingAddsLoadButNoSets' passed (0.0 seconds)
+Test Case 'V6Tests.testSwapInStraightSetsMakesItsOwnBlock' started at 2026-11-17 20:29:02.541
+Test Case 'V6Tests.testSwapInStraightSetsMakesItsOwnBlock' passed (0.0 seconds)
+Test Case 'V6Tests.testSwapInSupersetContinuesTheRounds' started at 2026-11-17 20:29:02.541
+Test Case 'V6Tests.testSwapInSupersetContinuesTheRounds' passed (0.0 seconds)
+Test Case 'V6Tests.testWarmupsAndPlates' started at 2026-11-17 20:29:02.541
+Test Case 'V6Tests.testWarmupsAndPlates' passed (0.0 seconds)
+Test Case 'V6Tests.testWatchCommandsAreDroppedWhenStale' started at 2026-11-17 20:29:02.542
+Test Case 'V6Tests.testWatchCommandsAreDroppedWhenStale' passed (0.001 seconds)
+Test Case 'V6Tests.testWeekPlannerSpreadsTheRotation' started at 2026-11-17 20:29:02.543
+Test Case 'V6Tests.testWeekPlannerSpreadsTheRotation' passed (0.0 seconds)
+Test Suite 'V6Tests' passed at 2026-11-17 20:29:02.543
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.217 (0.217) seconds
+Test Suite 'WatchProtocolTests' started at 2026-11-17 20:29:02.543
+Test Case 'WatchProtocolTests.testCommandRoundTrip' started at 2026-11-17 20:29:02.543
+Test Case 'WatchProtocolTests.testCommandRoundTrip' passed (0.0 seconds)
+Test Case 'WatchProtocolTests.testLiveElapsed' started at 2026-11-17 20:29:02.543
+Test Case 'WatchProtocolTests.testLiveElapsed' passed (0.0 seconds)
+Test Suite 'WatchProtocolTests' passed at 2026-11-17 20:29:02.544
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'debug.xctest' passed at 2026-11-17 20:29:02.544
+	 Executed 101 tests, with 0 failures (0 unexpected) in 1.223 (1.223) seconds
+Test Suite 'All tests' passed at 2026-11-17 20:29:02.544
+	 Executed 101 tests, with 0 failures (0 unexpected) in 1.223 (1.223) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.2.4 (5ee435b15ad40ec)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

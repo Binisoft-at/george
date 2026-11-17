@@ -1,0 +1,5 @@
+Bundle layout of George.app:
+Debug-iphonesimulator/George.app
+Debug-iphonesimulator/George.app/PlugIns/GeorgeWidgets.appex
+Debug-iphonesimulator/George.app/Watch/GeorgeWatch.app
+Debug-iphonesimulator/George.app/Watch/GeorgeWatch.app/PlugIns/GeorgeWatchWidgets.appex
