@@ -9,6 +9,7 @@ enum CreateStep: Hashable {
     case plan
     case logPast
     case logPastTemplate(UUID)
+    case logActivity
     case newTemplate
 }
 
@@ -17,8 +18,10 @@ struct WorkoutCreateSheet: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @State private var path: [CreateStep] = []
+    @State private var showPlanWeek = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -43,7 +46,15 @@ struct WorkoutCreateSheet: View {
                         CreateRow(title: "Empty Workout Now", subtitle: "Add exercises as you go", symbol: "bolt.fill", tint: .accentColor) {
                             let program = store.activeProgram
                             dismiss()
-                            router.afterDismiss { live.startEmpty(program: program) }
+                            router.afterDismiss { live.requestStart(.empty(program: program, kind: nil, rescue: false)) }
+                        }
+                        Divider().padding(.leading, 56)
+                        CreateRow(title: "Log Activity", subtitle: "Tennis, a run, a class – just the time", symbol: "figure.tennis", tint: .green) {
+                            path.append(.logActivity)
+                        }
+                        Divider().padding(.leading, 56)
+                        CreateRow(title: "Plan This Week", subtitle: "Put your templates on the coming days", symbol: "calendar", tint: .indigo) {
+                            showPlanWeek = true
                         }
                         Divider().padding(.leading, 56)
                         CreateRow(title: "New Program", subtitle: "A folder of templates, e.g. a training block", symbol: "folder.badge.plus", tint: .blue) {
@@ -78,26 +89,29 @@ struct WorkoutCreateSheet: View {
             .navigationDestination(for: CreateStep.self) { step in
                 switch step {
                 case .start:
-                    TemplateChooser(title: "Start Workout", emptyTitle: "Empty Workout") { template in
+                    TemplateChooser(title: "Start Workout", emptyTitle: "Empty Workout", onPick: { template in
                         let program = store.activeProgram
                         dismiss()
                         router.afterDismiss {
-                            if let template { live.start(template: template) } else { live.startEmpty(program: program) }
+                            if let template {
+                                store.requestStart(template, live: live, toasts: toasts)
+                            } else {
+                                live.requestStart(.empty(program: program, kind: nil, rescue: false))
+                            }
                         }
-                    }
+                    })
                 case .plan:
-                    PlanWorkoutView { session in
-                        dismiss()
-                        router.afterDismiss { router.open(.session(session.id)) }
-                    }
+                    PlanWorkoutView()
                 case .logPast:
-                    TemplateChooser(title: "Log Past Workout", emptyTitle: nil) { template in
+                    TemplateChooser(title: "Log Past Workout", emptyTitle: nil, onJustTime: { path.append(.logActivity) }) { template in
                         if let template { path.append(.logPastTemplate(template.id)) }
                     }
                 case .logPastTemplate(let id):
                     if let template = store.template(id: id) {
                         LogPastWorkoutSheet(template: template) { dismiss() }
                     }
+                case .logActivity:
+                    LogActivitySheet { dismiss() }
                 case .newTemplate:
                     NewTemplateView { template in
                         dismiss()
@@ -108,6 +122,10 @@ struct WorkoutCreateSheet: View {
                     }
                 }
             }
+        }
+        .toasts(toasts, bottomPadding: 24)
+        .sheet(isPresented: $showPlanWeek) {
+            PlanWeekSheet()
         }
         .onAppear {
             if let step = router.createStep {
@@ -184,10 +202,12 @@ private struct CreateRow: View {
     }
 }
 
-/// Pick a template (active program first). `emptyTitle` adds an "empty workout" choice on top.
+/// Pick a template (active program first). `emptyTitle` adds an "empty workout" choice on top,
+/// `onJustTime` a "No template – just time" row (Log Activity).
 struct TemplateChooser: View {
     let title: String
     let emptyTitle: String?
+    var onJustTime: (() -> Void)? = nil
     let onPick: (WorkoutTemplate?) -> Void
 
     @Environment(GeorgeStore.self) private var store
@@ -196,6 +216,16 @@ struct TemplateChooser: View {
 
     var body: some View {
         List {
+            if let onJustTime, query.isEmpty {
+                Section {
+                    Button(action: onJustTime) {
+                        Label("No template – just time", systemImage: "stopwatch")
+                            .font(.body.weight(.semibold))
+                    }
+                } footer: {
+                    Text("Tennis, a run, a class: the kind, how long and how hard.")
+                }
+            }
             if let emptyTitle, query.isEmpty {
                 Section {
                     Button {
@@ -266,13 +296,16 @@ struct TemplateChooser: View {
     }
 }
 
-/// Plan a template (or an empty workout) for a day.
+/// Plan a template (or an empty workout) for a day. Stays open after "Plan" (with a toast), so several
+/// days can be planned in a row; the template follows the chosen day until one is picked by hand.
 struct PlanWorkoutView: View {
-    let onPlanned: (WorkoutSession) -> Void
     @Environment(GeorgeStore.self) private var store
+    @Environment(ToastCenter.self) private var toasts
     @Query private var templates: [WorkoutTemplate]
     @State private var date = Date()
     @State private var templateID: UUID?
+    @State private var pickedByHand = false
+    @State private var didLoad = false
 
     var body: some View {
         Form {
@@ -281,10 +314,14 @@ struct PlanWorkoutView: View {
                     .datePickerStyle(.graphical)
             }
             Section("Workout") {
-                Picker("Template", selection: $templateID) {
+                Picker("Template", selection: Binding(get: { templateID }, set: { templateID = $0; pickedByHand = true })) {
                     Text("Empty workout").tag(UUID?.none)
-                    ForEach(templates.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { template in
-                        Text(template.program.map { "\(template.name) · \($0.name)" } ?? template.name).tag(Optional(template.id))
+                    ForEach(groups, id: \.title) { group in
+                        Section(group.title) {
+                            ForEach(group.templates) { template in
+                                Text(template.name).tag(Optional(template.id))
+                            }
+                        }
                     }
                 }
                 #if os(iOS)
@@ -296,22 +333,56 @@ struct PlanWorkoutView: View {
         .inlineTitle()
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Plan") {
-                    let session: WorkoutSession
-                    if let template = store.template(id: templateID) {
-                        session = store.makeSession(from: template, date: date, start: false)
-                    } else {
-                        session = store.makeEmptySession(program: store.activeProgram, start: false, date: date)
-                    }
-                    Haptics.success()
-                    onPlanned(session)
-                }
-                .fontWeight(.semibold)
+                Button("Plan") { plan() }
+                    .fontWeight(.semibold)
             }
         }
         .onAppear {
-            if templateID == nil { templateID = store.suggestedTemplate(in: store.activeProgram)?.id }
+            guard !didLoad else { return }
+            didLoad = true
+            templateID = store.suggestedTemplate(in: store.activeProgram, on: date)?.id
         }
+        .onChange(of: date) { _, newDate in
+            guard !pickedByHand else { return }
+            templateID = store.suggestedTemplate(in: store.activeProgram, on: newDate)?.id
+        }
+    }
+
+    private struct TemplateGroup {
+        var title: String
+        var templates: [WorkoutTemplate]
+    }
+
+    /// The active program first, then the others by name.
+    private var groups: [TemplateGroup] {
+        let activeID = store.activeProgram?.id
+        let sorted = templates.sorted { $0.sortIndex != $1.sortIndex ? $0.sortIndex < $1.sortIndex : $0.createdAt < $1.createdAt }
+        let byProgram = Dictionary(grouping: sorted) { $0.program?.id }
+        var result: [TemplateGroup] = []
+        if let activeID, let active = byProgram[activeID], !active.isEmpty {
+            result.append(TemplateGroup(title: "\(store.activeProgram?.name ?? "Active") · active", templates: active))
+        }
+        let others = byProgram
+            .filter { $0.key != activeID }
+            .map { (name: $0.value.first?.program?.name ?? "No Program", templates: $0.value) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        for other in others { result.append(TemplateGroup(title: other.name, templates: other.templates)) }
+        return result
+    }
+
+    private func plan() {
+        let session: WorkoutSession
+        if let template = store.template(id: templateID) {
+            session = store.makeSession(from: template, date: date, start: false)
+        } else {
+            session = store.makeEmptySession(program: store.activeProgram, start: false, date: date)
+        }
+        Haptics.success()
+        let day = store.calendar.isDateInToday(date) ? "today" : date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        toasts.show("Planned \(store.displayName(of: session)) for \(day)", symbol: "calendar.badge.checkmark") {
+            store.removePlanned([session])
+        }
+        pickedByHand = false
     }
 }
 

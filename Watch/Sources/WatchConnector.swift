@@ -46,13 +46,42 @@ extension WatchCommand {
         switch self {
         case .requestSnapshot:
             return .bestEffort
-        case .pause, .resume, .skipRest, .finish, .discard:
+        case .startTemplate, .startSession:
+            // Never queued: starts go through `WatchConnector.requestStart`, which the user can cancel.
+            return .bestEffort
+        case .pause, .resume, .skipRest, .finish, .discard,
+             .completeSet, .makeCurrent, .answerFeedback, .recordEnergy:
+            // Harmless twice: the phone ignores a repeat.
             return .guaranteed
         default:
-            // Toggles and "done set" are not idempotent: never send them twice.
+            // Toggles, "done set", drop sets and thread moves are not idempotent: never send them twice.
             return .queued
         }
     }
+
+    /// Starts a new workout on the phone.
+    var startsWorkout: Bool {
+        switch self {
+        case .startTemplate, .startSession: return true
+        default: return false
+        }
+    }
+}
+
+/// A workout start the watch asked the phone for and is waiting on.
+struct StartRequest: Equatable, Identifiable {
+    enum Status: Equatable {
+        /// The phone has it (or is reachable): waiting for its live workout.
+        case starting
+        /// The phone isn't reachable: queued for at most `WatchConnector.startLifetime`, cancellable.
+        case waitingForPhone
+    }
+
+    let id: UUID
+    let command: WatchCommand
+    let title: String?
+    let sentAt: Date
+    var status: Status
 }
 
 /// Watch side of the iPhone link. The phone owns all data; the watch shows the last snapshot,
@@ -69,6 +98,12 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     private(set) var live: WatchLiveState?
     private(set) var isReachable = false
     private(set) var isActivated = false
+    /// A start the user asked for that hasn't turned into a live workout yet.
+    private(set) var startRequest: StartRequest?
+    /// Why the last start didn't happen (shown on the home screen until acknowledged).
+    private(set) var startProblem: String?
+    /// Finish summaries the user closed on the watch (session IDs, newest last).
+    private var dismissedSummaryIDs: [UUID] = []
 
     private let defaults: UserDefaults
     @ObservationIgnored private var didRequestActivation = false
@@ -80,15 +115,30 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     @ObservationIgnored private var closedSessionIDs: Set<UUID> = []
     @ObservationIgnored private var outbox: [(packet: WirePacket, policy: DeliveryPolicy)] = []
     @ObservationIgnored private var lastSnapshotRequestAt: Date?
-    @ObservationIgnored private var restAlarmTask: Task<Void, Never>?
-    @ObservationIgnored private var restAlarmDate: Date?
+    @ObservationIgnored private var alarmTask: Task<Void, Never>?
+    @ObservationIgnored private var scheduledAlarm: CountdownAlarm?
+    /// Last command tapped on the watch: progress right after it is ours, not news from the phone.
+    @ObservationIgnored private var lastLocalActionAt: Date?
+    @ObservationIgnored private var holdEndedAt: Date?
+    @ObservationIgnored private var lastRemoteHapticAt: Date?
+    @ObservationIgnored private var startPacket: WirePacket?
+    @ObservationIgnored private var startTransfer: WCSessionUserInfoTransfer?
+    @ObservationIgnored private var startDeadlineTask: Task<Void, Never>?
 
     private static let cacheKey = "george.watch.snapshot"
+    private static let dismissedSummariesKey = "george.watch.dismissedSummaries"
+    /// The phone drops starts older than this; the watch gives up waiting then too.
+    static let startLifetime: TimeInterval = 120
+    /// How long to wait for the live workout once the phone has the start.
+    private static let startReplyWait: TimeInterval = 30
+    /// A finish summary is offered this long after the workout was saved.
+    private static let summaryLifetime: TimeInterval = 30 * 60
 
     private init(defaults: UserDefaults) {
         self.defaults = defaults
         super.init()
         restoreCachedSnapshot()
+        dismissedSummaryIDs = (defaults.stringArray(forKey: Self.dismissedSummariesKey) ?? []).compactMap(UUID.init(uuidString:))
     }
 
     // MARK: Lifecycle
@@ -117,8 +167,11 @@ final class WatchConnector: NSObject, WCSessionDelegate {
 
     // MARK: Sending
 
+    /// Sends a command with when and for which workout it was meant, so the phone can drop it when
+    /// it arrives late (queued while out of range) or after that workout ended.
     func send(_ command: WatchCommand) {
-        guard let packet = WirePacket(command, as: .command) else { return }
+        let envelope = WatchCommandEnvelope(command: command, sentAt: Date(), sessionID: live?.sessionID)
+        guard let packet = WirePacket(envelope, as: .command) else { return }
         deliver(packet, policy: command.deliveryPolicy)
     }
 
@@ -131,6 +184,11 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     /// Sends a command and applies it to the local live state right away (optimistic UI),
     /// mirroring what the phone will do, including pausing/resuming and ending the HealthKit recording.
     func perform(_ command: WatchCommand) {
+        if command.startsWorkout {
+            requestStart(command, title: nil)
+            return
+        }
+        lastLocalActionAt = Date()
         send(command)
         guard var state = live else { return }
         let now = Date()
@@ -179,10 +237,197 @@ final class WatchConnector: NSObject, WCSessionDelegate {
             close(state.sessionID)
             WorkoutManager.shared.endRecording(sessionID: state.sessionID, discard: true)
             return
+        case .completeSet(let id, let reps, let weightKg):
+            guard state.position(of: id) != nil else { return }
+            resumeIfPaused(&state, at: now)
+            if state.logSet(id, reps: reps, weightKg: weightKg) {
+                Haptics.success()
+            } else {
+                Haptics.click()
+            }
+        case .dropWeight:
+            // The phone inserts the drop set and makes it current; its next live state shows it.
+            Haptics.click()
+            return
+        case .makeCurrent(let setID):
+            guard state.makeCurrent(setID) else { return }
+            Haptics.click()
+        case .moveThread:
+            Haptics.click()
+            return
+        case .toggleVoiceMute:
+            state.voiceMuted = !(state.voiceMuted ?? false)
+            Haptics.click()
+        case .answerFeedback(let setID, let repsInReserve, let fatigue):
+            guard var question = state.question, question.setID == setID else { return }
+            if fatigue != nil { question.asksFatigue = false }
+            if repsInReserve != nil { question.asksReps = false }
+            state.question = (question.asksFatigue || question.asksReps) ? question : nil
+            Haptics.click()
+        case .recordEnergy:
+            state.asksEnergy = false
+            Haptics.click()
         default:
             return
         }
         setLive(state)
+    }
+
+    // MARK: Starting a workout
+
+    /// Asks the phone to start a workout. Never queued silently: while the phone is unreachable the
+    /// home screen shows "Waiting for iPhone…" with Cancel, and the start is given up after
+    /// `startLifetime` (the phone would drop it by then anyway).
+    func requestStart(_ command: WatchCommand, title: String?) {
+        guard command.startsWorkout, live == nil, startRequest == nil else { return }
+        let envelope = WatchCommandEnvelope(command: command, sentAt: Date(), sessionID: nil)
+        guard let packet = WirePacket(envelope, as: .command) else { return }
+        startProblem = nil
+        startPacket = packet
+        startRequest = StartRequest(id: UUID(), command: command, title: title, sentAt: envelope.sentAt, status: .starting)
+        Haptics.click()
+        deliverStart()
+    }
+
+    /// Cancel on "Waiting for iPhone…": the queued transfer is withdrawn so it can't fire later.
+    func cancelStart() {
+        guard startRequest != nil else { return }
+        endStartRequest()
+        Haptics.click()
+    }
+
+    func clearStartProblem() {
+        startProblem = nil
+    }
+
+    private func deliverStart() {
+        guard let request = startRequest, let packet = startPacket else { return }
+        guard WCSession.isSupported() else {
+            failStart("This watch can't reach an iPhone.")
+            return
+        }
+        let session = WCSession.default
+        guard session.activationState == .activated else {
+            // Sent once WatchConnectivity is up (see `activationCompleted`).
+            setStartStatus(.waitingForPhone)
+            scheduleStartDeadline(at: request.sentAt.addingTimeInterval(Self.startLifetime))
+            return
+        }
+        guard session.isReachable else {
+            queueStartTransfer()
+            return
+        }
+        let id = request.id
+        setStartStatus(.starting)
+        scheduleStartDeadline(at: Date().addingTimeInterval(Self.startReplyWait))
+        session.sendMessage(packet.dictionary, replyHandler: { @Sendable _ in
+            Task { @MainActor in self.startReachedPhone(id) }
+        }, errorHandler: { @Sendable _ in
+            Task { @MainActor in self.startMessageFailed(id) }
+        })
+    }
+
+    /// Queues the start with `transferUserInfo` and keeps the transfer, so Cancel can withdraw it.
+    private func queueStartTransfer() {
+        guard let request = startRequest, let packet = startPacket else { return }
+        let deadline = request.sentAt.addingTimeInterval(Self.startLifetime)
+        guard deadline > Date() else {
+            startTimedOut(request.id)
+            return
+        }
+        startTransfer?.cancel()
+        startTransfer = WCSession.default.transferUserInfo(packet.dictionary)
+        setStartStatus(.waitingForPhone)
+        scheduleStartDeadline(at: deadline)
+    }
+
+    private func startReachedPhone(_ id: UUID) {
+        guard startRequest?.id == id else { return }
+        setStartStatus(.starting)
+        scheduleStartDeadline(at: Date().addingTimeInterval(Self.startReplyWait))
+    }
+
+    private func startMessageFailed(_ id: UUID) {
+        guard startRequest?.id == id, startTransfer == nil else { return }
+        queueStartTransfer()
+    }
+
+    private func userInfoTransferFinished(_ transferID: ObjectIdentifier, delivered: Bool) {
+        guard let transfer = startTransfer, ObjectIdentifier(transfer) == transferID, let request = startRequest else { return }
+        startTransfer = nil
+        if delivered {
+            startReachedPhone(request.id)
+        } else {
+            failStart("Couldn't reach your iPhone. Nothing was started.")
+        }
+    }
+
+    private func startTimedOut(_ id: UUID) {
+        guard let request = startRequest, request.id == id else { return }
+        failStart(request.status == .waitingForPhone
+                  ? "Your iPhone wasn't reachable, so nothing was started."
+                  : "Your iPhone didn't start the workout. Try again or start it there.")
+    }
+
+    private func failStart(_ message: String) {
+        endStartRequest()
+        startProblem = message
+        Haptics.failure()
+    }
+
+    private func setStartStatus(_ status: StartRequest.Status) {
+        guard var request = startRequest, request.status != status else { return }
+        request.status = status
+        startRequest = request
+    }
+
+    private func scheduleStartDeadline(at date: Date) {
+        guard let id = startRequest?.id else { return }
+        startDeadlineTask?.cancel()
+        startDeadlineTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, date.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            self?.startTimedOut(id)
+        }
+    }
+
+    /// Forgets the pending start and withdraws anything still queued for it.
+    private func endStartRequest() {
+        startDeadlineTask?.cancel()
+        startDeadlineTask = nil
+        startTransfer?.cancel()
+        startTransfer = nil
+        startPacket = nil
+        startRequest = nil
+        cancelQueuedStarts()
+    }
+
+    /// Withdraws start commands still waiting in WatchConnectivity's queue (e.g. from before a relaunch).
+    private func cancelQueuedStarts() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        for transfer in session.outstandingUserInfoTransfers where transfer !== startTransfer {
+            guard let packet = WirePacket(transfer.userInfo), packet.type == .command else { continue }
+            let command = packet.decode(WatchCommandEnvelope.self)?.command ?? packet.decode(WatchCommand.self)
+            if command?.startsWorkout == true { transfer.cancel() }
+        }
+    }
+
+    // MARK: Finish summary
+
+    /// The workout the phone just saved, while it's recent and not closed on the watch.
+    var finishSummary: WatchFinishSummary? {
+        guard live == nil, let summary = snapshot?.lastFinished,
+              Date().timeIntervalSince(summary.finishedAt) < Self.summaryLifetime,
+              !dismissedSummaryIDs.contains(summary.sessionID) else { return nil }
+        return summary
+    }
+
+    func dismissFinishSummary(_ sessionID: UUID) {
+        guard !dismissedSummaryIDs.contains(sessionID) else { return }
+        dismissedSummaryIDs = Array((dismissedSummaryIDs + [sessionID]).suffix(20))
+        defaults.set(dismissedSummaryIDs.map(\.uuidString), forKey: Self.dismissedSummariesKey)
     }
 
     /// Called by `WorkoutManager` after a recording was saved or discarded, so a workout the phone
@@ -224,11 +469,14 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         isReachable = reachable
         guard activated else { return }
         if let storedContext { receive(storedContext, origin: .storedContext) }
+        // Starts queued before a relaunch have no Cancel button any more: withdraw them.
+        cancelQueuedStarts()
         let queued = outbox
         outbox.removeAll()
         for item in queued {
             deliver(item.packet, policy: item.policy)
         }
+        if startRequest != nil, startTransfer == nil { deliverStart() }
         refresh(force: true)
     }
 
@@ -256,11 +504,15 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         snapshot = incoming
         if origin == .phone { lastPhoneDataAt = Date() }
         if shouldAdoptLive(from: incoming) {
-            setLive(openState(incoming.live))
+            let adopted = openState(incoming.live)
+            if origin == .phone { noticeRemoteProgress(from: live, to: adopted) }
+            setLive(adopted)
             if origin == .phone {
                 liveIsFromPhone = true
                 WorkoutManager.shared.phoneDidUpdate(live: live, snapshot: incoming)
             }
+        } else {
+            ComplicationBridge.write(snapshot: snapshot, live: live)
         }
         saveCache()
     }
@@ -272,6 +524,7 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         lastPhoneDataAt = now
         liveIsFromPhone = true
         let isNewSession = live?.sessionID != incoming.sessionID
+        noticeRemoteProgress(from: live, to: incoming)
         setLive(incoming)
         if isNewSession { saveCache() }
         WorkoutManager.shared.phoneDidUpdate(live: incoming, snapshot: nil)
@@ -299,7 +552,23 @@ final class WatchConnector: NSObject, WCSessionDelegate {
             closedSessionIDs.insert(old.sessionID)
         }
         if live != newValue { live = newValue }
-        scheduleRestAlarm()
+        // A live workout arrived: the pending start is answered (or overtaken by one from the phone).
+        if newValue != nil, startRequest != nil { endStartRequest() }
+        scheduleCountdownHaptics()
+        // Writes only when what the complication shows changed.
+        ComplicationBridge.write(snapshot: snapshot, live: live)
+    }
+
+    /// A set ticked on the phone: a success haptic on the wrist (not for the watch's own taps or
+    /// the end of a hold, which already played one).
+    private func noticeRemoteProgress(from old: WatchLiveState?, to new: WatchLiveState?) {
+        guard let old, let new, old.sessionID == new.sessionID, new.completedSets > old.completedSets else { return }
+        let now = Date()
+        if let at = lastLocalActionAt, now.timeIntervalSince(at) < 4 { return }
+        if let at = holdEndedAt, now.timeIntervalSince(at) < 5 { return }
+        if let at = lastRemoteHapticAt, now.timeIntervalSince(at) < 2 { return }
+        lastRemoteHapticAt = now
+        Haptics.success()
     }
 
     private func close(_ sessionID: UUID) {
@@ -315,18 +584,55 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         WorkoutManager.shared.resume()
     }
 
-    /// Plays a haptic when the rest ends, even with the wrist down (the workout session keeps us running).
-    private func scheduleRestAlarm() {
-        let endsAt = live?.restEndsAt
-        guard endsAt != restAlarmDate else { return }
-        restAlarmTask?.cancel()
-        restAlarmTask = nil
-        restAlarmDate = endsAt
-        guard let endsAt, endsAt > Date() else { return }
-        restAlarmTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(max(0, endsAt.timeIntervalSinceNow)))
-            guard !Task.isCancelled, let self, self.live?.restEndsAt == endsAt else { return }
-            Haptics.notify()
+    /// The end of a rest or of a running hold, which the wrist counts down to.
+    private struct CountdownAlarm: Equatable {
+        enum Kind: Equatable { case rest, hold }
+        let kind: Kind
+        let endsAt: Date
+
+        init?(_ state: WatchLiveState?) {
+            guard let state, !state.isPaused else { return nil }
+            if let restEndsAt = state.restEndsAt {
+                kind = .rest
+                endsAt = restEndsAt
+            } else if let holdEndsAt = state.holdEndsAt {
+                kind = .hold
+                endsAt = holdEndsAt
+            } else {
+                return nil
+            }
+        }
+    }
+
+    /// Clicks at 3, 2 and 1 seconds before a rest or hold ends, then a notification (rest) or a
+    /// success (hold) – on the wrist, even with the wrist down, the voice off or music playing
+    /// (the workout session keeps the app running).
+    private func scheduleCountdownHaptics() {
+        let alarm = CountdownAlarm(live)
+        guard alarm != scheduledAlarm else { return }
+        alarmTask?.cancel()
+        alarmTask = nil
+        scheduledAlarm = alarm
+        guard let alarm, alarm.endsAt > Date() else { return }
+        alarmTask = Task { [weak self] in
+            for secondsBefore in [3.0, 2.0, 1.0] {
+                let delay = alarm.endsAt.addingTimeInterval(-secondsBefore).timeIntervalSinceNow
+                // Already past (the countdown was scheduled late): skip that click.
+                guard delay > -0.3 else { continue }
+                if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+                guard !Task.isCancelled else { return }
+                Haptics.click()
+            }
+            let delay = alarm.endsAt.timeIntervalSinceNow
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled, let self, self.scheduledAlarm == alarm else { return }
+            switch alarm.kind {
+            case .rest:
+                Haptics.notify()
+            case .hold:
+                self.holdEndedAt = Date()
+                Haptics.success()
+            }
         }
     }
 
@@ -393,6 +699,14 @@ final class WatchConnector: NSObject, WCSessionDelegate {
             self.receive(packet, origin: .phone)
         }
     }
+
+    nonisolated func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
+        let transferID = ObjectIdentifier(userInfoTransfer)
+        let delivered = error == nil
+        Task { @MainActor in
+            self.userInfoTransferFinished(transferID, delivered: delivered)
+        }
+    }
 }
 
 // MARK: - Optimistic updates
@@ -435,6 +749,76 @@ extension WatchLiveState {
     func restRemaining(at date: Date) -> TimeInterval? {
         guard let restEndsAt, restEndsAt > date else { return nil }
         return restEndsAt.timeIntervalSince(date)
+    }
+
+    /// When a running timed set (hold) ends; nil when none runs or the workout is paused.
+    var holdEndsAt: Date? {
+        guard !isPaused, restEndsAt == nil, let setStartedAt, let timedSetSeconds, timedSetSeconds > 0 else { return nil }
+        return setStartedAt.addingTimeInterval(TimeInterval(timedSetSeconds))
+    }
+
+    /// Seconds left of a running hold (0 once over, until the phone logs it), or nil.
+    func holdRemaining(at date: Date) -> TimeInterval? {
+        guard let holdEndsAt else { return nil }
+        return max(0, holdEndsAt.timeIntervalSince(date))
+    }
+
+    /// The set that's due: the phone's current one, else the first open set (older phones).
+    var due: (exercise: WatchExercise, set: WatchSet, number: Int, of: Int)? {
+        if let current, !current.set.isDone { return current }
+        guard let location = firstOpenSet() else { return nil }
+        let exercise = exercises[location.exerciseIndex]
+        return (exercise, exercise.sets[location.setIndex], location.setIndex + 1, exercise.sets.count)
+    }
+
+    var hasOpenSet: Bool { firstOpenSet() != nil }
+
+    /// The energy check-in is offered until the first set is done.
+    var showsEnergyCheckIn: Bool { asksEnergy == true && completedSets == 0 }
+
+    /// The coach's question while part of it is still unanswered.
+    var openQuestion: WatchQuestion? {
+        guard let question, question.asksFatigue || question.asksReps else { return nil }
+        return question
+    }
+
+    /// A question or check-in card is showing.
+    var hasPrompt: Bool { showsEnergyCheckIn || openQuestion != nil }
+
+    /// The main button is Start (rather than Done) while the current set waits and the Start button
+    /// is on. A hold always starts first, as on the phone.
+    var primaryIsStart: Bool {
+        guard setStartedAt == nil, let set = currentSet, !set.isDone else { return false }
+        return usesStartButton != false || set.isTimed == true
+    }
+
+    /// Logs a set with what was really done and moves on if it was current. Returns false when it
+    /// was already done (the values are still updated, as on the phone).
+    @discardableResult
+    mutating func logSet(_ id: UUID, reps: Int?, weightKg: Double?) -> Bool {
+        guard let location = position(of: id) else { return false }
+        if let reps { exercises[location.exerciseIndex].sets[location.setIndex].reps = reps }
+        if let weightKg { exercises[location.exerciseIndex].sets[location.setIndex].weightKg = weightKg }
+        guard !exercises[location.exerciseIndex].sets[location.setIndex].isDone else { return false }
+        exercises[location.exerciseIndex].sets[location.setIndex].isDone = true
+        completedSets += 1
+        if currentSetID == id {
+            currentSetID = nextOpenSetID(after: location)
+            setStartedAt = nil
+            lastSetEndedAt = Date()
+        }
+        return true
+    }
+
+    /// "Do this now": an open set becomes the current one. Returns false when nothing changed.
+    mutating func makeCurrent(_ id: UUID) -> Bool {
+        guard let location = position(of: id), !exercises[location.exerciseIndex].sets[location.setIndex].isDone,
+              currentSetID != id else { return false }
+        currentSetID = id
+        setStartedAt = nil
+        // The phone sends the new set's target with its next state.
+        timedSetSeconds = nil
+        return true
     }
 
     /// Flips a set. Returns the new `isDone`, or nil when the set is unknown.

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import CryptoKit
 import BinisoftKit
 import GeorgeCore
 #if os(iOS)
@@ -90,6 +91,10 @@ final class VoiceCoach: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDele
         if priority == .high {
             // Something important happened: drop everything less important that's still waiting.
             queue.removeAll { $0.priority < .high }
+            // "3, 2, 1" and "Go" are about this very second: they cut off a less important line.
+            if cue == .countdown || cue == .go, let speaking, speaking.priority < .high {
+                stopCurrent()
+            }
         }
         // Only one cheer at a time.
         if cue == .motivation, queue.contains(where: { $0.cue == .motivation }) { return }
@@ -133,8 +138,20 @@ final class VoiceCoach: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDele
         guard CoachPrefs.voice, !isMuted, !LaunchOptions.current.isDemo, VoiceSettings.isOn(cue) else { return false }
         #if os(iOS)
         if UIApplication.shared.applicationState == .background && !VoiceSettings.speakInBackground { return false }
+        // "Headphones only": quiet on the phone's speaker (haptics and the rest sound still work).
+        if CoachPrefs.voiceRoute == .headphones && !Self.headphonesConnected { return false }
         #endif
         return true
+    }
+
+    /// Headphones, AirPods, a car or another external output is connected.
+    static var headphonesConnected: Bool {
+        #if os(iOS)
+        let external: Set<AVAudioSession.Port> = [.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .airPlay, .carAudio, .usbAudio, .lineOut]
+        return AVAudioSession.sharedInstance().currentRoute.outputs.contains { external.contains($0.portType) }
+        #else
+        return true
+        #endif
     }
 
     private func next() {
@@ -215,7 +232,12 @@ final class VoiceCoach: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDele
         case .pause: options = []
         }
         do {
-            try session.setCategory(.playback, mode: .voicePrompt, options: options)
+            if CoachPrefs.voiceRoute == .silentSwitch {
+                // The ambient category is silenced by the Ring/Silent switch.
+                try session.setCategory(.ambient, mode: .voicePrompt, options: [])
+            } else {
+                try session.setCategory(.playback, mode: .voicePrompt, options: options)
+            }
             try session.setActive(true)
             sessionActive = true
         } catch {
@@ -244,17 +266,31 @@ final class VoiceCoach: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDele
     /// Returns the file name in Library/Sounds, or nil.
     func notificationSound(for text: String) async -> String? {
         guard CoachPrefs.voice, VoiceSettings.speakInBackground, !LaunchOptions.current.isDemo else { return nil }
-        let name = "george-cue-\(abs(text.hashValue) % 1_000_000).caf"
+        if CoachPrefs.voiceRoute == .headphones && !Self.headphonesConnected { return nil }
+        // A stable name (the same line → the same file across launches), rendered once at a time.
+        let digest = SHA256.hash(data: Data((VoiceSettings.engine.rawValue + "|" + text).utf8))
+        let name = "george-cue-" + digest.prefix(8).map { String(format: "%02x", $0) }.joined() + ".caf"
+        if let running = rendering[name] { return await running.value }
         guard let directory = Self.soundsDirectory() else { return nil }
         let target = directory.appendingPathComponent(name)
         if FileManager.default.fileExists(atPath: target.path) { return name }
-        Self.cleanOldSounds(in: directory, keeping: name)
-        if VoiceSettings.engine == .natural, let source = await NaturalVoice.shared.audioFile(for: text, timeout: 4),
-           Self.convert(source, to: target) {
-            return name
+        let task = Task { @MainActor [weak self] () -> String? in
+            Self.cleanOldSounds(in: directory, keeping: name)
+            if VoiceSettings.engine == .natural, let source = await NaturalVoice.shared.audioFile(for: text, timeout: 4),
+               Self.convert(source, to: target) {
+                return name
+            }
+            guard let self else { return nil }
+            return await self.renderSystem(text, to: target) ? name : nil
         }
-        return await renderSystem(text, to: target) ? name : nil
+        rendering[name] = task
+        let result = await task.value
+        rendering[name] = nil
+        return result
     }
+
+    /// Sounds being rendered right now (by file name).
+    private var rendering: [String: Task<String?, Never>] = [:]
 
     private func renderSystem(_ text: String, to target: URL) async -> Bool {
         let utterance = AVSpeechUtterance(string: text)
@@ -336,12 +372,23 @@ enum VoiceSettings {
     static var speakInBackground: Bool { defaults.object(forKey: Prefs.voiceInBackground) as? Bool ?? true }
 
     /// The chosen voice, or the best installed English one: premium before enhanced, male first.
+    /// Resolved once per choice (listing every installed voice for each line is slow).
     static var systemVoice: AVSpeechSynthesisVoice? {
-        if let id = defaults.string(forKey: Prefs.systemVoiceID), let voice = AVSpeechSynthesisVoice(identifier: id) {
-            return voice
+        let id = defaults.string(forKey: Prefs.systemVoiceID) ?? ""
+        if let cachedVoice, cachedVoiceID == id { return cachedVoice }
+        let voice: AVSpeechSynthesisVoice?
+        if !id.isEmpty, let chosen = AVSpeechSynthesisVoice(identifier: id) {
+            voice = chosen
+        } else {
+            voice = englishVoices().first ?? AVSpeechSynthesisVoice(language: "en-US")
         }
-        return englishVoices().first ?? AVSpeechSynthesisVoice(language: "en-US")
+        cachedVoice = voice
+        cachedVoiceID = id
+        return voice
     }
+
+    nonisolated(unsafe) private static var cachedVoice: AVSpeechSynthesisVoice?
+    nonisolated(unsafe) private static var cachedVoiceID: String?
 
     /// English voices, best first.
     static func englishVoices() -> [AVSpeechSynthesisVoice] {

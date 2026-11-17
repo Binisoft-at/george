@@ -12,6 +12,7 @@ APP_CATEGORY = public.app-category.healthcare-fitness
 
 // Extra targets: $(APP_BUNDLE_ID).<extension>
 WATCH_BUNDLE_ID = $(APP_BUNDLE_ID).watchkitapp
+WIDGETS_BUNDLE_ID = $(APP_BUNDLE_ID).widgets
 
 // iCloud: the app's own container holds its data
 APP_CLOUDKIT_CONTAINER = iCloud.$(APP_BUNDLE_ID)

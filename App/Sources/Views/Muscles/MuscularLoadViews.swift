@@ -3,10 +3,12 @@ import BinisoftKit
 import Charts
 import GeorgeCore
 
-/// Horizontal gauge: track 0…max, the optimal range highlighted, a marker at the current value.
+/// Horizontal gauge: the track, a light fill up to this week's load, the optimal range stroked on
+/// top (so the fill never hides it), then a marker at the current value.
 struct LoadGauge: View {
     let point: LoadPoint
     let maxValue: Double
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 16
 
     var body: some View {
         GeometryReader { proxy in
@@ -15,32 +17,34 @@ struct LoadGauge: View {
             let low = min(width, point.optimalLow * scale)
             let high = min(width, point.optimalHigh * scale)
             let marker = min(width, max(0, point.acute * scale))
+            let band = LoadStatus.productive.color
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.18))
+                Capsule().fill(Color.secondary.opacity(0.16))
+                Capsule()
+                    .fill(point.status.color.opacity(0.35))
+                    .frame(width: max(height, marker))
                 if point.status != .calibrating && high > low {
                     Capsule()
-                        .fill(LoadStatus.productive.color.opacity(0.35))
-                        .frame(width: high - low)
+                        .fill(band.opacity(0.14))
+                        .overlay(Capsule().strokeBorder(band, lineWidth: 2))
+                        .frame(width: max(height, high - low))
                         .offset(x: low)
                 }
-                Capsule()
-                    .fill(point.status.color)
-                    .frame(width: max(6, marker))
-                    .opacity(0.9)
                 Circle()
                     .fill(.background)
                     .overlay(Circle().stroke(point.status.color, lineWidth: 3))
-                    .frame(width: 16, height: 16)
-                    .offset(x: max(0, marker - 8))
+                    .frame(width: height, height: height)
+                    .offset(x: max(0, min(width - height, marker - height / 2)))
             }
         }
-        .frame(height: 16)
+        .frame(height: height)
         .accessibilityElement()
-        .accessibilityLabel("Muscular load \(Int(point.acute.rounded())), optimal \(Int(point.optimalLow.rounded())) to \(Int(point.optimalHigh.rounded()))")
+        .accessibilityLabel("Muscular load")
+        .accessibilityValue(point.status == .calibrating ? point.spokenSummary : "\(point.spokenSummary), optimal \(point.bandText)")
     }
 }
 
-/// "Muscular Load" card: last 7 days vs. your usual 6 weeks.
+/// "Muscular Load" card: the last 7 days against your usual week.
 struct MuscularLoadCard: View {
     @Environment(MuscleAnalytics.self) private var analytics
     @Environment(Router.self) private var router
@@ -64,28 +68,15 @@ struct MuscularLoadCard: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(Int(point.acute.rounded()))")
-                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text(point.status.displayName)
-                        .font(.headline)
-                        .foregroundStyle(point.status == .calibrating ? Color.secondary : point.status.color)
-                    Spacer()
-                    if point.status != .calibrating {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            Text("Optimal")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text("\(Int(point.optimalLow.rounded()))–\(Int(point.optimalHigh.rounded()))")
-                                .font(.subheadline.weight(.semibold))
-                                .monospacedDigit()
-                        }
-                    }
-                }
+                LoadHeadline(point: point)
                 LoadGauge(point: point, maxValue: summary.gaugeMax)
-                Text(point.status == .calibrating ? LoadStatus.calibrating.explanation : point.status.explanation)
+                if point.showsRatio {
+                    Text(point.detailLine)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Text(point.status.explanation)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -96,6 +87,43 @@ struct MuscularLoadCard: View {
         }
         .buttonStyle(.plain)
         .card(padding: 0, cornerRadius: 24)
+    }
+}
+
+/// "150 % Fatigued / of your usual week" with the optimal range on the right.
+struct LoadHeadline: View {
+    let point: LoadPoint
+    var compact = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(point.headline)
+                        .font(.system(compact ? .title : .largeTitle, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text(point.status.displayName)
+                        .font(.headline)
+                        .foregroundStyle(point.status.textColor)
+                }
+                Text(point.headlineCaption)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            if point.status != .calibrating {
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text("Optimal")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(point.bandText)
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -132,22 +160,14 @@ struct MuscularLoadDetailView: View {
                     Text(shown.day.formatted(.dateTime.weekday(.wide).day().month(.wide)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(Int(shown.acute.rounded()))")
-                            .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                            .monospacedDigit()
-                        Text(shown.status.displayName)
-                            .font(.headline)
-                            .foregroundStyle(shown.status == .calibrating ? Color.secondary : shown.status.color)
-                        Spacer()
-                        if shown.status != .calibrating {
-                            Text("Optimal \(Int(shown.optimalLow.rounded()))–\(Int(shown.optimalHigh.rounded()))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                    }
+                    LoadHeadline(point: shown)
                     LoadGauge(point: shown, maxValue: max(summary.gaugeMax, shown.acute * 1.15))
+                    if shown.showsRatio {
+                        Text(shown.detailLine)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
                     Text(shown.status.explanation)
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -168,7 +188,7 @@ struct MuscularLoadDetailView: View {
             } header: {
                 Text("Last \(range.rawValue) days")
             } footer: {
-                Text("Line: load of the previous 7 days, each day. Green band: your optimal range (80–130 % of your weekly average over the last 6 weeks).")
+                Text("Line: your load of the previous 7 days, each day, in hard sets. Green band: your optimal range – \(store.profile.loadBandText) of your usual week (the weekly average of the last 6 weeks, or of the weeks so far).")
             }
 
             Section("Breakdown") {
@@ -210,7 +230,7 @@ struct MuscularLoadDetailView: View {
             } header: {
                 Text("What the statuses mean")
             } footer: {
-                Text("Load counts hard sets: warm-ups ¼, drop sets ¾, sets to failure 1.1, scaled by RPE (or the workout's effort rating). Muscles a move trains secondarily count half. Stretching and yoga barely add load. Muscular load only looks at your logged gym work — not sleep, heart rate or cardio fitness.")
+                Text("Load counts hard sets: warm-ups ¼, drop sets ¾, sets to failure 1.1, scaled by RPE (or the workout's effort rating). Muscles a move trains secondarily count half. Stretching and yoga barely add load. With “Count other sports in muscle recovery” on in Settings, Apple Health workouts such as tennis or runs add load by duration and effort. Sleep, heart rate and cardio fitness aren't part of it.")
             }
 
             OptimalForYouSection(profile: store.profile, focus: loadFocus(store.profile))
@@ -259,7 +279,7 @@ struct LoadHistoryChart: View {
                             Text(point.day.formatted(.dateTime.day().month(.abbreviated)))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                            Text("\(Int(point.acute.rounded())) · \(point.status.displayName)")
+                            Text(point.showsRatio ? "\(point.percentOfUsual) % · \(point.status.displayName)" : "\(Int(point.acute.rounded())) hard sets · \(point.status.displayName)")
                                 .font(.caption.weight(.semibold))
                         }
                         .padding(6)
@@ -295,9 +315,6 @@ struct StatusStrip: View {
 extension MuscularLoadDetailView {
     /// How to use the load range, for this person.
     func loadFocus(_ profile: TrainingProfile) -> String {
-        let band = profile.loadRatioBand
-        let low = Int((band.lowerBound * 100).rounded())
-        let high = Int((band.upperBound * 100).rounded())
-        return "Keep your 7-day load at \(low)–\(high) % of your usual and raise it by about 10 % a week at most – bigger jumps are when overuse injuries happen. Below the range for weeks, you're maintaining rather than building."
+        "Keep your 7-day load at \(profile.loadBandText) of your usual week and raise it by about 10 % a week at most – bigger jumps are when overuse injuries happen. Below the range for weeks, you're maintaining rather than building."
     }
 }

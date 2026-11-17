@@ -2,8 +2,11 @@ import SwiftUI
 import BinisoftKit
 import GeorgeCore
 
-/// Settings → Workout Coach: every voice, sound, haptic and motivation extra can be switched off.
+/// Settings → Workout Coach, in three groups: what happens between sets, which questions George asks,
+/// and the feedback (voice, celebrations, sounds, haptics). Every extra can be switched off. Also
+/// shown mid-workout as `CoachSettingsSheet`.
 struct CoachSettingsSection: View {
+    @Environment(GeorgeStore.self) private var store
     @AppStorage(Prefs.voiceCoach) private var voice = true
     @AppStorage(Prefs.restSounds) private var sounds = true
     @AppStorage(Prefs.haptics) private var haptics = true
@@ -13,10 +16,40 @@ struct CoachSettingsSection: View {
     @AppStorage(Prefs.askFatigue) private var askFatigue = true
     @AppStorage(Prefs.startButton) private var startButton = true
     @AppStorage(Prefs.energyCheckIn) private var energyCheckIn = true
+    @AppStorage(Prefs.healthSignals) private var healthSignals = true
     @AppStorage(Prefs.autoRest) private var autoRest = true
     @AppStorage(Prefs.keepAwake) private var keepAwake = true
+    @AppStorage(Prefs.autoStartHolds) private var autoStartHolds = true
 
     var body: some View {
+        let settings = store.settings
+        Section {
+            Toggle(isOn: $startButton) { Label("Start button", systemImage: "play.circle") }
+            Toggle(isOn: $autoRest) { Label("Start the rest timer by itself", systemImage: "timer.circle") }
+            Picker(selection: Binding(get: { settings.defaultRestSeconds }, set: { settings.defaultRestSeconds = $0; store.save() })) {
+                ForEach([30, 45, 60, 75, 90, 120, 150, 180], id: \.self) { Text(Format.shortDuration($0)).tag($0) }
+            } label: {
+                Label("Default rest", systemImage: "hourglass.bottomhalf.filled")
+            }
+            Toggle(isOn: $autoStartHolds) { Label("Next hold starts by itself", systemImage: "figure.flexibility") }
+            Toggle(isOn: $keepAwake) { Label("Keep screen awake", systemImage: "sun.max") }
+        } header: {
+            Text("Between Sets")
+        } footer: {
+            Text("Start button: tap it as you begin a set – George measures your real rest and shows whether you're ahead or behind the plan. Holds (stretching, yoga, mobility) start by themselves after a short rest. Exercises without their own rest use the default.")
+        }
+
+        Section {
+            Toggle(isOn: $energyCheckIn) { Label("Energy check-in", systemImage: "battery.75percent") }
+            Toggle(isOn: $healthSignals) { Label("Use sleep and HRV from Apple Health", systemImage: "heart.text.square") }
+            Toggle(isOn: $askFatigue) { Label("Ask how fatigued the muscles are", systemImage: "bolt.heart") }
+            Toggle(isOn: $askEffort) { Label("Ask how many reps were left", systemImage: "gauge.with.dots.needle.67percent") }
+        } header: {
+            Text("Questions")
+        } footer: {
+            Text("One tap each, gone by themselves. Low-energy days: answer the check-in or pick “Low energy” in the workout's ⋯ menu – fewer nudges, more slack. Sleep and HRV stay on this device (same switch as on the Energy page).")
+        }
+
         Section {
             NavigationLink {
                 VoiceSettingsView()
@@ -32,32 +65,56 @@ struct CoachSettingsSection: View {
                     Text(style.title).tag(style.rawValue)
                 }
             } label: {
-                Label("Motivation", systemImage: "flame.fill")
+                Label("Celebrations", systemImage: "flame.fill")
             }
             Text((MotivationStyle(rawValue: motivationRaw) ?? .full).detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Toggle(isOn: $startButton) { Label("Start button between sets", systemImage: "play.circle") }
             Toggle(isOn: $sounds) { Label("Sound when rest ends", systemImage: "bell") }
             Toggle(isOn: $haptics) { Label("Haptics", systemImage: "iphone.radiowaves.left.and.right") }
-            Toggle(isOn: $nudges) { Label("Tell me when I'm over the rest", systemImage: "hourglass") }
-            Toggle(isOn: $askFatigue) { Label("Ask how fatigued the muscles are", systemImage: "bolt.heart") }
-            Toggle(isOn: $askEffort) { Label("Ask how many reps were left", systemImage: "gauge.with.dots.needle.67percent") }
-            Toggle(isOn: $energyCheckIn) { Label("Energy check-in", systemImage: "battery.75percent") }
-            Toggle(isOn: $autoRest) { Label("Start rest timer automatically", systemImage: "timer.circle") }
-            Toggle(isOn: $keepAwake) { Label("Keep screen awake", systemImage: "sun.max") }
+            VStack(alignment: .leading, spacing: 2) {
+                Toggle(isOn: $nudges) { Label("Nudge when I'm over the rest", systemImage: "hourglass") }
+                Text("A buzz; spoken too if Voice → Over the rest is on.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         } header: {
-            Text("Workout Coach")
-        } footer: {
-            Text("Start button: tap it when you begin a set – George compares your real rest with the planned one and shows how far behind or ahead you are (tap the bar at the bottom of live mode). Low-energy days: pick “Calm” in the workout's ⋯ menu or answer the check-in – no nudges, more slack.")
+            Text("Feedback")
         }
+    }
+}
+
+/// The coach settings on their own – live mode opens this mid-workout (⋯ → Coach Settings…).
+struct CoachSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                CoachSettingsSection()
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Coach Settings")
+            .inlineTitle()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 460, minHeight: 560)
+        #endif
     }
 }
 
 /// Settings → Workout Coach → Voice Coach: which voice, when it speaks, what happens to the music,
 /// and whether it keeps talking with the phone locked.
 struct VoiceSettingsView: View {
+    @Environment(GeorgeStore.self) private var store
     @AppStorage(Prefs.voiceCoach) private var voice = true
+    @AppStorage(Prefs.voiceRoute) private var routeRaw = VoiceRoute.everywhere.rawValue
     @AppStorage(Prefs.voiceEngine) private var engineRaw = VoiceEngineKind.system.rawValue
     @AppStorage(Prefs.musicMode) private var musicRaw = MusicMode.duck.rawValue
     @AppStorage(Prefs.voiceVolume) private var volume = 1.0
@@ -72,7 +129,13 @@ struct VoiceSettingsView: View {
     @State private var voices: [NaturalVoice.Voice] = []
     @State private var voiceError: String?
 
-    private static let sample = "Bench Press, set 2 of 4: 8 reps at 62.5 kilos. Let's go!"
+    /// "Bench Press, set 2 of 4: 8 reps at 62.5 kilos." – in the units you train in.
+    private var sample: String {
+        let unit = store.unit
+        let kg = unit == .kg ? 62.5 : unit.toKilograms(135)
+        let item = WorkoutItem(name: "Bench Press", sets: (0..<4).map { _ in WorkoutSet(targetReps: "8", targetWeight: kg) })
+        return CoachScript.setUp(item: item, set: item.sets[1], unit: unit, isFirst: false) + " Let's go!"
+    }
 
     var body: some View {
         Form {
@@ -83,13 +146,25 @@ struct VoiceSettingsView: View {
                         ForEach(VoiceEngineKind.allCases) { Text($0.title).tag($0.rawValue) }
                     }
                     Button {
-                        VoiceCoach.shared.preview(Self.sample)
+                        VoiceCoach.shared.preview(sample)
                     } label: {
                         Label("Play a Sample", systemImage: "play.circle")
                     }
                 }
             } footer: {
                 Text("Mute it for one workout with the speaker button in live mode (⋯ or the panel).")
+            }
+
+            if voice {
+                Section {
+                    Picker(selection: $routeRaw) {
+                        ForEach(VoiceRoute.allCases) { Text($0.title).tag($0.rawValue) }
+                    } label: {
+                        Label("Speak through", systemImage: "headphones")
+                    }
+                } footer: {
+                    Text((VoiceRoute(rawValue: routeRaw) ?? .everywhere).detail)
+                }
             }
 
             if voice {
@@ -124,12 +199,24 @@ struct VoiceSettingsView: View {
                         Label("Music", systemImage: "music.note")
                     }
                     VStack(alignment: .leading) {
-                        Label("Voice volume", systemImage: "speaker.wave.2")
-                        Slider(value: $volume, in: 0.3...1)
+                        LabeledContent {
+                            Text("\(Int((volume * 100).rounded())) %").monospacedDigit()
+                        } label: {
+                            Label("Voice volume", systemImage: "speaker.wave.2")
+                        }
+                        Slider(value: $volume, in: 0.3...1, onEditingChanged: { editing in
+                            if !editing { VoiceCoach.shared.preview(sample) }
+                        })
                     }
                     VStack(alignment: .leading) {
-                        Label("Speed", systemImage: "hare")
-                        Slider(value: $rate, in: 0.85...1.25)
+                        LabeledContent {
+                            Text(String(format: "%.2f×", rate)).monospacedDigit()
+                        } label: {
+                            Label("Speed", systemImage: "hare")
+                        }
+                        Slider(value: $rate, in: 0.85...1.25, onEditingChanged: { editing in
+                            if !editing { VoiceCoach.shared.preview(sample) }
+                        })
                     }
                 } header: {
                     Text("Music")
@@ -321,6 +408,7 @@ struct OptimalForYouSection: View {
     var focus: String? = nil
     var showsEdit = true
     @Environment(GeorgeStore.self) private var store
+    @State private var editingProfile = false
 
     var body: some View {
         Section {
@@ -332,10 +420,29 @@ struct OptimalForYouSection: View {
                     Text(profile.headline)
                         .font(.subheadline.weight(.semibold))
                     if !store.hasProfile {
-                        Text("Defaults – set your age, experience and goal in Settings → Your Profile.")
+                        Text("Defaults – set your age, experience and goal to make them yours.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+            }
+            if showsEdit {
+                Button {
+                    editingProfile = true
+                } label: {
+                    Label(store.hasProfile ? "Edit Your Profile" : "Set Your Profile", systemImage: "person.crop.circle")
+                }
+                .sheet(isPresented: $editingProfile) {
+                    NavigationStack {
+                        Form { ProfileSettingsSection() }
+                            .formStyle(.grouped)
+                            .navigationTitle("Your Profile")
+                            .inlineTitle()
+                            .toolbar {
+                                ToolbarItem(placement: .confirmationAction) { Button("Done") { editingProfile = false } }
+                            }
+                    }
+                    .presentationDetents([.medium, .large])
                 }
             }
             if let focus {

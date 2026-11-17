@@ -242,14 +242,20 @@ struct ExercisePickerSheet: View {
         }
     }
 
+    /// Adding: the exercise starts from last time's working sets (warm-ups left out), else the
+    /// library's defaults. Swapping keeps the old sets, so it only takes the exercise itself.
     private func makeItem(_ exercise: LibraryExercise) -> WorkoutItem {
-        var item = exercise.makeItem(defaultRest: nil)
-        if exercise.id.hasPrefix("name:") { item.exerciseID = nil }
-        if let custom = customExercises.first(where: { $0.key == exercise.id }) {
-            item.links = custom.links
-            if !custom.imageURL.isEmpty { item.imageURL = custom.imageURL }
+        let custom = customExercises.first { $0.key == exercise.id }
+        if singleSelection {
+            var item = exercise.makeItem(defaultRest: nil)
+            if exercise.id.hasPrefix("name:") { item.exerciseID = nil }
+            if let custom {
+                item.links = custom.links
+                if !custom.imageURL.isEmpty { item.imageURL = custom.imageURL }
+            }
+            return item
         }
-        return item
+        return store.prefilledItem(from: exercise, custom: custom)
     }
 
     private func createCustom() {

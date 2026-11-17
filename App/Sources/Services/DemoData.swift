@@ -77,30 +77,14 @@ enum DemoData {
         _ = importDemoProgram(into: store)
     }
 
+    /// The gym sample (`samples/gym-strength-block.csv`) – the same program the tour, the screenshots
+    /// and Settings → Add Sample Program use.
     @discardableResult
     private static func importDemoProgram(into store: GeorgeStore) -> Program? {
-        guard let parsed = try? ProgramCSV.parse(csv, defaultProgramName: "Gym – Strength Block") else { return nil }
+        guard let parsed = GeorgeStore.SampleProgram.gym.parsed else { return nil }
         let programs = store.importPrograms(parsed.programs)
         guard let program = programs.first else { return nil }
         store.setActive(program)
         return program
     }
-
-    private static let csv = """
-    program,workout,workout_subtitle,workout_type,workout_order,schedule,section,group,group_style,rounds,rest_after_round,exercise,exercise_type,sets,reps,weight,unit,load,duration,rest,tempo,per_side,set_type,notes,tutorial_url,muscles
-    Gym – Strength Block,UPPER,CHEST + BACK + SHOULDERS,gym,1,Mon,MAIN,,,,,Barbell Bench Press,gym,4,8,60,kg,,,120,,,,,,chest;triceps
-    Gym – Strength Block,UPPER,,,,,MAIN,,,,,Bent Over Barbell Row,gym,4,10,50,kg,,,90,,,,,,middle back;lats
-    Gym – Strength Block,UPPER,,,,,MAIN,A,superset,3,60,Dumbbell Shoulder Press,gym,3,10,16,kg,,,,,,,,,shoulders;triceps
-    Gym – Strength Block,UPPER,,,,,MAIN,A,,,,Wide-Grip Lat Pulldown,gym,3,12,45,kg,,,,,,,,,lats;biceps
-    Gym – Strength Block,UPPER,,,,,ARMS,,,,,Dumbbell Bicep Curl,gym,3,12,10,kg,,,60,,,,,,biceps
-    Gym – Strength Block,LOWER,LEGS + CORE,gym,2,Wed,MAIN,,,,,Barbell Squat,gym,4,6,80,kg,,,150,,,,,,quadriceps;glutes
-    Gym – Strength Block,LOWER,,,,,MAIN,,,,,Romanian Deadlift,gym,3,10,60,kg,,,120,,,,,,hamstrings;glutes;lower back
-    Gym – Strength Block,LOWER,,,,,MAIN,,,,,Walking Lunges,gym,3,12,12,kg,,,90,,yes,,,,quadriceps;glutes
-    Gym – Strength Block,LOWER,,,,,CORE,,,,,Plank,core,3,,,,,45s,45,,,,,,abdominals
-    Gym – Strength Block,FULL,FULL BODY,gym,3,Fri,MAIN,,,,,Deadlift,gym,3,5,100,kg,,,180,,,,,,lower back;hamstrings;glutes
-    Gym – Strength Block,FULL,,,,,MAIN,,,,,Pullups,bodyweight,3,8,,,,,120,,,,,,lats;biceps
-    Gym – Strength Block,FULL,,,,,MAIN,,,,,Pushups,bodyweight,3,15,,,,,60,,,,,,chest;triceps
-    Gym – Strength Block,FULL,,,,,FINISHER,B,circuit,2,60,Kettlebell Swing,gym,2,15,16,kg,,,,,,,,,glutes;hamstrings
-    Gym – Strength Block,FULL,,,,,FINISHER,B,,,,Russian Twist,core,2,20,,,,,,,,,,,abdominals;obliques
-    """
 }

@@ -34,6 +34,10 @@ private struct SessionDocument: View {
     @State private var newTag = ""
     @State private var confirmDelete = false
     @State private var showDetails = false
+    @State private var showReorder = false
+    @State private var confirmReset = false
+    @State private var confirmNotDone = false
+    @State private var logSession: WorkoutSession?
 
     private var isLive: Bool { live.session?.id == session.id }
 
@@ -75,10 +79,14 @@ private struct SessionDocument: View {
             // External change (sync, watch, live view): reload unless it's our own write.
             if newData != loadedData && !isLive { load() }
         }
-        .onChange(of: content) { _, newContent in
+        .onChange(of: content) { oldContent, newContent in
             guard !isLive, newContent != session.content else { return }
             session.content = newContent
             loadedData = session.contentData
+            // A finished workout's status follows its ticks: all done → completed, some → stopped early,
+            // the last tick taken back → ask.
+            let nothingDone = store.deriveStatus(of: session, from: newContent)
+            if nothingDone && oldContent.completedSets > 0 { confirmNotDone = true }
             store.save()
         }
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -86,6 +94,28 @@ private struct SessionDocument: View {
                 router.close(.session(session.id))
                 if isLive { live.discard() } else { store.trash(session, toasts: toasts) }
             }
+        }
+        .confirmationDialog("Reset all sets?", isPresented: $confirmReset, titleVisibility: .visible) {
+            Button("Reset All Sets", role: .destructive) {
+                if session.status.isPerformed { store.markNotDone(session) }
+                content.resetProgress()
+            }
+        } message: {
+            Text(session.status.isPerformed
+                 ? "Every tick and logged number is cleared, and the workout no longer counts as done."
+                 : "Every tick and logged number is cleared.")
+        }
+        .confirmationDialog("Mark as not done?", isPresented: $confirmNotDone, titleVisibility: .visible) {
+            Button("Mark as Not Done", role: .destructive) { store.markNotDone(session) }
+            Button("Keep as Done", role: .cancel) {}
+        } message: {
+            Text("No set is ticked any more. As not done, it doesn't count for your streak and stats.")
+        }
+        .sheet(item: $logSession) { session in
+            NavigationStack { LogPastWorkoutSheet(session: session) }
+        }
+        .sheet(isPresented: $showReorder) {
+            ReorderBlocksSheet(content: contentBinding)
         }
     }
 
@@ -110,7 +140,10 @@ private struct SessionDocument: View {
                     selection: Binding<Date>(
                         get: { session.status == .planned ? (session.plannedDate ?? Date()) : (session.startedAt ?? session.plannedDate ?? session.createdAt) },
                         set: { newDate in
+                            let previousDate = session.date
                             if session.status == .planned { session.plannedDate = newDate } else { session.startedAt = newDate; session.plannedDate = newDate }
+                            // "W46: 2 UPPER - 10.11" follows the new day; a typed title stays.
+                            store.retitleIfAuto(session, previousDate: previousDate)
                             store.save()
                         }
                     ),
@@ -160,7 +193,7 @@ private struct SessionDocument: View {
     private var actionBar: some View {
         if session.status != .completed && session.status != .skipped {
             Button {
-                if isLive { live.isPresented = true } else { live.start(session) }
+                live.requestStart(.session(session))
             } label: {
                 Label(isLive ? "Open Live Workout" : (session.status == .partial ? "Continue Workout" : "Start Workout"), systemImage: "play.fill")
                     .font(.headline)
@@ -169,7 +202,6 @@ private struct SessionDocument: View {
             }
             .buttonStyle(.glassProminent)
             .tint(.accentColor)
-            .disabled(live.isActive && !isLive)
             .keyboardShortcut(.return, modifiers: .command)
             .padding(.horizontal)
             .padding(.bottom, 8)
@@ -181,11 +213,16 @@ private struct SessionDocument: View {
         Menu {
             ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
                 Button {
-                    store.setStatus(status, for: [session])
+                    if status == .completed && !session.status.isPerformed && !isLive {
+                        logSession = session
+                    } else {
+                        store.setStatus(status, for: [session])
+                    }
                 } label: {
                     Label(status.displayName, systemImage: status.symbol)
                 }
             }
+            .disabled(isLive)
         } label: {
             Chip(text: session.status.displayName, systemImage: session.status.symbol, tint: session.status == .completed ? .green : .blue)
         }
@@ -274,9 +311,14 @@ private struct SessionDocument: View {
                     session.isPinned.toggle()
                     store.save()
                 } label: { Label(session.isPinned ? "Unpin" : "Pin", systemImage: "pin") }
-                if session.status.isPerformed {
+                if contentBinding.wrappedValue.blocks.count > 1 {
                     Button {
-                        content.resetProgress()
+                        showReorder = true
+                    } label: { Label("Reorder Exercises", systemImage: "arrow.up.arrow.down") }
+                }
+                if session.status.isPerformed && !isLive {
+                    Button {
+                        confirmReset = true
                     } label: { Label("Reset All Sets", systemImage: "arrow.uturn.backward") }
                 }
                 Divider()

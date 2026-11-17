@@ -88,7 +88,7 @@ struct WorkoutRecap: Identifiable, Equatable {
             energyKcal: energyKcal ?? (measuredEnergy > 0 ? measuredEnergy : session.energyKcal),
             averageHeartRate: (heartRate ?? 0) > 0 ? heartRate : nil,
             effort: session.effort, energyBefore: session.energyBefore, records: found,
-            muscleSets: muscles.plannedSets(content, completedOnly: true),
+            muscleSets: muscles.plannedSets(content, completedOnly: true, kind: session.kind),
             highlights: Array(highlights), streakWeeks: streak.currentWeeks,
             weekDays: streak.thisWeek.workoutDays, weekGoal: streak.thisWeek.goal, unit: store.unit
         )
@@ -106,11 +106,11 @@ struct RecapHero: View {
     var body: some View {
         VStack(spacing: 14) {
             ZStack {
-                ProgressRing(progress: recap.completion * shown, tint: recap.records.isEmpty ? .green : .yellow, lineWidth: 12)
+                ProgressRing(progress: recap.completion * shown, tint: recap.records.isEmpty ? BrandPalette.blue : BrandPalette.gold, lineWidth: 12)
                 VStack(spacing: 0) {
                     Image(systemName: recap.records.isEmpty ? "checkmark.seal.fill" : "trophy.fill")
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundStyle((recap.records.isEmpty ? Color.green : Color.yellow).gradient)
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle((recap.records.isEmpty ? BrandPalette.blue : BrandPalette.gold).gradient)
                         .symbolEffect(.bounce, value: shown >= 1)
                     Text("\(Int((Double(recap.completedSets) * shown).rounded()))/\(recap.totalSets)")
                         .font(.headline)
@@ -517,19 +517,34 @@ struct RecapOverviewSection: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(MuscleAnalytics.self) private var muscles
     @Environment(HealthKitManager.self) private var health
+    /// Built once per change of the workout, not on every redraw (it reads the whole history).
+    @State private var recap: WorkoutRecap?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let recap = WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health)
         Section {
+            if let recap {
+                content(recap)
+            } else {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            }
+        }
+        .task(id: session.contentData) {
+            recap = WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health)
+        }
+    }
+
+    private func content(_ recap: WorkoutRecap) -> some View {
             VStack(spacing: 16) {
                 RecapHero(recap: recap, animated: false)
                 if !recap.muscleSets.isEmpty {
-                    WorkoutMuscleMap(sets: recap.muscleSets, title: "Muscles worked")
+                    WorkoutMuscleMap(sets: recap.muscleSets, title: "Muscles worked",
+                                     palette: scheme == .dark ? BrandPalette.muscleOnDark : BrandPalette.muscleOnLight)
                 }
                 if !recap.records.isEmpty {
                     ForEach(recap.records) { record in
                         HStack {
-                            Image(systemName: "trophy.fill").foregroundStyle(.yellow)
+                            Image(systemName: "trophy.fill").foregroundStyle(BrandPalette.gold)
                             Text(record.exerciseName)
                             Spacer()
                             Text(recap.recordText(record)).fontWeight(.semibold).monospacedDigit()
@@ -540,6 +555,5 @@ struct RecapOverviewSection: View {
                 ShareRecapButton(recap: recap)
             }
             .padding(.vertical, 8)
-        }
     }
 }

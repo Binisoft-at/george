@@ -16,6 +16,7 @@ struct WelcomeView: View {
     @State private var page: TutorialPage = .welcome
     @State private var goal = 3
     @State private var unit: WeightUnit = .kg
+    @State private var sample: GeorgeStore.SampleProgram = .gym
 
     var body: some View {
         ZStack {
@@ -184,7 +185,7 @@ struct WelcomeView: View {
                 message: "Your data syncs through your own iCloud — no account, no George servers. Workouts and calories go to Apple Health, and the Watch shows your sets and heart rate.",
                 hint: nil
             ) {
-                EverywhereDemo(healthAvailable: health.isAvailable, healthConnected: healthAsked) {
+                EverywhereDemo(healthAvailable: health.isAvailable, healthConnected: health.isAuthorizedToShare) {
                     Task {
                         await health.requestAuthorization()
                         healthAsked = true
@@ -248,14 +249,23 @@ struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("How do you want to start?", systemImage: "sparkles")
                         .font(.headline)
-                    StartOption(title: "Try the sample program", subtitle: "Ready-made templates to explore", symbol: "wand.and.stars", isPrimary: true) {
-                        store.loadSampleProgram()
+                    StartOption(title: "Try a sample program", subtitle: sample.detail, symbol: "wand.and.stars", isPrimary: true) {
+                        store.loadSampleProgram(sample)
                         finish { router.startTour() }
                     }
+                    Picker("Sample", selection: $sample) {
+                        ForEach(GeorgeStore.SampleProgram.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    // These two skip the tour: it would otherwise open by itself at the next launch –
+                    // maybe at the gym. It stays in Settings → Help.
                     StartOption(title: "Import a plan (CSV)", subtitle: "From a spreadsheet — or ask an AI to write one", symbol: "square.and.arrow.down", isPrimary: false) {
+                        TourSchedule().markSeen(GeorgeTour.catalog)
                         finish { router.showImport = true }
                     }
                     StartOption(title: "Start from scratch", subtitle: "Create your first program and template", symbol: "plus", isPrimary: false) {
+                        TourSchedule().markSeen(GeorgeTour.catalog)
                         finish { router.showNewProgram = true }
                     }
                 }

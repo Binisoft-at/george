@@ -16,12 +16,15 @@ struct GeorgeApp: App {
     @State private var live: LiveWorkoutController
     @State private var muscles: MuscleAnalytics
     @State private var sync: SyncMonitor
+    /// Bumps the store revision after iCloud imports so analytics refresh.
+    @State private var importRefresher: CloudImportRefresher
     @State private var toasts = ToastCenter()
     @State private var router = Router()
 
     let container: ModelContainer
     let mode: StorageMode
     private let launch = LaunchOptions.current
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         AppLog.bootstrap(appName: AppInfo.name)
@@ -38,8 +41,21 @@ struct GeorgeApp: App {
         _library = State(initialValue: library)
         _health = State(initialValue: health)
         _watch = State(initialValue: watch)
-        _live = State(initialValue: LiveWorkoutController(store: store, health: health, watch: watch, library: library))
-        _muscles = State(initialValue: MuscleAnalytics(store: store, library: library))
+        let live = LiveWorkoutController(store: store, health: health, watch: watch, library: library)
+        _live = State(initialValue: live)
+        // Siri, Shortcuts, widgets and Live Activity buttons reach the app through here.
+        GeorgeIntents.register(store: store, live: live)
+        // A training reminder's "Start Workout" button.
+        NotificationDelegate.registerCategories()
+        NotificationDelegate.shared.onStartNextWorkout = { [store, live] in
+            switch store.nextWorkout() {
+            case .planned(let session): live.requestStart(.session(session))
+            case .template(let template): live.requestStart(.template(template))
+            case nil: live.requestStart(.empty(program: store.activeProgram, kind: nil, rescue: false))
+            }
+        }
+        _muscles = State(initialValue: MuscleAnalytics(store: store, library: library, health: health))
+        _importRefresher = State(initialValue: CloudImportRefresher(store: store))
         _sync = State(initialValue: SyncMonitor(mode: opened.mode, appName: AppInfo.name))
         AppLog.info("Launch \(AppVersion.main.display), storage: \(opened.mode.title)", category: "app")
     }
@@ -56,6 +72,7 @@ struct GeorgeApp: App {
                 .environment(sync)
                 .environment(toasts)
                 .environment(router)
+                .reminderScheduling()
                 .appearanceFromSettings()
                 #if os(iOS)
                 .toasts(toasts, bottomPadding: 120)
@@ -76,8 +93,15 @@ struct GeorgeApp: App {
                     if health.isAvailable && UserDefaults.standard.bool(forKey: Prefs.healthAsked) {
                         await health.refresh()
                         await health.loadSignals()
+                        store.healthBodyMassKg = health.latestBodyMassKg
                     }
                     live.syncWatch()
+                }
+                // A value typed a moment ago is saved before the app goes to the background.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase != .active { live.flushPersist() }
+                    // Planning and template edits reach the widgets when leaving the app.
+                    if phase == .background { WidgetBridge.write(snapshot: live.makeSnapshot()) }
                 }
         }
         .modelContainer(container)
@@ -134,15 +158,40 @@ struct GeorgeCommands: Commands {
         CommandMenu("Workout") {
             Button(live.isActive ? "Show Live Workout" : "Start Suggested Workout") { router.request(.startSuggested) }
                 .keyboardShortcut(.return, modifiers: .command)
-            Button("Complete Set") { live.completeCurrentSet() }
+            Button(live.primaryIsStart ? "Start Set" : "Complete Set") { live.primaryAction() }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
-                .disabled(!live.isActive)
+                .disabled(!live.isActive || live.currentSet == nil)
             Button(live.isPaused ? "Resume" : "Pause") { live.togglePause() }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
+                .disabled(!live.isActive)
+            Divider()
+            Button("Add 15 s Rest") { live.addRest(15) }
+                .keyboardShortcut("=", modifiers: [.command, .shift])
                 .disabled(!live.isActive)
             Button("Skip Rest") { live.skipRest() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
                 .disabled(live.restEndsAt == nil)
+            Button("Next Exercise") { live.moveThread(by: 1) }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .disabled(!live.isActive)
+            Button("Previous Exercise") { live.moveThread(by: -1) }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .disabled(!live.isActive)
+            Button(live.isVoiceMuted ? "Unmute Voice" : "Mute Voice") { live.toggleVoiceMute() }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(!live.isActive)
+            Divider()
+            Button("Finish Workout…") {
+                live.isPresented = true
+                live.finishRequest = true
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .disabled(!live.isActive)
+            Button("Discard Workout…") {
+                live.isPresented = true
+                live.discardRequest = true
+            }
+            .disabled(!live.isActive)
         }
         CommandMenu("Go") {
             Button("Today") { router.show(.today) }
@@ -155,6 +204,14 @@ struct GeorgeCommands: Commands {
                 .keyboardShortcut("4")
             Button("Stats & Records") { router.show(.stats) }
                 .keyboardShortcut("5")
+            Button("Energy") { router.show(.energy) }
+                .keyboardShortcut("6")
+            Button("Streak") { router.show(.streak) }
+                .keyboardShortcut("7")
+            Button("Exercise Library") { router.show(.library) }
+                .keyboardShortcut("8")
+            Button("Stretch & Yoga") { router.show(.routines) }
+                .keyboardShortcut("9")
         }
         CommandGroup(replacing: .help) {
             Button("George Tour") { router.startTour() }

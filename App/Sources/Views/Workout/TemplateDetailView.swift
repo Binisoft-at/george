@@ -29,6 +29,7 @@ private struct TemplateDocument: View {
     /// Set on the tour's practice page: Start is only recorded there.
     @Environment(PracticeSession.self) private var practice: PracticeSession?
     @Environment(Router.self) private var router
+    @Environment(ToastCenter.self) private var toasts
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @Query private var allSessions: [WorkoutSession]
     @State private var content = WorkoutContent()
@@ -39,6 +40,7 @@ private struct TemplateDocument: View {
     @State private var planDate = Date()
     @State private var showPlan = false
     @State private var showDetails = false
+    @State private var showReorder = false
 
     var body: some View {
         List {
@@ -85,6 +87,9 @@ private struct TemplateDocument: View {
         }
         .sheet(item: $logPast) { template in
             NavigationStack { LogPastWorkoutSheet(template: template) }
+        }
+        .sheet(isPresented: $showReorder) {
+            ReorderBlocksSheet(content: $content)
         }
         .sheet(isPresented: $showPlan) {
             NavigationStack {
@@ -221,7 +226,7 @@ private struct TemplateDocument: View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
                 Button {
-                    if let practice { practice.startTapped = true } else { live.start(template: template) }
+                    if let practice { practice.startTapped = true } else { store.requestStart(template, live: live, toasts: toasts) }
                 } label: {
                     Label("Start", systemImage: "play.fill")
                         .font(.headline)
@@ -230,7 +235,6 @@ private struct TemplateDocument: View {
                 }
                 .buttonStyle(.glassProminent)
                 .tint(.accentColor)
-                .disabled(practice == nil && live.isActive)
                 .keyboardShortcut(.return, modifiers: .command)
                 Button {
                     planDate = Date()
@@ -289,6 +293,14 @@ private struct TemplateDocument: View {
             }
             .accessibilityLabel("Share routine")
             Menu {
+                if content.blocks.count > 1 {
+                    Button {
+                        showReorder = true
+                    } label: {
+                        Label("Reorder Exercises", systemImage: "arrow.up.arrow.down")
+                    }
+                    Divider()
+                }
                 TemplateMenuItems(template: template, logPastFor: $logPast)
             } label: {
                 Image(systemName: "ellipsis")

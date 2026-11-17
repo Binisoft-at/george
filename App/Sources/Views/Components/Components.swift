@@ -53,18 +53,25 @@ let programSymbols: [String] = [
 
 // MARK: - Badges
 
+/// The kind as a small capsule: tinted icon and background, the word in the primary colour so it
+/// stays readable for light kind colours (yellow-green tennis, mint mobility …).
 struct KindBadge: View {
     let kind: WorkoutKind
     var compact = false
 
     var body: some View {
-        Label(compact ? kind.shortName : kind.displayName, systemImage: kind.symbol)
-            .font(.caption.weight(.semibold))
-            .labelStyle(.titleAndIcon)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .foregroundStyle(kind.color)
-            .background(kind.color.opacity(0.14), in: Capsule())
+        Label {
+            Text(compact ? kind.shortName : kind.displayName)
+                .foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: kind.symbol)
+                .foregroundStyle(kind.color)
+        }
+        .font(.caption.weight(.semibold))
+        .labelStyle(.titleAndIcon)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(kind.color.opacity(0.14), in: Capsule())
     }
 }
 
@@ -83,6 +90,8 @@ struct KindIcon: View {
     }
 }
 
+/// A small capsule with an optional symbol. The tint colours the symbol and the background; the
+/// text stays in the primary colour so light tints (yellow, user colours) remain readable.
 struct Chip: View {
     let text: String
     var systemImage: String? = nil
@@ -90,13 +99,12 @@ struct Chip: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if let systemImage { Image(systemName: systemImage) }
-            Text(text)
+            if let systemImage { Image(systemName: systemImage).foregroundStyle(tint) }
+            Text(text).foregroundStyle(.primary.opacity(0.85))
         }
         .font(.caption.weight(.medium))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .foregroundStyle(tint)
         .background(tint.opacity(0.12), in: Capsule())
     }
 }

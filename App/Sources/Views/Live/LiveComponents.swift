@@ -67,7 +67,7 @@ struct ProgressBar: View {
                 Capsule().fill(Color.secondary.opacity(0.15))
                 Capsule()
                     .fill(hot
-                          ? AnyShapeStyle(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
+                          ? AnyShapeStyle(LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing))
                           : AnyShapeStyle(Color.accentColor.gradient))
                     .frame(width: max(8, proxy.size.width * min(1, max(0, progress))))
                     .shadow(color: hot ? .orange.opacity(0.6) : .clear, radius: 6)
@@ -86,14 +86,15 @@ struct FlameBadge: View {
     let pace: PaceTracker
     let intensity: CoachIntensity
     let pulse: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: pace.level == .slow ? "flame" : "flame.fill")
-                .font(.system(size: pace.level == .onFire ? 20 : 16, weight: .bold))
+                .font((pace.level == .onFire ? Font.title3 : Font.body).weight(.bold))
                 .foregroundStyle(style)
-                .symbolEffect(.breathe, isActive: pace.level == .onFire)
-                .symbolEffect(.bounce, value: pulse)
+                .symbolEffect(.breathe, isActive: pace.level == .onFire && !reduceMotion)
+                .symbolEffect(.bounce, value: reduceMotion ? 0 : pulse)
                 .contentTransition(.symbolEffect(.replace))
             Text(text)
                 .font(.caption.weight(.bold))
@@ -130,17 +131,19 @@ struct MiniBodyFill: View {
     let pulse: Int
     @Environment(LiveWorkoutController.self) private var live
     @Environment(MuscleAnalytics.self) private var muscles
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let planned = muscles.plannedSets(live.content, completedOnly: false)
-        let done = muscles.plannedSets(live.content, completedOnly: true)
+        let kind = live.session?.kind
+        let planned = muscles.plannedSets(live.content, completedOnly: false, kind: kind)
+        let done = muscles.plannedSets(live.content, completedOnly: true, kind: kind)
         BodyMapPair(fill: { group in
             let plan = planned[group] ?? 0
             guard plan > 0 else { return Color.clear }
             let share = min(1, (done[group] ?? 0) / plan)
             return share > 0 ? MusclePalette.heat(0.25 + 0.75 * share) : Color.accentColor.opacity(0.18)
         }, spacing: 2)
-        .keyframeAnimator(initialValue: 1.0, trigger: pulse) { content, scale in
+        .keyframeAnimator(initialValue: 1.0, trigger: reduceMotion ? 0 : pulse) { content, scale in
             content.scaleEffect(scale)
         } keyframes: { _ in
             KeyframeTrack {
@@ -260,15 +263,16 @@ struct ConfettiView: View {
 struct CelebrationBanner: View {
     let celebration: LiveWorkoutController.Celebration
     let motivation: MotivationStyle
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: celebration.symbol)
-                .font(.system(size: 30, weight: .bold))
+                .font(.title.weight(.bold))
                 .foregroundStyle(tint.gradient)
-                .symbolEffect(.bounce, value: celebration.id)
+                .symbolEffect(.bounce, value: reduceMotion ? nil : celebration.id)
                 .overlay {
-                    if motivation == .full {
+                    if motivation == .full && !reduceMotion {
                         BurstView(trigger: celebration.id.hashValue, colors: [tint, .orange, .yellow], distance: 40)
                     }
                 }
@@ -409,19 +413,23 @@ struct EnergyPicker: View {
                     VStack(spacing: 4) {
                         Image(systemName: EnergyEntry.symbol(for: level))
                             .font(.title3)
+                            .frame(height: 24)
                             .foregroundStyle(EnergyPicker.color(for: level))
                         Text(EnergyEntry.label(for: level))
-                            .font(.caption2.weight(.medium))
+                            .font(.caption2.weight(selected == level ? .bold : .medium))
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.vertical, 6)
                     .background(selected == level ? EnergyPicker.color(for: level).opacity(0.2) : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(selected == level ? EnergyPicker.color(for: level) : Color.clear, lineWidth: 1.5))
                 }
                 .buttonStyle(.glass)
                 .accessibilityLabel("Energy \(level) of 5: \(EnergyEntry.label(for: level))")
+                .accessibilityAddTraits(selected == level ? .isSelected : [])
             }
         }
     }
@@ -478,6 +486,11 @@ struct ValuePadSheet: View {
                         .pickerStyle(.segmented)
                     }
                     display
+                    if field == .weight, let plates = plates(item) {
+                        Label(plates, systemImage: "circle.grid.2x1")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                     suggestions(item, set)
                     keypad
                     actions
@@ -499,7 +512,37 @@ struct ValuePadSheet: View {
                 }
             }
             .onAppear(perform: load)
+            // Hardware keyboard (Mac, iPad): digits, comma/point, delete, return.
+            .focusable()
+            .focusEffectDisabled()
+            .onKeyPress(characters: .decimalDigits) { press in
+                self.press(press.characters)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: ".,")) { _ in
+                guard allowsDecimal else { return .ignored }
+                self.press(decimalSeparator)
+                return .handled
+            }
+            .onKeyPress(.delete) {
+                self.press("⌫")
+                return .handled
+            }
+            .onKeyPress(.return) {
+                commit()
+                dismiss()
+                return .handled
+            }
         }
+    }
+
+    /// "20 + 15 per side" while typing a barbell weight.
+    private func plates(_ item: WorkoutItem) -> String? {
+        guard item.mode == .reps, (item.equipment ?? "").lowercased().contains("barbell") || item.name.lowercased().contains("barbell"),
+              let value = NumberParser.double(text) else { return nil }
+        let kg = live.unit.toKilograms(value)
+        guard kg > CoachPrefs.barKg else { return nil }
+        return PlateMath.text(totalKg: kg, barKg: CoachPrefs.barKg, plates: PlateSet.current.platesKg, unit: live.unit)
     }
 
     // MARK: Parts
@@ -525,6 +568,7 @@ struct ValuePadSheet: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(text.isEmpty ? "–" : text)
                 .font(.system(size: 64, weight: .bold, design: .rounded))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .foregroundStyle(replaceOnType ? Color.accentColor : Color.primary)
@@ -691,8 +735,7 @@ struct ValuePadSheet: View {
             result.append(Chip(title: title, value: rounded))
         }
         let index = item.sets.firstIndex { $0.id == set.id } ?? 0
-        if let last = PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store), !last.isEmpty {
-            let match = index < last.count ? last[index] : last[last.count - 1]
+        if let match = LastTime.matching(set, in: item, previous: PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store)) {
             add("last time", shown(match.value(field, inSession: true)))
         }
         if index > 0 { add("previous set", shown(item.sets[index - 1].value(field, inSession: true))) }
@@ -743,5 +786,19 @@ struct ValuePadSheet: View {
         let current = set?.value(field, inSession: true)
         guard stored != current else { return }
         live.updateSet(request.setID) { $0.setValue(field, stored, inSession: true) }
+    }
+}
+
+
+/// "Last time" for a set: the same working set last time (warm-ups matched with warm-ups), so a
+/// warm-up added today doesn't shift the comparison.
+enum LastTime {
+    static func matching(_ set: WorkoutSet, in item: WorkoutItem, previous: [WorkoutSet]?) -> WorkoutSet? {
+        guard let previous, !previous.isEmpty, let index = item.sets.firstIndex(where: { $0.id == set.id }) else { return nil }
+        let isWarmup = set.kind == .warmup
+        let position = item.sets.prefix(upTo: index).filter { ($0.kind == .warmup) == isWarmup }.count
+        let candidates = previous.filter { ($0.kind == .warmup) == isWarmup && $0.isDone }
+        guard !candidates.isEmpty else { return nil }
+        return position < candidates.count ? candidates[position] : candidates[candidates.count - 1]
     }
 }

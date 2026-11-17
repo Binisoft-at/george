@@ -94,28 +94,38 @@ struct FinishCelebrationView: View {
     @Environment(MuscleAnalytics.self) private var muscles
     @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
+    @Environment(LiveWorkoutController.self) private var live
+    @Environment(ExerciseLibrary.self) private var library
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(Prefs.motivation) private var motivationRaw = MotivationStyle.full.rawValue
     @State private var stage = 0
     @State private var ring = 0.0
     @State private var counted = 0.0
     @State private var confetti = 0
     @State private var templateUpdated = false
+    @State private var templateSaved = false
     @State private var recap: WorkoutRecap?
+    @State private var skipped = false
 
     private var motivation: MotivationStyle { MotivationStyle(rawValue: motivationRaw) ?? .full }
+    /// No moving background, confetti or staged reveal with Reduce Motion (or celebrations off).
+    private var animates: Bool { motivation != .off && !reduceMotion }
 
     var body: some View {
-        ZStack {
-            CelebrationBackground(animated: motivation != .off)
+        ZStack(alignment: .topTrailing) {
+            CelebrationBackground(animated: animates)
             ScrollView {
                 VStack(spacing: 26) {
                     if let recap {
                         hero(recap)
                         if stage >= 2 { stats(recap).transition(.move(edge: .bottom).combined(with: .opacity)) }
+                        if stage >= 2, let comparison = summary.comparison { comparisonCard(comparison).transition(.opacity) }
+                        if stage >= 2 { templateCard.transition(.opacity) }
                         if stage >= 3, !recap.records.isEmpty { records(recap).transition(.scale(scale: 0.9).combined(with: .opacity)) }
                         if stage >= 3, !recap.muscleSets.isEmpty { musclesCard(recap).transition(.opacity) }
                         if stage >= 4 {
+                            if let routine = summary.coolDown { coolDownCard(routine).transition(.opacity) }
                             quote(recap).transition(.opacity)
                             actions(recap).transition(.move(edge: .bottom).combined(with: .opacity))
                             details.transition(.opacity)
@@ -123,16 +133,53 @@ struct FinishCelebrationView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 36)
-                .padding(.bottom, 40)
+                .padding(.top, 48)
+                .padding(.bottom, 24)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                // A tap anywhere shows everything at once.
+                .onTapGesture { if stage < 4 { showAll() } }
             }
             .scrollIndicators(.hidden)
-            if motivation == .full {
+            .safeAreaInset(edge: .bottom) {
+                if let recap, stage >= 1 {
+                    HStack(spacing: 12) {
+                        ShareRecapButton(recap: recap)
+                            .tint(BrandPalette.blue)
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Done")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .tint(.white.opacity(0.25))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                    .frame(maxWidth: 560)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            if motivation == .full && !reduceMotion {
                 ConfettiView(trigger: confetti, pieces: 70)
                     .ignoresSafeArea()
+                    .allowsHitTesting(false)
             }
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .padding(.trailing, 16)
+            .padding(.top, 8)
+            .accessibilityLabel("Close")
         }
         .environment(\.colorScheme, .dark)
         .foregroundStyle(.white)
@@ -166,8 +213,8 @@ struct FinishCelebrationView: View {
             .frame(width: 190, height: 190)
 
             VStack(spacing: 6) {
-                Text(recap.headline)
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                Text(headline(recap))
+                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.7)
                 Text(recap.title)
@@ -187,6 +234,149 @@ struct FinishCelebrationView: View {
             .opacity(stage >= 1 ? 1 : 0)
             .offset(y: stage >= 1 ? 0 : 16)
         }
+    }
+
+    /// "Beat last time on 3 of 4" before "Every set done!" – progress against yourself.
+    private func headline(_ recap: WorkoutRecap) -> String {
+        if let comparison = summary.comparison, comparison.up > 0, recap.records.isEmpty {
+            return "Beat last time on \(comparison.up) of \(comparison.exercises.count)"
+        }
+        return recap.headline
+    }
+
+    private func comparisonCard(_ comparison: SessionComparison) -> some View {
+        let rising = comparison.exercises.filter { $0.direction == .up }
+        let lines = Array((rising.isEmpty ? comparison.exercises : rising).prefix(3))
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("vs. last time · \(comparison.previousDate.formatted(.dateTime.day().month(.abbreviated)))", systemImage: "arrow.up.right")
+                    .font(.headline)
+                    .foregroundStyle(BrandPalette.sky)
+                Spacer()
+                Text(rising.isEmpty ? "Matched last time" : "\(comparison.up) up · \(comparison.same) same")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.75))
+            }
+            ForEach(lines) { line in
+                HStack {
+                    Text(line.exerciseName).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(line.change(unit: store.unit))
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(line.direction == .up ? BrandPalette.sky : .white.opacity(0.75))
+                }
+                .font(.subheadline)
+            }
+            if abs(comparison.volumeDelta) >= 1 {
+                Text("\(comparison.volumeDelta > 0 ? "+" : "−")\(Format.volume(abs(comparison.volumeDelta), unit: store.unit)) lifted vs. last time")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .padding(16)
+        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Update the template (changes or heavier loads), or keep a template-less workout as one.
+    @ViewBuilder
+    private var templateCard: some View {
+        if summary.canUpdateTemplate && !templateUpdated {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(summary.loadChanges.isEmpty ? "You changed this workout" : "You went heavier", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.subheadline.weight(.bold))
+                ForEach(summary.loadChanges.prefix(4), id: \.self) { line in
+                    Text(line).font(.caption.weight(.semibold)).foregroundStyle(BrandPalette.sky)
+                }
+                Text("Save the exercises, sets and loads you used back into “\(summary.templateName)” so next time starts from here?")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.75))
+                Button {
+                    if let session = store.session(id: summary.sessionID) {
+                        store.updateTemplate(from: session)
+                        templateUpdated = true
+                        Haptics.success()
+                    }
+                } label: {
+                    Label("Update Template", systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.glass)
+            }
+            .padding(16)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        } else if summary.canSaveAsTemplate && !templateSaved {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Keep this as a template?", systemImage: "square.on.square")
+                    .font(.subheadline.weight(.bold))
+                Text("Start it again with one tap next time.")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.75))
+                Button {
+                    if let session = store.session(id: summary.sessionID) {
+                        let template = store.saveAsTemplate(session, into: session.program)
+                        template.name = suggestedTemplateName
+                        session.templateID = template.id
+                        session.templateName = template.name
+                        store.save()
+                        templateSaved = true
+                        Haptics.success()
+                    }
+                } label: {
+                    Label("Save as “\(suggestedTemplateName)”", systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.glass)
+            }
+            .padding(16)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        } else if templateUpdated || templateSaved {
+            Label(templateSaved ? "Saved as a template" : "Template updated", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(BrandPalette.sky)
+        }
+    }
+
+    /// "Upper body", "Legs" … from the muscles trained most, otherwise the kind of workout.
+    private var suggestedTemplateName: String {
+        if let top = recap?.muscleSets.max(by: { $0.value < $1.value })?.key {
+            switch top.region {
+            case .upper: return "Upper Body"
+            case .lower: return "Lower Body"
+            case .core: return "Core"
+            }
+        }
+        return summary.kind.displayName
+    }
+
+    private func coolDownCard(_ routine: Routine) -> some View {
+        Button {
+            let template = store.templateForRoutine(routine, catalog: library.catalog).template
+            dismiss()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                live.requestStart(.template(template))
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: routine.symbol)
+                    .font(.title3)
+                    .frame(width: 40, height: 40)
+                    .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cool down · \(routine.name)")
+                        .font(.subheadline.weight(.bold))
+                    Text("\(routine.subtitle) · about \(Format.minutes(Double(routine.content(using: library.catalog).estimatedSeconds())))")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "play.fill")
+            }
+            .padding(14)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func stats(_ recap: WorkoutRecap) -> some View {
@@ -214,7 +404,7 @@ struct FinishCelebrationView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(BrandPalette.sky)
             CountingText(value: counted, format: format)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded).weight(.bold))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -294,59 +484,20 @@ struct FinishCelebrationView: View {
     }
 
     private func actions(_ recap: WorkoutRecap) -> some View {
-        VStack(spacing: 12) {
-            ShareRecapButton(recap: recap)
-                .tint(BrandPalette.blue)
-            HStack(spacing: 12) {
-                Button {
-                    router.open(.session(summary.sessionID))
-                    dismiss()
-                } label: {
-                    Text("View Workout")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.glass)
-                Button {
-                    dismiss()
-                } label: {
-                    Text("Done")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.glass)
-            }
+        Button {
+            router.open(.session(summary.sessionID))
+            dismiss()
+        } label: {
+            Text("View Workout")
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
+        .buttonStyle(.glass)
     }
 
     @ViewBuilder
     private var details: some View {
         VStack(spacing: 12) {
-            if summary.canUpdateTemplate && !templateUpdated {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("You changed this workout", systemImage: "arrow.triangle.2.circlepath")
-                        .font(.subheadline.weight(.bold))
-                    Text("Save the exercises, sets and loads you used back into “\(summary.templateName)” so next time starts from here?")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
-                    Button {
-                        if let session = store.session(id: summary.sessionID) {
-                            store.updateTemplate(from: session)
-                            templateUpdated = true
-                            Haptics.success()
-                        }
-                    } label: {
-                        Label("Update Template", systemImage: "square.and.arrow.down")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.glass)
-                }
-                .padding(16)
-                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            } else if templateUpdated {
-                Label("Template updated", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(BrandPalette.sky)
-            }
             if summary.savedToHealth {
                 Label("Saved to Apple Health", systemImage: "heart.text.square.fill")
                     .font(.footnote)
@@ -363,25 +514,39 @@ struct FinishCelebrationView: View {
                                       records: summary.records, energyKcal: summary.energyKcal, averageHeartRate: summary.averageHeartRate)
         }
         let target = recap?.completion ?? 1
-        guard motivation != .off else {
-            ring = target
-            counted = 1
-            stage = 4
+        guard animates else {
+            showAll()
             return
         }
         try? await Task.sleep(nanoseconds: 250_000_000)
+        guard !skipped else { return }
         withAnimation(.easeInOut(duration: 1.1)) { ring = target }
         try? await Task.sleep(nanoseconds: 800_000_000)
+        guard !skipped else { return }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { stage = 1 }
         Haptics.success()
         if motivation == .full { confetti += 1 }
         try? await Task.sleep(nanoseconds: 600_000_000)
+        guard !skipped else { return }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = 2 }
         withAnimation(.easeOut(duration: 1.4)) { counted = 1 }
         try? await Task.sleep(nanoseconds: 1_000_000_000)
+        guard !skipped else { return }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { stage = 3 }
         if !(recap?.records.isEmpty ?? true) { Haptics.heavy() }
         try? await Task.sleep(nanoseconds: 700_000_000)
+        guard !skipped else { return }
         withAnimation(.easeOut(duration: 0.6)) { stage = 4 }
+    }
+
+    /// Everything at once (tap, Reduce Motion, celebrations off).
+    private func showAll() {
+        skipped = true
+        let target = recap?.completion ?? 1
+        withAnimation(reduceMotion ? nil : .snappy) {
+            ring = target
+            counted = 1
+            stage = 4
+        }
     }
 }

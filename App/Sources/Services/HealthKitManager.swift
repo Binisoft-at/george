@@ -12,8 +12,9 @@ import HealthKit
 /// exercises and muscles), and the workout effort score (RPE 1–10) — Apple Fitness shows it and
 /// Bevel reads it for strain. Heart rate comes from the Apple Watch app's live workout session.
 ///
-/// Reads: workouts from other apps/devices (e.g. tennis tracked on the watch) to count toward
-/// the weekly streak, heart rate during a session, and body mass for calorie estimates. With
+/// Reads: workouts from other apps/devices (e.g. tennis tracked on the watch) – kept in memory
+/// only, they count toward the weekly streak, Insights → Time by type and (Settings) muscle
+/// recovery and load – heart rate during a session, and body mass for calorie estimates. With
 /// Settings → Workout Coach → Health signals on, also HRV, resting heart rate, sleep and State of
 /// Mind (energy insights, the check-in hint) and the birth date (Your Profile, on request).
 @MainActor
@@ -39,7 +40,15 @@ final class HealthKitManager {
         var max: Double
     }
 
+    /// Apple Health workouts from other apps and devices (last ~26 weeks, newest first). In memory
+    /// only – Health data never goes to iCloud.
+    private(set) var healthWorkouts: [ExternalWorkout] = []
+    /// Bumped whenever `healthWorkouts` changes (the muscle analytics cache key).
+    private(set) var workoutsVersion = 0
+    /// The same workouts as streak entries.
     private(set) var externalWorkouts: [ActivityEntry] = []
+    /// Effort scores already read, per Health workout (nil = none recorded).
+    @ObservationIgnored private var effortCache: [UUID: Int?] = [:]
     private(set) var latestBodyMassKg: Double?
     private(set) var lastError: String?
     private(set) var isAuthorizedToShare = false
@@ -116,9 +125,21 @@ final class HealthKitManager {
                 limit: 1000
             )
             let workouts = try await descriptor.result(for: healthStore)
-            externalWorkouts = workouts
-                .filter { !$0.sourceRevision.source.bundleIdentifier.hasPrefix(ownPrefix) }
-                .map { ActivityEntry(date: $0.startDate, minutes: $0.duration / 60, isRescue: false, source: .health) }
+                .filter { !Self.isFromGeorge($0, ownPrefix: ownPrefix) }
+            // Effort only matters for recent workouts (muscle load looks back 6 weeks).
+            let effortCutoff = Date().addingTimeInterval(-42 * 86_400)
+            for workout in workouts.prefix(80) where workout.startDate >= effortCutoff && effortCache[workout.uuid] == nil {
+                effortCache[workout.uuid] = .some(await effort(of: workout))
+            }
+            let mapped = workouts.map { workout -> ExternalWorkout in
+                let sport = Self.sport(for: workout.workoutActivityType)
+                let energy = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+                return ExternalWorkout(
+                    id: workout.uuid, activity: sport.key, name: sport.name, start: workout.startDate,
+                    durationSeconds: workout.duration, energyKcal: energy, effort: effortCache[workout.uuid] ?? nil
+                )
+            }
+            setHealthWorkouts(mapped)
         } catch {
             lastError = error.localizedDescription
             AppLog.warning("Apple Health: \(error.localizedDescription)", category: "health")
@@ -136,6 +157,17 @@ final class HealthKitManager {
             // Body mass is optional.
         }
         #endif
+    }
+
+    /// Keeps the Health workouts and derives the streak entries from them.
+    private func setHealthWorkouts(_ workouts: [ExternalWorkout]) {
+        if workouts != healthWorkouts {
+            healthWorkouts = workouts
+            workoutsVersion &+= 1
+        }
+        externalWorkouts = workouts.map {
+            ActivityEntry(date: $0.start, minutes: $0.durationSeconds / 60, isRescue: false, source: .health)
+        }
     }
 
     /// Average / max heart rate recorded (by any device) during a time window.
@@ -258,6 +290,77 @@ final class HealthKitManager {
         } catch {
             lastError = error.localizedDescription
             AppLog.warning("Apple Health: \(error.localizedDescription)", category: "health")
+        }
+    }
+
+    /// Workouts George saved itself (this app or its watch app) – they are already in the log.
+    private static func isFromGeorge(_ workout: HKWorkout, ownPrefix: String) -> Bool {
+        if workout.sourceRevision.source.bundleIdentifier.hasPrefix(ownPrefix) { return true }
+        return workout.metadata?[HealthMetadataKey.sessionID] != nil
+    }
+
+    /// The effort score (1–10) rated for a workout, or Apple's estimate, if any.
+    private func effort(of workout: HKWorkout) async -> Int? {
+        let predicate = HKQuery.predicateForWorkoutEffortSamplesRelated(workout: workout, activity: nil)
+        for type in [HKQuantityType(.workoutEffortScore), HKQuantityType(.estimatedWorkoutEffortScore)] {
+            let descriptor = HKSampleQueryDescriptor(
+                predicates: [.quantitySample(type: type, predicate: predicate)],
+                sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+                limit: 1
+            )
+            if let sample = try? await descriptor.result(for: healthStore).first {
+                let value = sample.quantity.doubleValue(for: .appleEffortScore())
+                if value > 0 { return max(1, min(10, Int(value.rounded()))) }
+            }
+        }
+        return nil
+    }
+
+    /// The sport key (`SportLoad`) and display name of a Health activity type.
+    static func sport(for type: HKWorkoutActivityType) -> (key: String, name: String) {
+        switch type {
+        case .tennis: return ("tennis", "Tennis")
+        case .squash: return ("squash", "Squash")
+        case .badminton: return ("badminton", "Badminton")
+        case .tableTennis: return ("table-tennis", "Table Tennis")
+        case .racquetball: return ("racquetball", "Racquetball")
+        case .pickleball: return ("pickleball", "Pickleball")
+        case .running: return ("running", "Running")
+        case .trackAndField: return ("running", "Track & Field")
+        case .cycling, .handCycling: return ("cycling", "Cycling")
+        case .hiking: return ("hiking", "Hiking")
+        case .walking: return ("walking", "Walking")
+        case .highIntensityIntervalTraining: return ("hiit", "HIIT")
+        case .functionalStrengthTraining: return ("functional-strength", "Functional Strength")
+        case .crossTraining: return ("cross-training", "Cross Training")
+        case .swimming: return ("swimming", "Swimming")
+        case .rowing: return ("rowing", "Rowing")
+        case .soccer: return ("soccer", "Soccer")
+        case .americanFootball, .australianFootball: return ("football", "Football")
+        case .basketball: return ("basketball", "Basketball")
+        case .volleyball: return ("volleyball", "Volleyball")
+        case .handball: return ("handball", "Handball")
+        case .hockey: return ("hockey", "Hockey")
+        case .rugby: return ("rugby", "Rugby")
+        case .climbing: return ("climbing", "Climbing")
+        case .downhillSkiing: return ("skiing", "Skiing")
+        case .crossCountrySkiing: return ("skiing", "Cross-Country Skiing")
+        case .snowboarding: return ("snowboarding", "Snowboarding")
+        case .boxing: return ("boxing", "Boxing")
+        case .kickboxing: return ("kickboxing", "Kickboxing")
+        case .martialArts: return ("martial-arts", "Martial Arts")
+        case .wrestling: return ("martial-arts", "Wrestling")
+        case .socialDance, .cardioDance: return ("dance", "Dance")
+        case .yoga: return ("yoga", "Yoga")
+        case .pilates, .barre: return ("pilates", "Pilates")
+        case .mindAndBody, .taiChi: return ("mind-and-body", "Mind & Body")
+        case .flexibility: return ("stretching", "Stretching")
+        case .preparationAndRecovery, .cooldown: return ("mobility", "Recovery")
+        case .traditionalStrengthTraining: return ("strength", "Strength Training")
+        case .coreTraining: return ("core", "Core Training")
+        case .mixedCardio, .elliptical, .stairClimbing, .stairs, .stepTraining, .jumpRope: return ("cardio", "Cardio")
+        case .golf: return ("golf", "Golf")
+        default: return ("other", "Workout")
         }
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import TipKit
 import BinisoftKit
 import GeorgeCore
 
@@ -14,6 +15,8 @@ struct CoachBar: View {
     let onExpand: () -> Void
     let onFinish: () -> Void
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @AppStorage(Prefs.startButton) private var startButtonOn = true
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
@@ -36,43 +39,63 @@ struct CoachBar: View {
     @ViewBuilder
     private func content(at date: Date) -> some View {
         if live.currentSet == nil {
-            Button(action: onFinish) {
-                Label("Finish Workout", systemImage: "flag.checkered")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+            if live.content.isEmpty {
+                // An empty workout: add exercises, or just track the time and finish.
+                HStack(spacing: 10) {
+                    Button(action: onFinish) {
+                        Label("Finish", systemImage: "flag.checkered")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(.glass)
+                    Button {
+                        live.requestAddExercise = true
+                    } label: {
+                        Label("Add Exercise", systemImage: "plus")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(.glassProminent)
+                }
+            } else {
+                Button(action: onFinish) {
+                    Label("Finish Workout", systemImage: "flag.checkered")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(.green)
             }
-            .buttonStyle(.glassProminent)
-            .tint(.green)
         } else {
-            HStack(spacing: 12) {
+            let snapshot = live.paceSnapshot(at: date)
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 12))
+            layout {
                 Button(action: onExpand) {
                     HStack(spacing: 12) {
                         PhaseRing(date: date)
                             .frame(width: 58, height: 58)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(headline(at: date))
-                                .font(.caption2.weight(.heavy))
-                                .foregroundStyle(tint(at: date))
+                                .font(.caption.weight(.heavy))
+                                .foregroundStyle(tint(snapshot))
                                 .lineLimit(1)
                             Text(live.currentItem?.name ?? "")
-                                .font(.subheadline.weight(.semibold))
+                                .font(.headline)
                                 .foregroundStyle(.primary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .lineLimit(2)
                             Text(setLine)
-                                .font(.caption.weight(.medium))
+                                .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            if let detail = detail(at: date) {
+                            if let detail = detail(at: date, snapshot: snapshot) {
                                 Text(detail)
-                                    .font(.caption2)
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
                             }
                         }
+                        .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
                     .contentShape(Rectangle())
@@ -81,54 +104,52 @@ struct CoachBar: View {
                 .accessibilityHint("Shows pace, controls and what's next")
 
                 primaryButton
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
             .padding(12)
-            .floatingGlass(cornerRadius: 28, tint: live.phase == .resting ? .orange : nil)
+            .floatingGlass(cornerRadius: 28, tint: live.isPaused ? .gray : (live.phase == .resting ? .teal : nil))
         }
     }
 
     @ViewBuilder
     private var primaryButton: some View {
-        switch live.phase {
-        case .resting:
+        let _ = startButtonOn
+        if live.isPaused {
             Button {
-                live.startSet()
+                live.resume()
             } label: {
-                VStack(spacing: 0) {
-                    Image(systemName: "play.fill").font(.headline)
-                    Text("Start").font(.caption2.weight(.bold))
-                }
-                .frame(width: 64, height: 58)
+                buttonLabel("play.fill", "Resume")
             }
             .buttonStyle(.glassProminent)
-            .tint(.orange)
-            .accessibilityLabel("Skip rest and start the set")
-        case .ready:
+            .tint(.gray)
+            .accessibilityLabel("Resume the workout")
+        } else if live.primaryIsStart {
             Button {
                 live.primaryAction()
             } label: {
-                VStack(spacing: 0) {
-                    Image(systemName: CoachPrefs.startButton ? "play.fill" : "checkmark").font(.headline)
-                    Text(CoachPrefs.startButton ? "Start" : "Done").font(.caption2.weight(.bold))
-                }
-                .frame(width: 64, height: 58)
+                buttonLabel("play.fill", "Start")
             }
             .buttonStyle(.glassProminent)
-            .tint(.green)
-            .accessibilityLabel(CoachPrefs.startButton ? "Start the set" : "Mark set done")
-        case .working:
+            .tint(live.phase == .resting ? .teal : .accentColor)
+            .accessibilityLabel(live.phase == .resting ? "Skip rest and start the set" : "Start the set")
+            .popoverTip(GeorgeTips.CoachStartTip())
+        } else {
             Button {
-                live.completeCurrentSet()
+                live.primaryAction()
             } label: {
-                VStack(spacing: 0) {
-                    Image(systemName: "checkmark").font(.headline.weight(.heavy))
-                    Text("Done").font(.caption2.weight(.bold))
-                }
-                .frame(width: 64, height: 58)
+                buttonLabel("checkmark", "Done")
             }
             .buttonStyle(.glassProminent)
             .accessibilityLabel("Mark set done")
         }
+    }
+
+    private func buttonLabel(_ symbol: String, _ title: String) -> some View {
+        VStack(spacing: 0) {
+            Image(systemName: symbol).font(.headline.weight(.heavy))
+            Text(title).font(.caption.weight(.bold))
+        }
+        .frame(minWidth: 64, minHeight: 58)
     }
 
     /// "set 2 of 4 · 8 × 60 kg"
@@ -140,51 +161,53 @@ struct CoachBar: View {
     }
 
     private func headline(at date: Date) -> String {
+        if live.isPaused { return "PAUSED" }
         switch live.phase {
         case .resting: return live.restRemaining(at: date) <= 10 ? "GET READY · UP NEXT" : "REST · UP NEXT"
-        case .ready:
-            let total = live.paceSnapshot(at: date).totalDelta
-            return abs(total) >= 10 ? "NOW · \(WorkoutPace.deltaText(total).uppercased())" : "NOW"
+        case .ready: return "NOW"
         case .working:
-            if let end = live.timedSetEndsAt { return "\(Format.clock(Int(max(0, end.timeIntervalSince(date)).rounded(.up)))) LEFT" }
+            if let end = live.timedSetEndsAt {
+                let left = Format.clock(Int(max(0, end.timeIntervalSince(date)).rounded(.up)))
+                if let side = live.timedSide { return "SIDE \(side) OF 2 · \(left) LEFT" }
+                return "\(left) LEFT"
+            }
             return "IN PROGRESS"
         }
     }
 
-    private func detail(at date: Date) -> String? {
-        let snapshot = live.paceSnapshot(at: date)
+    private func detail(at date: Date, snapshot: LiveWorkoutController.PaceSnapshot) -> String? {
+        if live.isPaused { return "Clock and rest stopped · Resume to go on" }
         switch live.phase {
         case .resting:
-            return "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal)) · tap for pace"
+            return "Rest \(Format.clock(live.restRemaining(at: date))) of \(Format.clock(live.restTotal))"
         case .ready:
-            if let waiting = snapshot.waitingDelta {
-                let planned = Format.clock(Int(snapshot.plannedRest))
-                return waiting > 0
-                    ? "\(WorkoutPace.signed(waiting)) over the \(planned) rest"
-                    : "\(Format.clock(Int(-waiting))) left of the \(planned) rest"
-            }
-            return "Tap Start when you begin"
+            guard snapshot.plannedRest > 0 else { return live.primaryIsStart ? "Tap Start when you begin" : nil }
+            var text = "Planned rest \(Format.clock(Int(snapshot.plannedRest)))"
+            // The running total only when it matters – the full pace is in the panel.
+            if abs(snapshot.totalDelta) >= 60 { text += " · \(WorkoutPace.deltaText(snapshot.totalDelta))" }
+            return text
         case .working:
-            if abs(snapshot.totalDelta) >= 10 { return WorkoutPace.deltaText(snapshot.totalDelta) }
             return "Working \(Format.clock(Int(live.pace.workingSeconds(at: date))))"
         }
     }
 
-    private func tint(at date: Date) -> Color {
+    private func tint(_ snapshot: LiveWorkoutController.PaceSnapshot) -> Color {
+        if live.isPaused { return .secondary }
         switch live.phase {
-        case .resting: return .orange
+        case .resting: return .teal
         case .working: return .accentColor
         case .ready:
-            let waiting = live.paceSnapshot(at: date).waitingDelta ?? 0
+            // NOW is always the accent colour; only lateness is tinted.
+            let waiting = snapshot.waitingDelta ?? 0
             if waiting > 60 { return .red }
             if waiting > 0 { return .orange }
-            return .green
+            return .accentColor
         }
     }
 }
 
 /// The ring in the coach bar and the panel: the rest countdown, a timed set's countdown, the time a
-/// set has been going, or the time you've been waiting against the planned rest.
+/// set has been going, or – while waiting – the rest left, then the time over it.
 struct PhaseRing: View {
     let date: Date
     var lineWidth: CGFloat = 6
@@ -197,7 +220,7 @@ struct PhaseRing: View {
             ProgressRing(progress: state.progress, tint: state.tint, lineWidth: lineWidth)
             VStack(spacing: 0) {
                 Text(state.text)
-                    .font(large ? .system(size: 54, weight: .bold, design: .rounded) : .subheadline.weight(.bold))
+                    .font(large ? .system(.largeTitle, design: .rounded).weight(.bold) : .subheadline.weight(.bold))
                     .monospacedDigit()
                     .contentTransition(.numericText(countsDown: state.countsDown))
                     .minimumScaleFactor(0.6)
@@ -211,6 +234,8 @@ struct PhaseRing: View {
             .padding(lineWidth + 4)
         }
         .animation(.easeInOut(duration: 0.3), value: state.progress)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(state.text) \(state.caption)")
     }
 
     private struct RingState {
@@ -222,33 +247,48 @@ struct PhaseRing: View {
     }
 
     private var ringState: RingState {
+        if live.isPaused {
+            return RingState(progress: 1, text: "II", caption: "paused", tint: .gray, countsDown: false)
+        }
         switch live.phase {
         case .resting:
             let remaining = live.restRemaining(at: date)
             return RingState(progress: Double(remaining) / Double(max(1, live.restTotal)), text: Format.clock(remaining),
-                             caption: "rest", tint: remaining <= 10 ? .red : .orange, countsDown: true)
+                             caption: "rest", tint: remaining <= 10 ? .accentColor : .teal, countsDown: true)
         case .working:
             if let end = live.timedSetEndsAt, let total = live.timedTarget {
                 let left = max(0, end.timeIntervalSince(date))
+                if let side = live.timedSide {
+                    // Per side: the ring and the number show the side that's running.
+                    let perSide = Double(total) / 2
+                    let sideLeft = max(0, left - (side == 1 ? perSide : 0))
+                    return RingState(progress: sideLeft / max(1, perSide), text: Format.clock(Int(sideLeft.rounded(.up))),
+                                     caption: "side \(side) of 2", tint: sideLeft <= 10 ? .orange : .accentColor, countsDown: true)
+                }
                 return RingState(progress: left / Double(max(1, total)), text: Format.clock(Int(left.rounded(.up))),
-                                 caption: "left", tint: left <= 10 ? .red : .accentColor, countsDown: true)
+                                 caption: "left", tint: left <= 10 ? .orange : .accentColor, countsDown: true)
             }
             let working = live.pace.workingSeconds(at: date)
             let expected = live.currentItem.flatMap { item in live.currentSet.map { PaceTracker.workSeconds(for: $0, mode: item.mode) } } ?? 45
             return RingState(progress: min(1, working / max(1, expected)), text: Format.clock(Int(working)),
                              caption: "working", tint: working > expected * 1.5 ? .orange : .accentColor, countsDown: false)
         case .ready:
-            if let waiting = live.pace.waitingDelta(at: date, plannedRest: live.plannedRestBeforeCurrent) {
-                let idle = live.pace.idleSeconds(at: date)
-                let planned = max(1, live.plannedRestBeforeCurrent)
-                let tint: Color = waiting > 60 ? .red : (waiting > 0 ? .orange : .green)
-                return RingState(progress: min(1, idle / planned), text: Format.clock(Int(idle)),
-                                 caption: waiting > 0 ? "over by \(Format.clock(Int(waiting)))" : "since last set", tint: tint, countsDown: false)
+            let planned = live.plannedRestBeforeCurrent
+            if planned > 0, let waiting = live.pace.waitingDelta(at: date, plannedRest: planned) {
+                if waiting <= 0 {
+                    // Still within the planned rest: keep counting down.
+                    let left = -waiting
+                    return RingState(progress: left / planned, text: Format.clock(Int(left.rounded(.up))),
+                                     caption: "rest left", tint: .accentColor, countsDown: true)
+                }
+                // Over the planned rest: one number – how much over.
+                return RingState(progress: 1, text: "+" + Format.clock(Int(waiting)), caption: "over rest",
+                                 tint: waiting > 60 ? .red : .orange, countsDown: false)
             }
             if let target = live.timedTarget {
-                return RingState(progress: 1, text: Format.clock(target), caption: "ready", tint: .green, countsDown: false)
+                return RingState(progress: 1, text: Format.clock(target), caption: "ready", tint: .accentColor, countsDown: false)
             }
-            return RingState(progress: 1, text: "GO", caption: "ready", tint: .green, countsDown: false)
+            return RingState(progress: 1, text: "GO", caption: "ready", tint: .accentColor, countsDown: false)
         }
     }
 }
@@ -266,15 +306,22 @@ struct TimedSetDial: View {
                 PhaseRing(date: context.date, lineWidth: 8)
                     .frame(width: 92, height: 92)
                 VStack(alignment: .leading, spacing: 6) {
-                    if live.phase == .working, let end = live.timedSetEndsAt {
-                        Text("\(Format.clock(Int(max(0, end.timeIntervalSince(context.date)).rounded(.up)))) left")
-                            .font(.title3.weight(.bold))
-                            .monospacedDigit()
-                        Text("Ticks itself off at zero")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    if live.phase == .working, live.timedSetEndsAt != nil {
+                        if let side = live.timedSide {
+                            Text(side == 1 ? "Side 1 of 2" : "Side 2 of 2 – switched")
+                                .font(.title3.weight(.bold))
+                            Text("George says when to switch")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Hold")
+                                .font(.title3.weight(.bold))
+                            Text("Ticks itself off at zero")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
-                        Text("\(Format.clock(set.targetSeconds ?? set.seconds ?? 0)) \(item.perSide ? "each side" : "")")
+                        Text("\(Format.clock(set.targetSeconds ?? set.seconds ?? 0))\(item.perSide ? " each side" : "")")
                             .font(.title3.weight(.bold))
                             .monospacedDigit()
                         Button {
@@ -282,9 +329,9 @@ struct TimedSetDial: View {
                         } label: {
                             Label("Start timer", systemImage: "play.fill")
                                 .font(.subheadline.weight(.semibold))
+                                .frame(minHeight: 44)
                         }
                         .buttonStyle(.glassProminent)
-                        .tint(.green)
                     }
                 }
                 Spacer(minLength: 0)
@@ -300,8 +347,6 @@ struct TimedSetDial: View {
 struct FeedbackCard: View {
     let request: LiveWorkoutController.EffortRequest
     @Environment(LiveWorkoutController.self) private var live
-    @State private var fatigue: Double?
-    @State private var repsLeft: Int?
 
     private struct Choice: Identifiable {
         let id: Int
@@ -315,75 +360,76 @@ struct FeedbackCard: View {
     private let repChoices = [Choice(id: 0, title: "0", caption: nil), Choice(id: 1, title: "1", caption: nil),
                               Choice(id: 2, title: "2", caption: nil), Choice(id: 3, title: "3+", caption: nil)]
 
+    /// One question at a time: fatigue first (if asked), then reps left. Each tap is saved at once.
+    private var showsFatigue: Bool { request.asksFatigue && request.fatigue == nil }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(request.itemName) done")
                         .font(.subheadline.weight(.bold))
-                    Text(request.muscles.isEmpty ? "How fatigued are the muscles?" : "How fatigued are your \(request.muscles)?")
+                    Text(question)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                Menu {
+                    Button { live.skipFeedbackForThisWorkout() } label: { Label("Not in This Workout", systemImage: "moon.zzz") }
+                    Button { live.stopAskingFeedback() } label: { Label("Stop Asking (Settings → Coach)", systemImage: "bell.slash") }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption.weight(.bold))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("Question options")
                 Button {
-                    live.answerFeedback(repsInReserve: repsLeft, fatigue: fatigue)
+                    live.closeFeedback()
                 } label: {
                     Image(systemName: "xmark")
                         .font(.caption.weight(.bold))
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Close")
             }
             HStack(spacing: 6) {
-                ForEach(fatigueChoices) { choice in
-                    chip(selected: fatigue == Double(choice.id) / 4, title: choice.title, caption: choice.caption) {
-                        fatigue = Double(choice.id) / 4
-                        submitIfComplete()
+                if showsFatigue {
+                    ForEach(fatigueChoices) { choice in
+                        chip(title: choice.title, caption: choice.caption) { live.recordFatigue(Double(choice.id) / 4) }
                     }
-                }
-            }
-            if request.asksReps {
-                Text("Reps left in the tank on the last set?")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 6) {
+                } else {
                     ForEach(repChoices) { choice in
-                        chip(selected: repsLeft == choice.id, title: choice.title, caption: nil) {
-                            repsLeft = choice.id
-                            submitIfComplete()
-                        }
+                        chip(title: choice.title, caption: nil) { live.recordReps(inReserve: choice.id) }
                     }
                 }
             }
         }
-        .padding(14)
+        .padding(12)
         .floatingGlass(cornerRadius: 24)
     }
 
-    private func chip(selected: Bool, title: String, caption: String?, action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.tap()
-            action()
-        } label: {
+    private var question: String {
+        if showsFatigue {
+            return request.muscles.isEmpty ? "How fatigued are the muscles?" : "How fatigued are your \(request.muscles)?"
+        }
+        return "Reps left in the tank on the last set?"
+    }
+
+    private func chip(title: String, caption: String?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             VStack(spacing: 0) {
                 Text(title).font(.subheadline.weight(.bold)).monospacedDigit()
                 if let caption {
                     Text(caption).font(.caption2).foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .background(selected ? Color.accentColor.opacity(0.22) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.glass)
-    }
-
-    private func submitIfComplete() {
-        guard fatigue != nil, !request.asksReps || repsLeft != nil else { return }
-        live.answerFeedback(repsInReserve: repsLeft, fatigue: fatigue)
     }
 }
 
@@ -399,20 +445,25 @@ struct LivePanelSheet: View {
 
     var body: some View {
         NavigationStack {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                ScrollView {
-                    VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Only what changes every half second sits in the timeline.
+                    TimelineView(.periodic(from: .now, by: 0.5)) { context in
                         PhaseRing(date: context.date, lineWidth: 14, large: true)
                             .frame(width: 230, height: 230)
                             .padding(.top, 8)
-                        mainControls
-                        UpcomingList()
-                        PaceSection(snapshot: live.paceSnapshot(at: context.date))
-                        statsSection(at: context.date)
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 24)
+                    mainControls
+                    UpcomingList()
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        VStack(spacing: 20) {
+                            PaceSection(snapshot: live.paceSnapshot(at: context.date))
+                            statsSection(at: context.date)
+                        }
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
             }
             .navigationTitle(title)
             .inlineTitle()
@@ -462,16 +513,25 @@ struct LivePanelSheet: View {
                     control("forward.fill", "Skip rest") { live.skipRest() }
                 }
             }
-            if live.currentSet != nil {
+            if live.isPaused {
                 Button {
-                    if live.phase == .working { live.completeCurrentSet() } else { live.startSet() }
+                    live.resume()
                 } label: {
-                    Label(live.phase == .working ? "Set Done" : "Start Set", systemImage: live.phase == .working ? "checkmark" : "play.fill")
+                    Label("Resume", systemImage: "play.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(live.phase == .working ? .accentColor : .green)
+                .tint(.gray)
+            } else if live.currentSet != nil {
+                Button {
+                    live.primaryAction()
+                } label: {
+                    Label(live.primaryIsStart ? "Start Set" : "Set Done", systemImage: live.primaryIsStart ? "play.fill" : "checkmark")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.glassProminent)
             } else {
                 Button(action: onFinish) {
                     Label("Finish Workout", systemImage: "flag.checkered")
@@ -631,7 +691,7 @@ struct PaceSection: View {
     private func color(_ delta: Double) -> Color {
         if delta > 60 { return .red }
         if delta > 10 { return .orange }
-        return .green
+        return .accentColor
     }
 }
 

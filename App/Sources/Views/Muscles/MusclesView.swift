@@ -27,7 +27,7 @@ enum MuscleMetric: String, CaseIterable, Identifiable {
 }
 
 /// One muscle's value for the current metric.
-struct MuscleValue: Identifiable {
+struct MuscleValue: Identifiable, Sendable {
     var id: MuscleGroup { group }
     var group: MuscleGroup
     /// 0…1 used for colour and level bars.
@@ -44,6 +44,7 @@ struct MusclesView: View {
     @Environment(MuscleAnalytics.self) private var analytics
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var sessions: [WorkoutSession]
     @AppStorage("muscleMetric") private var metric: MuscleMetric = .freshness
     @State private var range: MuscleRange = .month
@@ -51,15 +52,32 @@ struct MusclesView: View {
     @State private var dayOffset = 0
     @State private var bucketFilter: String?
     @State private var sortAscending = true
+    /// Computed off the main thread whenever the inputs change (see `valuesKey`).
+    @State private var values: [MuscleValue] = []
+
+    /// Everything the list depends on.
+    private struct ValuesKey: Hashable {
+        var metric: MuscleMetric
+        var range: MuscleRange
+        var offset: Int
+        var dayOffset: Int
+        var engine: MuscleAnalytics.EngineKey
+        var sessionCount: Int
+        var targetLow: Int
+        var targetHigh: Int
+        var unit: String
+    }
 
     var body: some View {
-        let _ = sessions.count + store.revision
-        let values = computeValues()
+        let target = store.profile.weeklySets
+        let key = ValuesKey(metric: metric, range: range, offset: offset, dayOffset: dayOffset, engine: analytics.engineKey,
+                            sessionCount: sessions.count, targetLow: target.lowerBound, targetHigh: target.upperBound,
+                            unit: store.unit.rawValue)
         let visible = values
             .filter { bucketFilter == nil || $0.bucket == bucketFilter }
             .filter { metric == .freshness || $0.sortKey > 0 || bucketFilter != nil }
             .sorted { sortAscending ? $0.sortKey < $1.sortKey : $0.sortKey > $1.sortKey }
-        let colors = Dictionary(uniqueKeysWithValues: values.map { ($0.group, $0.color) })
+        let colors = Dictionary(values.map { ($0.group, $0.color) }, uniquingKeysWith: { a, _ in a })
 
         NavList {
             Section {
@@ -73,7 +91,7 @@ struct MusclesView: View {
                 BodyMapPair(fill: { colors[$0] ?? MusclePalette.empty }, onTap: { router.open(.muscle($0.rawValue)) })
                     .frame(height: 300)
                     .padding(.vertical, 8)
-                bucketChips(values)
+                bucketChips
                 periodControl
             }
             .listRowSeparator(.hidden)
@@ -110,13 +128,24 @@ struct MusclesView: View {
             bucketFilter = nil
             sortAscending = newMetric == .freshness
         }
+        .task(id: key) {
+            let input = MuscleValues.Input(
+                metric: metric, engine: analytics.engine, referenceDate: referenceDate, interval: interval,
+                target: target, unit: store.unit
+            )
+            let computed = await Task.detached(priority: .userInitiated) { MuscleValues.compute(input) }.value
+            guard !Task.isCancelled else { return }
+            values = computed
+        }
     }
 
     // MARK: Controls
 
     /// The four metrics as one segmented control – always fully readable.
     private var metricPicker: some View {
-        Picker("Metric", selection: Binding(get: { metric }, set: { new in withAnimation(.snappy) { metric = new } })) {
+        Picker("Metric", selection: Binding(get: { metric }, set: { new in
+            if reduceMotion { metric = new } else { withAnimation(.snappy) { metric = new } }
+        })) {
             ForEach(MuscleMetric.allCases) { item in
                 Text(item.shortTitle).tag(item)
             }
@@ -126,19 +155,18 @@ struct MusclesView: View {
         .padding(.vertical, 2)
     }
 
-    private func bucketChips(_ values: [MuscleValue]) -> some View {
-        let buckets = bucketOrder
-        return ScrollView(.horizontal, showsIndicators: false) {
+    private var bucketChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 chip("All", color: nil, isOn: bucketFilter == nil) { bucketFilter = nil }
-                ForEach(buckets, id: \.self) { bucket in
-                    let sample = values.first { $0.bucket == bucket }?.color
-                    chip(bucket, color: sample ?? bucketColor(bucket), isOn: bucketFilter == bucket) {
+                ForEach(MuscleValues.buckets(for: metric), id: \.self) { bucket in
+                    chip(bucket, color: MuscleValues.bucketColor(bucket), isOn: bucketFilter == bucket) {
                         bucketFilter = bucketFilter == bucket ? nil : bucket
                     }
                 }
             }
         }
+        .scrollClipDisabled()
     }
 
     private func chip(_ title: String, color: Color?, isOn: Bool, action: @escaping () -> Void) -> some View {
@@ -153,6 +181,7 @@ struct MusclesView: View {
             .background(Capsule().fill(isOn ? Color.secondary.opacity(0.3) : Color.secondary.opacity(0.1)))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -162,6 +191,7 @@ struct MusclesView: View {
                 Button { dayOffset += 1 } label: { Image(systemName: "chevron.left") }
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
+                    .accessibilityLabel("Previous day")
                 Spacer()
                 Text(dayTitle)
                     .font(.subheadline.weight(.semibold))
@@ -170,6 +200,7 @@ struct MusclesView: View {
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     .disabled(dayOffset == 0)
+                    .accessibilityLabel("Next day")
             }
         } else {
             VStack(spacing: 8) {
@@ -177,6 +208,7 @@ struct MusclesView: View {
                     Button { offset += 1 } label: { Image(systemName: "chevron.left") }
                         .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
+                        .accessibilityLabel("Earlier")
                     Picker("Range", selection: $range) {
                         ForEach(MuscleRange.allCases) { Text($0.title).tag($0) }
                     }
@@ -186,6 +218,7 @@ struct MusclesView: View {
                         .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
                         .disabled(offset == 0)
+                        .accessibilityLabel("Later")
                 }
                 Text(intervalTitle)
                     .font(.caption)
@@ -216,47 +249,59 @@ struct MusclesView: View {
         return interval.start.formatted(.dateTime.day().month(.abbreviated)) + " – " + end.formatted(.dateTime.day().month(.abbreviated).year())
     }
 
-    private var bucketOrder: [String] {
-        switch metric {
-        case .freshness: return ["Recovered", "Fatigued", "Depleted"]
-        case .sets: return ["Below target", "In target", "Above target"]
-        case .volume, .load: return ["Low", "Medium", "High"]
-        }
-    }
-
-    private func bucketColor(_ bucket: String) -> Color {
-        switch bucket {
-        case "Recovered": return FreshnessStatus.recovered.color
-        case "Fatigued": return FreshnessStatus.fatigued.color
-        case "Depleted": return FreshnessStatus.depleted.color
-        case "Below target", "Low": return MusclePalette.heat(0.2)
-        case "In target", "Medium": return MusclePalette.heat(0.6)
-        default: return MusclePalette.heat(1)
-        }
-    }
-
     private var footer: String {
         switch metric {
         case .freshness:
             return "Freshness estimates how recovered each muscle is from your logged sets (secondary muscles count half). It's calibrated after three recent workouts per muscle."
         case .sets:
             let target = store.profile.weeklySets
-            return "Sets per week — your target is \(target.lowerBound)–\(target.upperBound) hard sets per muscle and week (\(store.profile.headline); change it in Settings → Your Profile). Secondary muscles count half a set."
+            return "Hard sets per week against your target of \(target.lowerBound)–\(target.upperBound) per muscle (\(store.profile.headline); change it in Settings → Your Profile). Light blue: below, green: in target, amber: above. Secondary muscles count half a set; stretching, yoga and other sports don't count as sets."
         case .volume:
             return "Volume = reps × weight. Band and bodyweight sets add sets and load, not kilograms."
         case .load:
-            return "Muscular load combines sets, set type and effort. The card above compares your last 7 days with your usual 6 weeks."
+            return "Muscular load combines sets, set type and effort – and, with “Count other sports” on in Settings, your Apple Health workouts. The card above compares your last 7 days with your usual week (optimal \(store.profile.loadBandText))."
+        }
+    }
+}
+
+/// The per-muscle values of the Muscles screen, computed off the main thread.
+enum MuscleValues {
+    struct Input: Sendable {
+        var metric: MuscleMetric
+        var engine: MuscleEngine
+        var referenceDate: Date
+        var interval: DateInterval
+        var target: ClosedRange<Int>
+        var unit: WeightUnit
+    }
+
+    static func buckets(for metric: MuscleMetric) -> [String] {
+        switch metric {
+        case .freshness: return FreshnessStatus.allCases.map(\.displayName)
+        case .sets: return TargetStatus.allCases.map(\.title)
+        case .volume, .load: return ["Low", "Medium", "High"]
         }
     }
 
-    private func computeValues() -> [MuscleValue] {
-        let engine = analytics.engine
-        switch metric {
+    static func bucketColor(_ bucket: String) -> Color {
+        if let status = FreshnessStatus.allCases.first(where: { $0.displayName == bucket }) { return status.color }
+        if let status = TargetStatus.allCases.first(where: { $0.title == bucket }) { return status.color }
+        switch bucket {
+        case "Low": return MusclePalette.heat(0.2)
+        case "Medium": return MusclePalette.heat(0.6)
+        default: return MusclePalette.heat(1)
+        }
+    }
+
+    static func compute(_ input: Input) -> [MuscleValue] {
+        let engine = input.engine
+        switch input.metric {
         case .freshness:
-            return engine.freshness(at: referenceDate).map { f in
+            return engine.freshness(at: input.referenceDate).map { f in
                 let trained = f.lastTrained != nil
-                var subtitle = "\(f.status.displayName) · \(f.percent) %"
-                if f.status != .recovered { subtitle += " · " + f.readyText }
+                var subtitle = f.status == .recovered
+                    ? "Recovered · \(f.percent) %"
+                    : "\(f.readyText) · \(f.status.displayName) \(f.percent) %"
                 if f.isCalibrating { subtitle += " · calibrating" }
                 return MuscleValue(
                     group: f.group,
@@ -265,53 +310,58 @@ struct MusclesView: View {
                     color: trained ? f.status.color.opacity(f.isCalibrating ? 0.6 : 1) : MusclePalette.empty,
                     title: f.group.displayName,
                     subtitle: trained ? subtitle : "Not trained yet",
-                    subtitleColor: trained ? f.status.color : .secondary,
+                    subtitleColor: trained ? f.status.textColor : .secondary,
                     bucket: f.status.displayName,
                     sortKey: trained ? f.freshness : 2
                 )
             }
         case .sets:
-            let totals = engine.totals(in: interval)
-            let maxValue = max(1, totals.map(\.setsPerWeek).max() ?? 1)
-            return totals.map { t in
-                let target = store.profile.weeklySets
-                let bucket = t.setsPerWeek < Double(target.lowerBound) ? "Below target" : (t.setsPerWeek <= Double(target.upperBound) ? "In target" : "Above target")
+            let target = input.target
+            return engine.totals(in: input.interval).map { t in
+                let status = TargetStatus(t.setsPerWeek, target: target)
+                let perWeek = Format.number((t.setsPerWeek * 10).rounded() / 10)
                 return MuscleValue(
-                    group: t.group, level: t.setsPerWeek / maxValue, color: MusclePalette.heat(t.setsPerWeek / maxValue),
+                    group: t.group,
+                    level: min(1, t.setsPerWeek / Double(max(1, target.upperBound))),
+                    color: TargetStatus.fill(t.setsPerWeek, target: target),
                     title: t.group.displayName,
-                    subtitle: "\(Format.number((t.sets * 10).rounded() / 10)) sets · \(Format.number((t.setsPerWeek * 10).rounded() / 10))/week",
-                    subtitleColor: .secondary, bucket: bucket, sortKey: t.setsPerWeek
+                    subtitle: "\(perWeek) sets/week · \(status.title.lowercased())",
+                    subtitleColor: t.sets > 0 ? status.textColor : .secondary,
+                    bucket: status.title,
+                    sortKey: t.setsPerWeek
                 )
             }
         case .volume:
-            let totals = engine.totals(in: interval)
-            let values = totals.map(\.volumeKg)
-            let maxValue = max(1, values.max() ?? 1)
+            let totals = engine.totals(in: input.interval)
+            let maxValue = max(1, totals.map(\.volumeKg).max() ?? 1)
             return totals.map { t in
                 MuscleValue(
                     group: t.group, level: t.volumeKg / maxValue, color: MusclePalette.heat(t.volumeKg / maxValue),
                     title: t.group.displayName,
-                    subtitle: Format.volume(t.volumeKg, unit: store.unit) + " · \(t.sessions) workouts",
+                    subtitle: Format.volume(t.volumeKg, unit: input.unit) + " · \(t.sessions) workouts",
                     subtitleColor: .secondary, bucket: tercile(t.volumeKg, of: maxValue), sortKey: t.volumeKg
                 )
             }
         case .load:
-            let totals = engine.totals(in: interval)
+            let totals = engine.totals(in: input.interval)
             let maxValue = max(0.1, totals.map(\.load).max() ?? 1)
             return totals.map { t in
-                let status = engine.loadSummary(group: t.group, days: 1).current.status
+                let now = engine.loadSummary(group: t.group, days: 1, now: input.referenceDate).current
+                let subtitle = now.showsRatio
+                    ? "\(Int(t.load.rounded())) hard sets · now \(now.status.displayName.lowercased()) (\(now.percentOfUsual) %)"
+                    : "\(Int(t.load.rounded())) hard sets · \(now.status.displayName.lowercased())"
                 return MuscleValue(
                     group: t.group, level: t.load / maxValue, color: MusclePalette.heat(t.load / maxValue),
                     title: t.group.displayName,
-                    subtitle: "\(Int(t.load.rounded())) load · now \(status.displayName.lowercased())",
-                    subtitleColor: status == .calibrating ? .secondary : status.color,
+                    subtitle: subtitle,
+                    subtitleColor: now.status.textColor,
                     bucket: tercile(t.load, of: maxValue), sortKey: t.load
                 )
             }
         }
     }
 
-    private func tercile(_ value: Double, of maxValue: Double) -> String {
+    private static func tercile(_ value: Double, of maxValue: Double) -> String {
         let ratio = value / maxValue
         if ratio < 0.34 { return "Low" }
         if ratio < 0.67 { return "Medium" }
@@ -331,7 +381,7 @@ struct MuscleRow: View {
                 Text(value.subtitle)
                     .font(.subheadline)
                     .foregroundStyle(value.subtitleColor)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
             Spacer()
             LevelBars(level: value.level, color: value.color)

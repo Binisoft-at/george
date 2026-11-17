@@ -152,6 +152,10 @@ enum SessionGrouper {
             if !rest.isEmpty { groups.append(SessionGroup(id: "all", title: pinned.isEmpty ? "" : "Workouts", sessions: rest)) }
         case .date:
             ordered({ DateBucket.bucket(for: $0.date, calendar: calendar) }, title: { $0.title }, sortKeys: { $0.sorted() })
+            // Coming workouts read soonest first (Mon before Fri), whatever the list's order.
+            if let index = groups.firstIndex(where: { $0.id == "\(DateBucket.upcoming)" }) {
+                groups[index].sessions.sort { ($0.plannedDate ?? $0.date) < ($1.plannedDate ?? $1.date) }
+            }
         case .week:
             let namer = SessionNamer(calendar: calendar)
             ordered({ calendar.weekStart(for: $0.date) }, title: { namer.weekTitle(for: $0) }, sortKeys: { $0.sorted(by: >) })

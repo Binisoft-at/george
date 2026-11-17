@@ -10,9 +10,14 @@ struct SettingsView: View {
     @Environment(ExerciseLibrary.self) private var library
     @Environment(Router.self) private var router
     @Environment(SyncMonitor.self) private var sync
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @AppStorage(Prefs.showImages) private var showImages = true
     @AppStorage(Prefs.healthAsked) private var healthAsked = false
+    @AppStorage(Prefs.barKg) private var barKg = 20.0
+    @AppStorage(Prefs.plateSet) private var plateSetRaw = PlateSet.standard.rawValue
+    @AppStorage(Prefs.offerCoolDown) private var offerCoolDown = true
+    @AppStorage(Prefs.countOtherSports) private var countOtherSports = true
     @Query private var sessions: [WorkoutSession]
     @State private var exportPayload: ExportPayload?
     @State private var hintsReset = false
@@ -46,7 +51,7 @@ struct SettingsView: View {
                 Toggle("Show exercise images", isOn: $showImages)
             }
 
-            Section("Training") {
+            Section {
                 Picker("Units", selection: Binding(get: { settings.unit }, set: { settings.unit = $0; store.save() })) {
                     Text("Kilograms").tag(WeightUnit.kg)
                     Text("Pounds").tag(WeightUnit.lb)
@@ -55,9 +60,6 @@ struct SettingsView: View {
                     Text("Monday").tag(2)
                     Text("Sunday").tag(1)
                     Text("Saturday").tag(7)
-                }
-                Picker("Default rest", selection: Binding(get: { settings.defaultRestSeconds }, set: { settings.defaultRestSeconds = $0; store.save() })) {
-                    ForEach([30, 45, 60, 75, 90, 120, 150, 180], id: \.self) { Text(Format.shortDuration($0)).tag($0) }
                 }
                 Toggle("Prefill weights from last time", isOn: Binding(get: { settings.prefillFromLastTime }, set: { settings.prefillFromLastTime = $0; store.save() }))
                 Toggle("Offer to update templates after edits", isOn: Binding(get: { settings.askToUpdateTemplate }, set: { settings.askToUpdateTemplate = $0; store.save() }))
@@ -71,6 +73,20 @@ struct SettingsView: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+                Picker("Barbell", selection: $barKg) {
+                    ForEach(barChoices(for: settings.unit), id: \.self) { kg in
+                        Text(Format.weight(kg, unit: settings.unit)).tag(kg)
+                    }
+                }
+                Picker("Plates", selection: $plateSetRaw) {
+                    ForEach(PlateSet.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                Toggle("Offer a cool-down after workouts", isOn: $offerCoolDown)
+                Toggle("Count other sports in muscle recovery", isOn: $countOtherSports)
+            } header: {
+                Text("Training")
+            } footer: {
+                Text("Barbell and plates: for warm-up sets and “per side” plate maths. Other sports: tennis, runs and classes from Apple Health count toward muscle recovery and load.")
             }
 
             CoachSettingsSection()
@@ -81,43 +97,49 @@ struct SettingsView: View {
 
             Section {
                 if health.isAvailable {
+                    LabeledContent {
+                        Text(healthStatus)
+                            .foregroundStyle(health.isAuthorizedToShare ? Tone.goodText : Color.secondary)
+                    } label: {
+                        Label("Apple Health", systemImage: "heart.text.square.fill")
+                    }
                     Button {
                         Task {
                             await health.requestAuthorization()
                             healthAsked = true
                         }
                     } label: {
-                        Label(healthAsked ? "Review Apple Health Access" : "Connect Apple Health", systemImage: "heart.text.square.fill")
+                        Text(healthAsked ? "Review Apple Health Access" : "Connect Apple Health")
                     }
                     Toggle("Save workouts to Apple Health", isOn: Binding(get: { settings.saveToHealth }, set: { settings.saveToHealth = $0; store.save() }))
                     LabeledContent("Other workouts found", value: "\(health.externalWorkouts.count) in 6 months")
-                    if let mass = health.latestBodyMassKg {
-                        LabeledContent("Body weight (Health)", value: Format.weight(mass, unit: settings.unit))
-                    }
                 } else {
                     Text("Apple Health isn't available on this device. Workouts sync to your iPhone, which saves them to Health.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Stepper(
-                    "Body weight for estimates: \(Format.weight(settings.bodyMassKg, unit: settings.unit))",
-                    value: Binding(get: { settings.bodyMassKg }, set: { settings.bodyMassKg = $0; store.save() }),
-                    in: 35...200, step: 1
-                )
+                bodyWeightRow(settings: settings)
                 if let error = health.lastError {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
             } header: {
                 Text("Apple Health")
             } footer: {
-                Text("George writes the workout type, duration, calories and your effort rating. Apps like Fitness and Bevel read these; heart rate comes from the Apple Watch app.")
+                Text("George writes the workout type, duration, calories and your effort rating. Apps like Fitness and Bevel read these; heart rate comes from the Apple Watch app. Calories are estimated with your body weight – Apple Health's latest value when there is one.")
             }
 
             #if os(iOS)
-            Section("Apple Watch") {
-                LabeledContent("Paired", value: watch.isPaired ? "Yes" : "No")
-                LabeledContent("George installed", value: watch.isWatchAppInstalled ? "Yes" : "No")
-                LabeledContent("Reachable", value: watch.isReachable ? "Yes" : "No")
+            Section {
+                LabeledContent {
+                    Text(watchStatus)
+                        .multilineTextAlignment(.trailing)
+                } label: {
+                    Label("Apple Watch", systemImage: "applewatch")
+                }
+            } footer: {
+                if watch.isPaired && !watch.isWatchAppInstalled {
+                    Text("Install George on the watch: open the Watch app on this iPhone → My Watch → Available Apps → George → Install.")
+                }
             }
             #endif
 
@@ -140,8 +162,19 @@ struct SettingsView: View {
                 } label: {
                     Label("Export Workout Log (CSV)", systemImage: "square.and.arrow.up")
                 }
-                Button {
-                    store.loadSampleProgram()
+                Menu {
+                    ForEach(GeorgeStore.SampleProgram.allCases) { sample in
+                        Button {
+                            addSample(sample)
+                        } label: {
+                            Label {
+                                Text(sample.title)
+                                Text(sample.detail)
+                            } icon: {
+                                Image(systemName: sample == .gym ? "dumbbell" : "figure.tennis")
+                            }
+                        }
+                    }
                 } label: {
                     Label("Add Sample Program", systemImage: "wand.and.stars")
                 }
@@ -189,6 +222,96 @@ struct SettingsView: View {
         .sheet(item: $exportPayload) { payload in
             ExportSheet(payload: payload)
         }
+    }
+
+    // MARK: Pieces
+
+    /// "Connected" only when Health really allows George to save workouts.
+    private var healthStatus: String {
+        if health.isAuthorizedToShare { return "Connected" }
+        return healthAsked ? "Not allowed – Health app → Sharing → Apps → George" : "Not connected"
+    }
+
+    /// One body-weight row: Apple Health's value when there is one, otherwise your own.
+    @ViewBuilder
+    private func bodyWeightRow(settings: SyncedSettings) -> some View {
+        if let mass = health.latestBodyMassKg {
+            LabeledContent("Body weight", value: "\(Format.weight(mass, unit: settings.unit)) · from Apple Health")
+        } else {
+            LabeledContent("Body weight") {
+                HStack(spacing: 4) {
+                    NumberField(
+                        placeholder: settings.unit.rawValue,
+                        value: Binding(
+                            get: { (settings.unit.fromKilograms(settings.bodyMassKg) * 10).rounded() / 10 },
+                            set: { value in
+                                guard let value, value > 0 else { return }
+                                settings.bodyMassKg = min(250, max(30, settings.unit.toKilograms(value)))
+                                store.save()
+                            }
+                        ),
+                        width: 70
+                    )
+                    .multilineTextAlignment(.trailing)
+                    Text(settings.unit.rawValue)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var watchStatus: String {
+        #if os(iOS)
+        if !watch.isPaired { return "No watch paired" }
+        if !watch.isWatchAppInstalled { return "George not installed" }
+        return watch.isReachable ? "Connected" : "Installed · not reachable now"
+        #else
+        return ""
+        #endif
+    }
+
+    private func barChoices(for unit: WeightUnit) -> [Double] {
+        var choices: [Double] = unit == .kg ? [20, 15, 10, 7.5] : [unit.toKilograms(45), unit.toKilograms(35), unit.toKilograms(25), unit.toKilograms(15)]
+        if !choices.contains(where: { abs($0 - barKg) < 0.01 }) { choices.insert(barKg, at: 0) }
+        return choices
+    }
+
+    private func addSample(_ sample: GeorgeStore.SampleProgram) {
+        guard let program = store.loadSampleProgram(sample) else { return }
+        toasts.show("Added \u{201C}\(program.name)\u{201D}", symbol: "wand.and.stars")
+        #if os(iOS)
+        dismiss()
+        router.afterDismiss { router.show(.program(program.id)) }
+        #else
+        router.show(.program(program.id))
+        #endif
+    }
+}
+
+/// The plates at hand, for "per side" plate maths (Settings → Training).
+enum PlateSet: String, CaseIterable, Identifiable {
+    case standard, noSmall, pounds
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: return "25 … 1.25 kg"
+        case .noSmall: return "25 … 2.5 kg"
+        case .pounds: return "45 … 2.5 lb"
+        }
+    }
+
+    /// Plates per side in kilograms, heaviest first.
+    var platesKg: [Double] {
+        switch self {
+        case .standard: return [25, 20, 15, 10, 5, 2.5, 1.25]
+        case .noSmall: return [25, 20, 15, 10, 5, 2.5]
+        case .pounds: return [45, 35, 25, 10, 5, 2.5].map { WeightUnit.lb.toKilograms($0) }
+        }
+    }
+
+    static var current: PlateSet {
+        PlateSet(rawValue: UserDefaults.standard.string(forKey: Prefs.plateSet) ?? "") ?? .standard
     }
 }
 

@@ -51,6 +51,7 @@ struct ExerciseLibraryView: View {
                             }
                         }
                     }
+                    .contextMenu { AddToMenu(exercise: exercise) }
                 }
             }
         }
@@ -111,9 +112,11 @@ struct ExerciseDetailView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(\.modelContext) private var modelContext
     @Query private var userExercises: [UserExercise]
-    @Query private var sessions: [WorkoutSession]
     @State private var newLink = ""
     @State private var playing: URL?
+    /// This exercise's sessions, from the shared history index (refreshed with the store revision).
+    @State private var history: [ExercisePoint] = []
+    @ScaledMetric(relativeTo: .caption) private var stepBadge: CGFloat = 22
 
     var body: some View {
         if let exercise = resolved {
@@ -140,32 +143,15 @@ struct ExerciseDetailView: View {
 
     @ViewBuilder
     private func content(_ exercise: LibraryExercise) -> some View {
-        let history = StatsEngine.history(of: exercise.id, in: sessions.filter { $0.status.isPerformed }.map { $0.record() })
         List {
-            Section {
-                ExerciseAnimation(urls: library.imageURLs(for: exercise), symbol: exercise.displaySymbol, tint: exercise.kind.color)
-                    .frame(height: 240)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(exercise.name).font(.title2.weight(.bold))
-                    if !exercise.aliases.isEmpty {
-                        Text(exercise.aliases.joined(separator: " · ")).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    FlowLayout(spacing: 6) {
-                        KindBadge(kind: exercise.kind, compact: true)
-                        ForEach(exercise.primary, id: \.self) { Chip(text: $0.capitalized, systemImage: "target", tint: .red) }
-                        ForEach(exercise.secondary, id: \.self) { Chip(text: $0.capitalized, tint: .orange) }
-                        if let equipment = exercise.equipment { Chip(text: equipment.capitalized, systemImage: "wrench.and.screwdriver", tint: .secondary) }
-                        if let level = exercise.level { Chip(text: level.capitalized, systemImage: "chart.bar", tint: .secondary) }
-                        ForEach(exercise.tags, id: \.self) { Chip(text: "#" + $0, tint: .blue) }
-                    }
-                }
-                .padding(.vertical, 4)
+            // With history, "am I getting stronger?" comes first.
+            if history.isEmpty {
+                animationSection(exercise)
+                headerSection(exercise)
+            } else {
+                headerSection(exercise)
+                progressSection(exercise)
+                animationSection(exercise)
             }
 
             if !exercise.steps.isEmpty {
@@ -174,14 +160,13 @@ struct ExerciseDetailView: View {
                         HStack(alignment: .top, spacing: 10) {
                             Text("\(index + 1)")
                                 .font(.caption.weight(.bold))
-                                .frame(width: 22, height: 22)
+                                .frame(width: stepBadge, height: stepBadge)
                                 .background(Circle().fill(exercise.kind.color.opacity(0.2)))
                             Text(step).font(.callout)
                         }
                     }
                 }
             }
-
             Section {
                 Button {
                     playing = TutorialLinks.youtubeSearch(for: exercise.name, kind: exercise.kind)
@@ -242,29 +227,14 @@ struct ExerciseDetailView: View {
                 ), axis: .vertical)
                 .lineLimit(2...8)
             }
-
-            if !history.isEmpty {
-                Section("Progress") {
-                    ExerciseProgressChart(points: history, mode: exercise.mode, unit: store.unit)
-                        .frame(height: 200)
-                        .padding(.vertical, 6)
-                    ForEach(Array(history.reversed().prefix(8))) { point in
-                        HStack {
-                            Text(point.date.formatted(date: .abbreviated, time: .omitted))
-                            Spacer()
-                            Text(point.sets.map { $0.label(mode: exercise.mode, unit: store.unit) }.joined(separator: ", "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                }
-            }
         }
         .groupedList()
         .navigationTitle(exercise.name)
         .inlineTitle()
         .toolbar {
+            ToolbarItem(placement: .georgeTrailing) {
+                AddToMenu(exercise: exercise)
+            }
             ToolbarItem(placement: .georgeTrailing) {
                 Button {
                     let entry = ensureUserEntry(for: exercise)
@@ -280,34 +250,258 @@ struct ExerciseDetailView: View {
             LinkPlayerView(url: item.url)
         }
         .onDisappear { store.save() }
+        .task(id: "\(exercise.id)#\(store.revision)") {
+            history = StatsEngine.history(of: exercise.id, in: SessionHistory.shared.records(store))
+        }
+    }
+
+    private func animationSection(_ exercise: LibraryExercise) -> some View {
+        Section {
+            ExerciseAnimation(urls: library.imageURLs(for: exercise), symbol: exercise.displaySymbol, tint: exercise.kind.color)
+                .frame(height: history.isEmpty ? 240 : 180)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+    }
+
+    private func headerSection(_ exercise: LibraryExercise) -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(exercise.name).font(.title2.weight(.bold))
+                if !exercise.aliases.isEmpty {
+                    Text(exercise.aliases.joined(separator: " · ")).font(.subheadline).foregroundStyle(.secondary)
+                }
+                FlowLayout(spacing: 6) {
+                    KindBadge(kind: exercise.kind, compact: true)
+                    ForEach(exercise.primary, id: \.self) { Chip(text: $0.capitalized, systemImage: "target", tint: Tone.accent) }
+                    ForEach(exercise.secondary, id: \.self) { Chip(text: $0.capitalized, tint: .secondary) }
+                    if let equipment = exercise.equipment { Chip(text: equipment.capitalized, systemImage: "wrench.and.screwdriver", tint: .secondary) }
+                    if let level = exercise.level { Chip(text: level.capitalized, systemImage: "chart.bar", tint: .secondary) }
+                    ForEach(exercise.tags, id: \.self) { Chip(text: "#" + $0, tint: .secondary) }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func progressSection(_ exercise: LibraryExercise) -> some View {
+        Section {
+            ExerciseProgressChart(points: history, mode: exercise.mode, unit: store.unit)
+                .padding(.vertical, 6)
+            ForEach(Array(history.reversed().prefix(8))) { point in
+                ExerciseSessionRow(point: point, mode: exercise.mode, unit: store.unit)
+            }
+        } header: {
+            Text("Progress")
+        }
     }
 }
 
+/// An exercise's history as a chart: e1RM (default), top set or volume for lifts with weight, total
+/// reps for sessions without weight, the longest hold for timed moves. Records are marked in gold.
 struct ExerciseProgressChart: View {
     let points: [ExercisePoint]
     let mode: ExerciseMode
     let unit: WeightUnit
+    var chartHeight: CGFloat = 190
+    @State private var metric: ProgressMetric?
+    @State private var selection: Date?
 
     var body: some View {
-        Chart(points) { point in
-            if mode == .reps, let weight = point.bestWeight, weight > 0 {
-                LineMark(x: .value("Date", point.date), y: .value("Weight", unit.fromKilograms(weight)))
-                    .interpolationMethod(.catmullRom)
-                PointMark(x: .value("Date", point.date), y: .value("Weight", unit.fromKilograms(weight)))
-            } else if mode == .time, let seconds = point.bestSeconds {
-                LineMark(x: .value("Date", point.date), y: .value("Seconds", seconds))
-                PointMark(x: .value("Date", point.date), y: .value("Seconds", seconds))
-            } else if let reps = point.bestReps {
-                LineMark(x: .value("Date", point.date), y: .value("Reps", reps))
-                PointMark(x: .value("Date", point.date), y: .value("Reps", reps))
+        let available = ExerciseProgress.metrics(for: points, mode: mode)
+        let current = metric.flatMap { available.contains($0) ? $0 : nil } ?? available.first
+        VStack(alignment: .leading, spacing: 10) {
+            if available.count > 1 {
+                Picker("Measure", selection: Binding(get: { current ?? .oneRepMax }, set: { metric = $0 })) {
+                    ForEach(available) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            if let current {
+                let samples = ExerciseProgress.samples(points, metric: current)
+                summary(samples, metric: current)
+                chart(samples, metric: current)
+                    .frame(height: chartHeight)
+                Text(current.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Nothing to chart yet – log reps, weight or time.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
-        .chartYAxisLabel { Text(axisLabel) }
     }
 
-    private var axisLabel: String {
-        if mode == .time { return "seconds" }
-        if points.contains(where: { ($0.bestWeight ?? 0) > 0 }) { return unit.rawValue }
-        return "reps"
+    private func summary(_ samples: [ProgressSample], metric: ProgressMetric) -> some View {
+        let records = samples.filter(\.isRecord).count
+        let best = samples.max { $0.value < $1.value }
+        return HStack(alignment: .firstTextBaseline, spacing: 16) {
+            if let last = samples.last {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Latest").font(.caption).foregroundStyle(.secondary)
+                    Text(text(last, metric: metric)).font(.headline).monospacedDigit()
+                }
+            }
+            if let best, samples.count > 1 {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Best").font(.caption).foregroundStyle(.secondary)
+                    Text(text(best, metric: metric)).font(.headline).monospacedDigit()
+                }
+            }
+            Spacer(minLength: 0)
+            if records > 0 {
+                Label {
+                    Text("\(records) \(records == 1 ? "record" : "records")").foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "trophy.fill").foregroundStyle(Tone.record)
+                }
+                .font(.caption.weight(.semibold))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func chart(_ samples: [ProgressSample], metric: ProgressMetric) -> some View {
+        let selected = selection.flatMap { date in
+            samples.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+        }
+        return Chart {
+            ForEach(samples) { sample in
+                LineMark(x: .value("Date", sample.date), y: .value(metric.title, plotted(sample.value, metric: metric)))
+                    .foregroundStyle(Tone.accent)
+                    .interpolationMethod(.monotone)
+                PointMark(x: .value("Date", sample.date), y: .value(metric.title, plotted(sample.value, metric: metric)))
+                    .foregroundStyle(sample.isRecord ? Tone.record : Tone.accent)
+                    .symbol(sample.isRecord ? BasicChartSymbolShape.diamond : .circle)
+                    .symbolSize(sample.isRecord ? 90 : 28)
+                    .accessibilityLabel(sample.date.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityValue(text(sample, metric: metric) + (sample.isRecord ? ", record" : ""))
+            }
+            if let selected {
+                RuleMark(x: .value("Selected", selected.date))
+                    .foregroundStyle(Color.secondary.opacity(0.35))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selected.date.formatted(.dateTime.day().month(.abbreviated).year(.twoDigits)))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(text(selected, metric: metric) + (selected.isRecord ? " · record" : ""))
+                                .font(.caption.weight(.semibold))
+                        }
+                        .padding(6)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    }
+            }
+        }
+        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYAxisLabel { Text(axisLabel(metric)) }
+        .chartXSelection(value: $selection)
+    }
+
+    private func plotted(_ value: Double, metric: ProgressMetric) -> Double {
+        switch metric {
+        case .oneRepMax, .topSet, .volume: return unit.fromKilograms(value)
+        case .reps, .seconds: return value
+        }
+    }
+
+    private func axisLabel(_ metric: ProgressMetric) -> String {
+        switch metric {
+        case .oneRepMax, .topSet, .volume: return unit.rawValue
+        case .reps: return "reps"
+        case .seconds: return "seconds"
+        }
+    }
+
+    /// "96 kg", "80 kg × 3", "4.2k kg", "45 reps", "1:30".
+    private func text(_ sample: ProgressSample, metric: ProgressMetric) -> String {
+        switch metric {
+        case .oneRepMax: return Format.weight((sample.value * 2).rounded() / 2, unit: unit)
+        case .topSet: return Format.weight(sample.value, unit: unit) + (sample.reps.map { " × \($0)" } ?? "")
+        case .volume: return Format.volume(sample.value, unit: unit)
+        case .reps: return "\(Int(sample.value)) reps"
+        case .seconds: return Format.clock(Int(sample.value))
+        }
+    }
+}
+
+/// One past session of an exercise: date and its sets.
+struct ExerciseSessionRow: View {
+    let point: ExercisePoint
+    let mode: ExerciseMode
+    let unit: WeightUnit
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(point.date.formatted(date: .abbreviated, time: .omitted))
+            Spacer(minLength: 12)
+            Text(point.sets.map { $0.label(mode: mode, unit: unit) }.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(2)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// "Last time" in depth, as a medium sheet: the progress chart and the last 4 sessions of one
+/// exercise. The running workout isn't part of the history, so it shows what came before.
+struct ExerciseHistorySheet: View {
+    let exerciseKey: String
+    let name: String
+    @Environment(GeorgeStore.self) private var store
+    @Environment(ExerciseLibrary.self) private var library
+    @Environment(\.dismiss) private var dismiss
+    @State private var history: [ExercisePoint]?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if let history {
+                    if history.isEmpty {
+                        Text("No earlier sessions of this exercise yet.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let exerciseMode = mode(of: history)
+                        Section {
+                            ExerciseProgressChart(points: history, mode: exerciseMode, unit: store.unit, chartHeight: 160)
+                                .padding(.vertical, 4)
+                        }
+                        Section("Last sessions") {
+                            ForEach(Array(history.reversed().prefix(4))) { point in
+                                ExerciseSessionRow(point: point, mode: exerciseMode, unit: store.unit)
+                            }
+                        }
+                    }
+                }
+            }
+            .groupedList()
+            .navigationTitle(name)
+            .inlineTitle()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .overlay {
+                if history == nil { ProgressView() }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .task(id: "\(exerciseKey)#\(store.revision)") {
+            history = StatsEngine.history(of: exerciseKey, in: SessionHistory.shared.records(store))
+        }
+    }
+
+    private func mode(of points: [ExercisePoint]) -> ExerciseMode {
+        if let exercise = library.exercise(id: exerciseKey) { return exercise.mode }
+        let timed = points.contains { ($0.bestSeconds ?? 0) > 0 } && !points.contains { ($0.bestReps ?? 0) > 0 }
+        return timed ? .time : .reps
     }
 }

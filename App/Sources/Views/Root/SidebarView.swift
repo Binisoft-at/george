@@ -28,6 +28,7 @@ struct SidebarView: View {
                 row(.planned, title: "Planned", symbol: "calendar", count: sessions.filter { $0.status == .planned }.count)
                 row(.favorites, title: "Favorites", symbol: "star", count: sessions.filter(\.isFavorite).count)
                 row(.templates, title: "All Templates", symbol: "square.on.square", count: templates.count)
+                row(.routines, title: "Stretch & Yoga", symbol: "figure.yoga", count: nil, tint: .teal)
             }
 
             Section {

@@ -43,13 +43,23 @@ struct EnergyView: View {
     @State private var moods: [EnergyEntry] = []
     @State private var moodMessage: String?
     @State private var isLoadingMoods = false
+    /// Weekly averages, rhythm and patterns – worked out when check-ins or workouts change, not on every render.
+    @State private var insights: EnergyInsights?
+
+    private struct InsightsKey: Hashable {
+        var revision: Int
+        var checkIns: Int
+        var latest: Date?
+        var moods: Int
+        var useStateOfMind: Bool
+        var firstWeekday: Int
+    }
 
     var body: some View {
-        let _ = store.revision
         let calendar = store.calendar
         let entries = mergedEntries(calendar: calendar)
-        let performance = EnergyAnalysis.relativePerformance(store.performanceSamples())
-        let insights = EnergyAnalysis.analyze(entries: entries, performance: performance, calendar: calendar)
+        let key = InsightsKey(revision: store.revision, checkIns: checkIns.count, latest: checkIns.last?.date,
+                              moods: moods.count, useStateOfMind: useStateOfMind, firstWeekday: calendar.firstWeekday)
 
         List {
             Section {
@@ -62,7 +72,7 @@ struct EnergyView: View {
                     MessageView(title: "No check-ins yet", systemImage: "battery.50percent",
                                 message: "Tap how you feel above – once a day, or answer the question before a workout. After a few weeks George shows your patterns and looks for a rhythm.")
                 }
-            } else {
+            } else if let insights {
                 Section {
                     EnergyWeeksChart(weeks: Array(insights.weeks.suffix(12)))
                         .frame(height: 170)
@@ -71,7 +81,7 @@ struct EnergyView: View {
                         Label(trend > 0 ? "Trending up over the last weeks" : "Trending down over the last weeks",
                               systemImage: trend > 0 ? "arrow.up.right" : "arrow.down.right")
                             .font(.subheadline)
-                            .foregroundStyle(trend > 0 ? .green : .orange)
+                            .foregroundStyle(trend > 0 ? Tone.goodText : Tone.cautionText)
                     }
                 } header: {
                     Text("Weekly Average")
@@ -87,6 +97,11 @@ struct EnergyView: View {
         }
         .groupedList()
         .navigationTitle("Energy")
+        .task(id: key) {
+            let calendar = store.calendar
+            let performance = EnergyAnalysis.relativePerformance(store.performanceSamples())
+            insights = EnergyAnalysis.analyze(entries: mergedEntries(calendar: calendar), performance: performance, calendar: calendar)
+        }
         .task {
             guard !LaunchOptions.current.isDemo else { return }
             if healthSignals, health.healthSignals.isEmpty {
@@ -273,16 +288,22 @@ struct EnergyTodayCard: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \EnergyCheckIn.date, order: .reverse) private var recent: [EnergyCheckIn]
 
     var body: some View {
         let today = recent.first { $0.source != "health" && Calendar.current.isDateInToday($0.date) }
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(today == nil ? "How's your energy today?" : "Energy today: \(EnergyEntry.label(for: today!.level))",
-                      systemImage: EnergyEntry.symbol(for: today?.level ?? 3))
-                    .font(.headline)
-                    .foregroundStyle(today.map { EnergyPicker.color(for: $0.level) } ?? Color.primary)
+                // The words in the primary colour (readable), the battery in the level's colour.
+                Label {
+                    Text(today.map { "Energy today: \(EnergyEntry.label(for: $0.level))" } ?? "How's your energy today?")
+                        .foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: EnergyEntry.symbol(for: today?.level ?? 3))
+                        .foregroundStyle(today.map { EnergyPicker.color(for: $0.level) } ?? Color.secondary)
+                }
+                .font(.headline)
                 Spacer()
                 if compact {
                     Button {
@@ -302,7 +323,11 @@ struct EnergyTodayCard: View {
                     .foregroundStyle(.secondary)
             }
             EnergyPicker(selected: today?.level) { level in
-                withAnimation(.snappy) { store.logEnergyToday(level) }
+                if reduceMotion {
+                    store.logEnergyToday(level)
+                } else {
+                    withAnimation(.snappy) { store.logEnergyToday(level) }
+                }
                 Haptics.success()
             }
         }

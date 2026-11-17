@@ -40,6 +40,7 @@ struct BodyFigure: View {
     var onTap: ((MuscleGroup) -> Void)? = nil
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var baseColor: Color {
         colorScheme == .dark ? Color(white: 0.2) : Color(white: 0.82)
@@ -83,7 +84,7 @@ struct BodyFigure: View {
             .overlay {
                 shape.stroke(isSelected ? Color.primary : outlineColor, lineWidth: isSelected ? 2 : 0.8)
             }
-            .animation(.easeInOut(duration: 0.25), value: isSelected)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isSelected)
         if let onTap {
             filled
                 .contentShape(shape)
@@ -114,12 +115,19 @@ struct BodyMapPair: View {
 struct WorkoutMuscleMap: View {
     let sets: [MuscleGroup: Double]
     var title = "Muscles"
+    /// Colour for a share of the busiest muscle (0…1); the warm ramp by default, e.g.
+    /// `BrandPalette.muscleOnLight` on the recap.
+    var palette: (Double) -> Color = MusclePalette.heat
 
     var body: some View {
         let maxSets = max(1, sets.values.max() ?? 1)
-        let top: [MuscleGroup] = sets.filter { $0.value > 0 }.sorted { $0.value > $1.value }.prefix(6).map { $0.key }
+        // Most sets first; ties in body order so the list doesn't jump between renders.
+        let order = Dictionary(uniqueKeysWithValues: MuscleGroup.allCases.enumerated().map { ($1, $0) })
+        let top: [MuscleGroup] = sets.filter { $0.value > 0 }
+            .sorted { $0.value != $1.value ? $0.value > $1.value : (order[$0.key] ?? 0) < (order[$1.key] ?? 0) }
+            .prefix(6).map { $0.key }
         HStack(alignment: .center, spacing: 16) {
-            BodyMapPair(fill: { MusclePalette.heat((sets[$0] ?? 0) / maxSets) }, spacing: 4)
+            BodyMapPair(fill: { palette((sets[$0] ?? 0) / maxSets) }, spacing: 4)
                 .frame(height: 150)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).font(.subheadline.weight(.semibold))
@@ -129,7 +137,7 @@ struct WorkoutMuscleMap: View {
                 ForEach(top) { group in
                     let value = sets[group] ?? 0
                     HStack(spacing: 6) {
-                        Circle().fill(MusclePalette.heat(value / maxSets)).frame(width: 8, height: 8)
+                        Circle().fill(palette(value / maxSets)).frame(width: 8, height: 8)
                         Text(group.displayName).font(.caption)
                         Spacer(minLength: 4)
                         Text(Format.number((value * 10).rounded() / 10) + " sets")

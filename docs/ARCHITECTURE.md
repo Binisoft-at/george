@@ -9,8 +9,10 @@ handbook workflows are synced from it – change them there, never here.
 | Target | What |
 |---|---|
 | `George` (iOS/iPadOS) | Tab bar (Today · Workouts · Plans · Insights · Search, sidebar on iPad), now-playing bar for the running workout. Embeds the watch app. |
-| `GeorgeMac` | Same sources: three-column split view, menu commands and shortcuts. |
-| `GeorgeWatch` | Gets the running workout from the iPhone (WatchConnectivity), records it with HealthKit, shows sets and rest. No store of its own. |
+| `GeorgeMac` | Same sources: three-column split view (dashboards like Today, Muscles and Stats use the full width), menu commands and shortcuts. |
+| `GeorgeWatch` | Gets the running workout from the iPhone (WatchConnectivity), records it with HealthKit, shows sets and rest, logs reps/weight and steers the plan through `WatchCommandEnvelope`s (time + workout id; stale ones are dropped). No store of its own. |
+| `GeorgeWidgets` (iOS extension) | Live Activity / Dynamic Island (`Shared/WorkoutActivity.swift`, buttons are `LiveActivityIntent`s from `Shared/WorkoutIntents.swift`), Home/Lock Screen widgets reading `Shared/WidgetBridge.swift`'s JSON in the App Group, a Control Center control. App side: `LiveActivityBridge`, `App/Sources/Intents/GeorgeIntents.swift` (App Intents, App Shortcuts). |
+| `GeorgeWatchWidgets` (watchOS extension) | The complication (rest countdown or next workout), data from `Watch/Sources/ComplicationBridge.swift`. |
 | `Packages/GeorgeCore` | All logic without Apple UI frameworks: workout model and editing, CSV import/export, naming, streaks, stats, muscle analytics, body map, the tour catalog. Tested on Linux in CI. |
 
 ## Data

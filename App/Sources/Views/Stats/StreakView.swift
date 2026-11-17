@@ -9,6 +9,7 @@ struct StreakView: View {
     @Environment(LiveWorkoutController.self) private var live
     @Query private var sessions: [WorkoutSession]
     @Query private var excused: [ExcusedWeek]
+    @State private var showRescue = false
 
     var body: some View {
         let _ = sessions.count + excused.count + store.revision
@@ -31,7 +32,7 @@ struct StreakView: View {
                     Text(summary.headline)
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
-                    WeekDotsView(week: summary.thisWeek)
+                    WeekDotsView(week: summary.thisWeek, marks: store.dayMarks(for: summary.thisWeek))
                         .padding(.top, 6)
                 }
                 .frame(maxWidth: .infinity)
@@ -44,7 +45,7 @@ struct StreakView: View {
             if summary.thisWeek.status == .rescueAvailable || summary.thisWeek.status == .tight || summary.thisWeek.status == .atRisk {
                 Section {
                     Button {
-                        live.startEmpty(program: store.activeProgram, kind: .mobility, rescue: true)
+                        showRescue = true
                     } label: {
                         Label("Start a \(settings.rescueMinutes)-min rescue workout", systemImage: "lifepreserver")
                             .frame(maxWidth: .infinity)
@@ -53,7 +54,7 @@ struct StreakView: View {
                     .tint(.orange)
                     .disabled(live.isActive)
                 } footer: {
-                    Text("A rescue workout counts double (once per week). Mobility, stretching or a short band circuit is enough.")
+                    Text("A rescue workout counts double (once per week). Pick a ready-made mobility or stretch routine – or a short band circuit.")
                 }
             }
 
@@ -117,6 +118,9 @@ struct StreakView: View {
         }
         .groupedList()
         .navigationTitle("Streak")
+        .sheet(isPresented: $showRescue) {
+            RescueSheet()
+        }
     }
 
     private func legend(_ color: Color, _ title: String) -> some View {
@@ -168,13 +172,17 @@ struct StreakHeatmap: View {
     }
 }
 
-/// Goal + streak rules (shared with Settings).
+/// Goal + streak rules, and the reminders (shared with Settings).
 struct StreakSettingsSection: View {
     @Environment(GeorgeStore.self) private var store
+    @Environment(HealthKitManager.self) private var health
+    @AppStorage(Prefs.trainingReminders) private var reminders = false
+    @AppStorage(Prefs.reminderMinutes) private var reminderMinutes = ReminderScheduler.defaultMinutes
+    @State private var permissionDenied = false
 
     var body: some View {
         let settings = store.settings
-        Section("Rules") {
+        Section {
             Stepper(
                 "Weekly goal: \(settings.weeklyGoal) day\(settings.weeklyGoal == 1 ? "" : "s")",
                 value: Binding(get: { settings.weeklyGoal }, set: { settings.setWeeklyGoal($0, calendar: store.calendar); store.save() }),
@@ -193,6 +201,59 @@ struct StreakSettingsSection: View {
                 in: 5...60, step: 5
             )
             Toggle("Count other Apple Health workouts", isOn: Binding(get: { settings.countHealthWorkouts }, set: { settings.countHealthWorkouts = $0; store.save() }))
+        } header: {
+            Text("Rules")
+        } footer: {
+            Text("A workout counts from \(settings.minimumMinutes) minutes – strength workouts with 3 or more sets also when they were logged without a time. A rescue workout counts from about \(Int((Double(settings.rescueMinutes) * 0.8).rounded())) minutes or one set.")
+        }
+
+        #if os(iOS)
+        Section {
+            Toggle(isOn: Binding(get: { reminders }, set: { setReminders($0) })) {
+                Label("Training reminders", systemImage: "bell.badge")
+            }
+            if reminders {
+                DatePicker(
+                    "Time",
+                    selection: Binding(
+                        get: { reminderDate },
+                        set: { date in
+                            let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                            reminderMinutes = (parts.hour ?? 17) * 60 + (parts.minute ?? 30)
+                            ReminderScheduler.reschedule(store: store, healthEntries: health.externalWorkouts)
+                        }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+            }
+            if permissionDenied {
+                Text("Notifications are off for George – turn them on in iPhone Settings → Notifications → George.")
+                    .font(.caption)
+                    .foregroundStyle(Tone.cautionText)
+            }
+        } header: {
+            Text("Reminders")
+        } footer: {
+            Text("On days with a planned workout (or a template scheduled for that weekday), and once late in the week when your streak needs a workout day.")
+        }
+        #endif
+    }
+
+    private var reminderDate: Date {
+        Calendar.current.date(bySettingHour: reminderMinutes / 60, minute: reminderMinutes % 60, second: 0, of: Date()) ?? Date()
+    }
+
+    private func setReminders(_ on: Bool) {
+        guard on else {
+            reminders = false
+            ReminderScheduler.cancelAll()
+            return
+        }
+        Task {
+            let allowed = await ReminderScheduler.requestPermission()
+            permissionDenied = !allowed
+            reminders = allowed
+            if allowed { ReminderScheduler.reschedule(store: store, healthEntries: health.externalWorkouts) }
         }
     }
 }

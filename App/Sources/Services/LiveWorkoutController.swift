@@ -27,6 +27,38 @@ final class LiveWorkoutController {
         var canUpdateTemplate: Bool
         var templateName: String
         var savedToHealth: Bool
+        /// Compared with the last time this workout was done (nil the first time).
+        var comparison: SessionComparison? = nil
+        /// Loads that went up against the template ("Deadlift 100 → 105 kg").
+        var loadChanges: [String] = []
+        /// A workout without a template that could become one.
+        var canSaveAsTemplate = false
+        var kind: WorkoutKind = .gym
+        /// The stretch routine that fits what was trained (offered on the finish screen).
+        var coolDown: Routine? = nil
+    }
+
+    /// What a Start button wants to start. While another workout runs, George asks first.
+    enum StartTarget: Identifiable {
+        case template(WorkoutTemplate)
+        case session(WorkoutSession)
+        case empty(program: Program?, kind: WorkoutKind?, rescue: Bool)
+
+        var id: String {
+            switch self {
+            case .template(let template): return "t" + template.id.uuidString
+            case .session(let session): return "s" + session.id.uuidString
+            case .empty(_, let kind, let rescue): return "e\(kind?.rawValue ?? "")\(rescue)"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .template(let template): return template.name
+            case .session(let session): return session.title
+            case .empty(_, _, let rescue): return rescue ? "Rescue Workout" : "Empty Workout"
+            }
+        }
     }
 
     private let store: GeorgeStore
@@ -55,6 +87,24 @@ final class LiveWorkoutController {
     private(set) var watchIsRecording = false
     private(set) var lastCompletedSetID: UUID?
     var summary: FinishSummary?
+    /// A start that would end the running workout – RootView asks "keep going / end and start".
+    var pendingStart: StartTarget?
+    /// Live mode should open the finish sheet (watch, Live Activity, "finish first").
+    var finishRequest = false
+    /// The empty workout's "Add Exercise" button (the live view opens the picker).
+    var requestAddExercise = false
+    /// Menu bar "Discard…": the live view asks first.
+    var discardRequest = false
+    /// Per-side holds: 1 or 2 while a timed per-side set runs.
+    private(set) var timedSide: Int?
+    /// A tick that can be undone for a few seconds (the minimised bar and the coach bar show it).
+    private(set) var undoableTick: UndoableTick?
+
+    struct UndoableTick: Identifiable, Equatable {
+        let id = UUID()
+        var setID: UUID
+        var text: String
+    }
 
     // MARK: Coach state
 
@@ -78,6 +128,10 @@ final class LiveWorkoutController {
         /// "chest, triceps"
         var muscles: String
         var asksReps: Bool
+        var asksFatigue: Bool
+        /// Answers given so far (each tap is saved at once).
+        var fatigue: Double? = nil
+        var repsInReserve: Int? = nil
     }
 
     /// A set was done outside the planned order. George counts it, says so, and asks whether to
@@ -142,6 +196,21 @@ final class LiveWorkoutController {
     @ObservationIgnored private var effortTask: Task<Void, Never>?
 
     @ObservationIgnored private var restTask: Task<Void, Never>?
+    @ObservationIgnored private var restNotificationTask: Task<Void, Never>?
+    @ObservationIgnored private var persistTask: Task<Void, Never>?
+    @ObservationIgnored private var lastLiveSync = Date.distantPast
+    @ObservationIgnored private var liveSyncTask: Task<Void, Never>?
+    @ObservationIgnored private var isFinishing = false
+    /// Pace and rest before the last tick, so a mistaken tick can be undone cleanly.
+    @ObservationIgnored private var beforeLastTick: (setID: UUID, pace: PaceTracker, restBeforeNext: Double, currentRef: WorkoutContent.SetRef?, best: [String: Double])?
+    /// The exercise done off plan last (a second set on it adopts it quietly).
+    @ObservationIgnored private var lastOffPlanItemID: UUID?
+    /// "Not in this workout" on the feedback card.
+    @ObservationIgnored private var skipFeedbackThisWorkout = false
+    /// While paused: what was left of the rest and of a timed set.
+    @ObservationIgnored private var pausedRest: (remaining: Double, total: Int)?
+    @ObservationIgnored private var pausedTimed: (remaining: Double, setID: UUID)?
+    @ObservationIgnored private var pausedAt: Date?
     @ObservationIgnored private var pendingHealthSessionID: UUID?
     @ObservationIgnored private var pendingEffort = 0
     /// Tells the watch to throw away its Health recording for this session.
@@ -152,7 +221,7 @@ final class LiveWorkoutController {
         self.health = health
         self.watch = watch
         self.library = library
-        watch.onCommand = { [weak self] command in self?.handle(command) }
+        watch.onCommand = { [weak self] envelope in self?.handle(envelope) }
         watch.onMetrics = { [weak self] metrics in self?.handle(metrics) }
         watch.snapshotProvider = { [weak self] in
             self?.makeSnapshot() ?? WatchSnapshot(templates: [], upcoming: [], streak: nil, live: nil, unit: .kg)
@@ -160,6 +229,8 @@ final class LiveWorkoutController {
     }
 
     var isActive: Bool { session != nil }
+    /// The exercise catalog (routines, alternatives).
+    var catalog: ExerciseCatalog { library.catalog }
     var isPaused: Bool { session?.resumedAt == nil }
     var unit: WeightUnit { store.unit }
 
@@ -187,29 +258,131 @@ final class LiveWorkoutController {
 
     // MARK: Lifecycle
 
-    /// Re-attach to a session that was running when the app was closed.
+    /// Re-attach to a session that was running when the app was closed – only on the device that
+    /// started it (another iPhone, iPad or Mac shows it as "running on another device").
     func restore() {
         guard session == nil, let active = store.activeSession else { return }
-        attach(active)
+        guard UserDefaults.standard.string(forKey: Prefs.liveSessionID) == active.id.uuidString else { return }
+        attach(active, restoring: true)
+        PhoneWorkoutSession.shared.begin(kind: active.kind, watchWillRecord: watch.isPaired && watch.isWatchAppInstalled)
+        syncWatch()
+        // Came back within half an hour of the last set: straight back into live mode.
+        if let last = content.allItems.flatMap(\.sets).compactMap(\.doneAt).max() ?? active.startedAt,
+           Date().timeIntervalSince(last) < 30 * 60 {
+            isPresented = true
+        }
     }
 
-    private func attach(_ newSession: WorkoutSession) {
+    /// A workout that runs on another device (synced through iCloud) – shown read-only with "Continue here".
+    var workoutOnOtherDevice: WorkoutSession? {
+        guard session == nil, let active = store.activeSession,
+              UserDefaults.standard.string(forKey: Prefs.liveSessionID) != active.id.uuidString else { return nil }
+        return active
+    }
+
+    /// "Continue here": this device takes over the workout running elsewhere.
+    func continueHere(_ other: WorkoutSession) {
+        UserDefaults.standard.set(other.id.uuidString, forKey: Prefs.liveSessionID)
+        attach(other, restoring: true)
+        PhoneWorkoutSession.shared.begin(kind: other.kind, watchWillRecord: watch.isPaired && watch.isWatchAppInstalled)
+        isPresented = true
+        syncWatch()
+    }
+
+    /// The synced copy says the workout ended elsewhere: let go of it here.
+    func syncedStatusChanged() {
+        guard let session, session.status != .active, !isFinishing else { return }
+        AppLog.info("Workout ended on another device", category: "workout")
+        detach()
+    }
+
+    private func attach(_ newSession: WorkoutSession, restoring: Bool = false) {
+        resetTransientState()
         session = newSession
         content = newSession.content
-        currentRef = content.nextPendingSet()
-        focusedItemID = currentRef.flatMap { content.item(at: $0)?.id }
+        let resume = restoring ? LiveResume.load(for: newSession.id) : nil
+        if let id = resume?.currentSetID, let ref = content.locate(setID: id), content.set(at: ref)?.isDone == false {
+            currentRef = ref
+        } else {
+            currentRef = content.nextPendingSet()
+        }
+        focusedItemID = resume?.focusedItemID.flatMap { content.item(id: $0) != nil ? $0 : nil } ?? currentRef.flatMap { content.item(at: $0)?.id }
         setIdleTimer(disabled: true)
-        intensity = newSession.energyBefore > 0 ? CoachIntensity.from(energy: newSession.energyBefore) : .normal
+        if newSession.energyBefore > 0 {
+            intensity = CoachIntensity.from(energy: newSession.energyBefore)
+        } else {
+            // The energy rhythm expects a low day today: start calm (the check-in can change it).
+            intensity = store.expectedLowEnergyDay(within: 0) != nil ? .calm : .normal
+        }
         pace = PaceTracker(slack: intensity.paceSlack)
-        if let last = content.allItems.flatMap(\.sets).compactMap(\.doneAt).max() {
-            pace.setCompleted(at: last, plannedRest: nil, workSeconds: 0)
+        let lastDone = content.allItems.flatMap(\.sets).compactMap(\.doneAt).max()
+        if let lastDone {
+            pace.setCompleted(at: lastDone, plannedRest: nil, workSeconds: 0)
+        }
+        // The rest the plan wanted before the current set: from the set done last.
+        if let resume {
+            restBeforeNext = resume.restBeforeNext
+            nudgesGiven = resume.nudgesGiven
+        } else if let lastDone, let ref = content.executionOrder().last(where: { content.set(at: $0)?.doneAt == lastDone }) {
+            restBeforeNext = Double(content.restAfter(ref, defaultRest: store.settings.defaultRestSeconds) ?? 0)
+        }
+        // A set that was started before the app closed keeps running.
+        if let set = currentSet, let started = set.startedAt, !set.isDone {
+            pace.seed(lastSetAt: lastDone, startedAt: started)
+            if let item = currentItem, item.mode == .time, let seconds = set.targetSeconds ?? set.seconds {
+                let total = Double(seconds) * (item.perSide ? 2 : 1)
+                let left = total - Date().timeIntervalSince(started)
+                if left > 1 { startTimedSet(seconds: seconds, setID: set.id, startedAt: started, perSide: item.perSide, silent: true) }
+            }
+        }
+        // A rest that was running.
+        if let resume, let end = resume.restEndsAt, end > Date().addingTimeInterval(1) {
+            restTotal = resume.restTotal
+            restEndsAt = end
+            scheduleRestTask()
+            scheduleRestNotification()
+        }
+        // Idle for a long time: no "over your rest" nudges for that.
+        if let lastDone, Date().timeIntervalSince(lastDone) > 20 * 60 { nudgesGiven = 2 }
+        if resume?.isPaused == true || newSession.resumedAt == nil {
+            pausedRest = resume?.pausedRestRemaining.map { (remaining: $0, total: resume?.restTotal ?? 0) }
+            pausedAt = resume?.pausedAt ?? Date()
         }
         plannedDuration = WorkoutPace.plannedSeconds(of: content, defaultRest: store.settings.defaultRestSeconds)
-        timedSetEndsAt = nil
         effortAsked = 0
         halfwayAnnounced = content.completedSets * 2 >= max(1, content.totalSets)
-        bestWeights = Self.bestWeights(in: store.performedRecords().filter { $0.id != newSession.id })
+        bestWeights = Self.bestWeights(in: SessionHistory.shared.records(store).filter { $0.id != newSession.id })
         startNudges()
+        LiveActivityBridge.shared.start(liveState())
+    }
+
+    /// Clears everything that belongs to one workout (rest, timers, cards, banners) – nothing of the
+    /// previous workout may leak into the next one.
+    private func resetTransientState() {
+        cancelRest()
+        timedSetTask?.cancel()
+        timedSetEndsAt = nil
+        timedSide = nil
+        effortTask?.cancel()
+        effortRequest = nil
+        celebrationTask?.cancel()
+        celebration = nil
+        offPlanTask?.cancel()
+        offPlanNotice = nil
+        lastOffPlanItemID = nil
+        nudgesGiven = 0
+        lastCompletedItemID = nil
+        lastCompletedSetID = nil
+        beforeLastTick = nil
+        undoableTick = nil
+        skipFeedbackThisWorkout = false
+        restBeforeNext = 0
+        pausedRest = nil
+        pausedTimed = nil
+        pausedAt = nil
+        finishRequest = false
+        persistTask?.cancel()
+        persistTask = nil
     }
 
     private static func bestWeights(in records: [SessionRecord]) -> [String: Double] {
@@ -224,9 +397,62 @@ final class LiveWorkoutController {
         return best
     }
 
+    // MARK: Starting
+
+    /// Every Start button goes through here. With another workout running, George asks first
+    /// (RootView shows the dialog) instead of silently ending it.
+    func requestStart(_ target: StartTarget) {
+        if let session {
+            if case .session(let other) = target, other.id == session.id {
+                isPresented = true
+                return
+            }
+            Haptics.warning()
+            pendingStart = target
+            return
+        }
+        perform(target)
+    }
+
+    /// "Keep going with …": the running workout stays, live mode opens.
+    func keepCurrentWorkout() {
+        pendingStart = nil
+        isPresented = true
+    }
+
+    /// "Finish … and start": the running workout is saved properly (Apple Health included), then
+    /// the new one starts.
+    func finishCurrentAndStart() async {
+        guard let target = pendingStart else { return }
+        pendingStart = nil
+        if let session {
+            await finish(effort: session.effort > 0 ? session.effort : session.kind.defaultEffort, notes: nil, showSummary: false)
+        }
+        perform(target)
+    }
+
+    /// "Finish first": opens the running workout with its finish sheet.
+    func finishCurrentFirst() {
+        pendingStart = nil
+        isPresented = true
+        finishRequest = true
+    }
+
+    private func perform(_ target: StartTarget) {
+        switch target {
+        case .template(let template):
+            // A planned session of this template (today or the last two days) is started instead of a duplicate.
+            if let planned = store.plannedSession(for: template) { start(planned) } else { start(template: template) }
+        case .session(let session): start(session)
+        case .empty(let program, let kind, let rescue): startEmpty(program: program, kind: kind, rescue: rescue)
+        }
+    }
+
     func start(_ newSession: WorkoutSession, present: Bool = true) {
+        let previousDate = newSession.date
         AppLog.info("Workout started (\(newSession.content.exerciseCount) exercises, \(newSession.kind.rawValue))", category: "workout")
         if let session, session.id != newSession.id {
+            // Only reached from code paths that already asked (demo screens, "end and start").
             stopCurrentAsPartial()
         }
         let now = Date()
@@ -238,9 +464,8 @@ final class LiveWorkoutController {
             // Starting a session planned for another day moves it to today and renames it.
             newSession.plannedDate = now
             newSession.startedAt = now
-            if !newSession.templateName.isEmpty {
-                newSession.title = store.title(for: newSession.templateName, on: now, excluding: newSession.id)
-            }
+            // An automatic title follows the new date; a typed one stays.
+            store.retitleIfAuto(newSession, previousDate: previousDate)
         }
         // Already answered "how's your energy" on Today? Use it instead of asking again.
         if newSession.energyBefore == 0,
@@ -248,6 +473,7 @@ final class LiveWorkoutController {
             newSession.energyBefore = today.level
         }
         store.save()
+        UserDefaults.standard.set(newSession.id.uuidString, forKey: Prefs.liveSessionID)
         attach(newSession)
         heartRate = nil
         watchAverageHeartRate = nil
@@ -294,21 +520,58 @@ final class LiveWorkoutController {
         session.content = content
         session.status = content.completedSets > 0 ? .partial : .planned
         store.save()
+        LiveResume.clear(for: session.id)
         self.session = nil
     }
 
+    /// Pause: the clock, the rest and a running hold stop; nothing speaks or buzzes until Resume.
     func pause() {
         guard let session, session.resumedAt != nil else { return }
+        flushPersist()
+        let now = Date()
         session.accumulatedSeconds = session.elapsedSeconds()
         session.resumedAt = nil
-        store.save()
+        pausedAt = now
+        if let restEndsAt {
+            pausedRest = (remaining: max(0, restEndsAt.timeIntervalSince(now)), total: restTotal)
+            cancelRest()
+        }
+        if let timedSetEndsAt, let set = currentSet {
+            pausedTimed = (remaining: max(0, timedSetEndsAt.timeIntervalSince(now)), setID: set.id)
+            timedSetTask?.cancel()
+            self.timedSetEndsAt = nil
+        }
+        VoiceCoach.shared.stop()
+        store.save(bumping: false)
+        saveResume()
         syncLive()
     }
 
     func resume() {
         guard let session, session.resumedAt == nil else { return }
-        session.resumedAt = Date()
-        store.save()
+        let now = Date()
+        session.resumedAt = now
+        if let pausedAt { pace.shift(by: now.timeIntervalSince(pausedAt)) }
+        pausedAt = nil
+        if let rest = pausedRest {
+            pausedRest = nil
+            if rest.remaining > 1 {
+                restTotal = rest.total
+                restEndsAt = now.addingTimeInterval(rest.remaining)
+                scheduleRestTask()
+                scheduleRestNotification()
+            }
+        }
+        if let timed = pausedTimed {
+            pausedTimed = nil
+            if timed.remaining > 1, currentSet?.id == timed.setID, let item = currentItem, let set = currentSet,
+               let seconds = set.targetSeconds ?? set.seconds {
+                let total = Double(seconds) * (item.perSide ? 2 : 1)
+                startTimedSet(seconds: seconds, setID: set.id, startedAt: now.addingTimeInterval(timed.remaining - total), perSide: item.perSide, silent: true)
+            }
+        }
+        store.save(bumping: false)
+        saveResume()
         syncLive()
     }
 
@@ -325,10 +588,18 @@ final class LiveWorkoutController {
     /// Planned rest before the current set (0 before the first set).
     var plannedRestBeforeCurrent: Double { restBeforeNext }
 
-    /// Target of the current set when it's timed (seconds), else nil.
+    /// Target of the current set when it's timed (seconds; both sides for per-side holds), else nil.
     var timedTarget: Int? {
-        guard let item = currentItem, let set = currentSet, item.mode == .time else { return nil }
-        return set.targetSeconds ?? set.seconds
+        guard let item = currentItem, let set = currentSet, item.mode == .time, let seconds = set.targetSeconds ?? set.seconds else { return nil }
+        return seconds * (item.perSide ? 2 : 1)
+    }
+
+    /// Stretch, yoga and mobility: a calm sequence of holds – fewer banners and words, holds start by themselves.
+    var isFlow: Bool {
+        guard let session else { return false }
+        if session.kind.isFlow { return true }
+        let items = content.allItems
+        return !items.isEmpty && items.allSatisfy { $0.mode == .time && ($0.kind ?? session.kind).isFlow }
     }
 
     // MARK: Sets
@@ -346,34 +617,55 @@ final class LiveWorkoutController {
         Haptics.tap()
         VoiceCoach.shared.moveOn(to: set.id)
         if item.mode == .time, let seconds = set.targetSeconds ?? set.seconds, seconds > 0 {
-            startTimedSet(seconds: seconds, setID: set.id, startedAt: now)
+            startTimedSet(seconds: seconds, setID: set.id, startedAt: now, perSide: item.perSide)
         }
         persist()
     }
 
-    private func startTimedSet(seconds: Int, setID: UUID, startedAt: Date) {
+    /// Runs a hold: one countdown, or for per-side holds side 1, a "switch sides" moment, then side 2.
+    /// `silent` resumes a hold after a pause or relaunch without announcing it again.
+    private func startTimedSet(seconds: Int, setID: UUID, startedAt: Date, perSide: Bool = false, silent: Bool = false) {
         timedSetTask?.cancel()
-        let end = startedAt.addingTimeInterval(Double(seconds))
+        let sides = perSide ? 2 : 1
+        let end = startedAt.addingTimeInterval(Double(seconds * sides))
         timedSetEndsAt = end
-        VoiceCoach.shared.say("\(CoachScript.duration(seconds)). Go.", cue: .timedSet, context: setID)
+        let flow = isFlow
+        if !silent {
+            let line = perSide ? "\(CoachScript.duration(seconds)) each side. Go." : "\(CoachScript.duration(seconds)). Go."
+            VoiceCoach.shared.say(line, cue: .timedSet, context: setID)
+        }
         timedSetTask = Task { [weak self] in
             func sleep(until date: Date) async {
                 let delay = date.timeIntervalSinceNow
                 if delay > 0 { try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
             }
-            if seconds >= 40 {
-                await sleep(until: startedAt.addingTimeInterval(Double(seconds) / 2))
+            for side in 1...sides {
+                let sideStart = startedAt.addingTimeInterval(Double(seconds * (side - 1)))
+                let sideEnd = sideStart.addingTimeInterval(Double(seconds))
+                guard sideEnd > Date() else { continue }
+                if perSide { self?.timedSide = side }
+                if side == 2 {
+                    Haptics.heavy()
+                    VoiceCoach.shared.say("Switch sides.", cue: .timedSet, context: setID, priority: .high)
+                }
+                if seconds >= 40 && !flow {
+                    await sleep(until: sideStart.addingTimeInterval(Double(seconds) / 2))
+                    guard !Task.isCancelled else { return }
+                    VoiceCoach.shared.say("Halfway.", cue: .timedSet, context: setID)
+                }
+                if seconds >= 20 && !flow && side == sides {
+                    await sleep(until: sideEnd.addingTimeInterval(-10))
+                    guard !Task.isCancelled else { return }
+                    VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
+                }
+                if side == sides {
+                    await self?.countdown(to: sideEnd, setID: setID)
+                }
+                await sleep(until: sideEnd)
                 guard !Task.isCancelled else { return }
-                VoiceCoach.shared.say("Halfway.", cue: .timedSet, context: setID)
             }
-            if seconds >= 20 {
-                await sleep(until: end.addingTimeInterval(-10))
-                guard !Task.isCancelled else { return }
-                VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
-            }
-            await self?.countdown(to: end, setID: setID)
-            await sleep(until: end)
-            guard !Task.isCancelled, let self, self.currentSet?.id == setID, self.currentSet?.isDone == false else { return }
+            guard let self, self.currentSet?.id == setID, self.currentSet?.isDone == false else { return }
+            self.timedSide = nil
             VoiceCoach.shared.say("Done.", cue: .timedSet, context: setID, priority: .high)
             Haptics.success()
             self.updateSet(setID) { $0.seconds = seconds }
@@ -387,11 +679,16 @@ final class LiveWorkoutController {
         let ref = content.locate(setID: id)
         let wasCurrent = id == currentSet?.id
         // Another exercise than the planned one (a superset counts as one): done anyway, but the
-        // plan keeps its place.
-        let offPlan = !wasCurrent && ref != nil && currentRef != nil && ref?.blockIndex != currentRef?.blockIndex
+        // plan keeps its place – unless it's the second set in a row there: then George follows.
+        var offPlan = !wasCurrent && ref != nil && currentRef != nil && ref?.blockIndex != currentRef?.blockIndex
+        let adoptOffPlan = offPlan && ref.flatMap { content.item(at: $0)?.id } == lastOffPlanItemID && content.set(id: id)?.isDone == false
+        if adoptOffPlan { offPlan = false }
+        let snapshot = (setID: id, pace: pace, restBeforeNext: restBeforeNext, currentRef: currentRef, best: bestWeights)
         let nowDone = content.toggleSet(id: id)
         if nowDone, let ref {
             let now = Date()
+            GeorgeTips.firstSetDone()
+            beforeLastTick = snapshot
             lastCompletedSetID = id
             if let item = content.item(at: ref), let set = content.set(at: ref) {
                 if set.startedAt == nil, wasCurrent, let started = pace.startedAt {
@@ -399,16 +696,18 @@ final class LiveWorkoutController {
                 }
                 if wasCurrent, item.mode == .time, timedSetEndsAt != nil, let started = pace.startedAt {
                     // A timed set ticked early keeps the time it really took.
-                    let took = Int(now.timeIntervalSince(started).rounded())
+                    let took = Int(now.timeIntervalSince(started).rounded()) / (item.perSide ? 2 : 1)
                     if took > 0 { content.updateSet(id: id) { $0.seconds = took } }
                 }
                 let work = PaceTracker.workSeconds(for: set, mode: item.mode) * (item.perSide ? 2 : 1)
                 if !wasCurrent { pace.setUndone(previous: pace.lastSetAt) }
                 pace.setCompleted(at: now, plannedRest: pace.lastSetAt == nil ? nil : restBeforeNext, workSeconds: work)
                 lastCompletedItemID = item.id
+                undoableTick = UndoableTick(setID: id, text: "\(item.name) · \(CoachScript.setPosition(set, in: item)) done")
             }
             timedSetTask?.cancel()
             timedSetEndsAt = nil
+            timedSide = nil
             nudgesGiven = 0
             completionPulse += 1
             Haptics.success()
@@ -421,31 +720,84 @@ final class LiveWorkoutController {
             currentRef = next
             if !offPlan, let next, let nextItem = content.item(at: next) {
                 // Follow along unless the user is looking at another exercise.
-                if focusedItemID == nil || focusedItemID == content.item(at: ref)?.id {
+                if focusedItemID == nil || focusedItemID == content.item(at: ref)?.id || adoptOffPlan {
                     focusedItemID = nextItem.id
                 }
             }
             VoiceCoach.shared.moveOn(to: currentSet?.id)
             if offPlan, let item = content.item(at: ref), let set = content.set(at: ref) {
                 noteOffPlan(item: item, set: set)
+            } else if adoptOffPlan, let item = content.item(at: ref) {
+                clearOffPlan()
+                lastOffPlanItemID = nil
+                VoiceCoach.shared.say("Following \(item.name).", cue: .offPlan, context: currentSet?.id)
             } else {
                 clearOffPlan()
+                lastOffPlanItemID = nil
             }
             celebrate(afterSetAt: ref)
             if autoRest, let rest {
                 startRest(rest)
             } else if next != nil && !offPlan {
-                announceSetUp(isFirst: false)
+                if isFlow && CoachPrefs.autoStartHolds && currentItem?.mode == .time {
+                    startSet()
+                } else {
+                    announceSetUp(isFirst: false)
+                }
             }
             askForFeedbackIfUseful(afterSet: id)
+            scheduleUndoExpiry()
+            persist()
         } else {
+            // Unticked (a mistaken tick): this set is due again, and what that tick started goes away.
             Haptics.tap()
             content.updateSet(id: id) { $0.startedAt = nil }
-            pace.setUndone(previous: content.allItems.flatMap(\.sets).compactMap(\.doneAt).max())
-            currentRef = content.nextPendingSet()
+            let wasLastTick = id == lastCompletedSetID
+            if wasLastTick, let before = beforeLastTick, before.setID == id {
+                cancelRest()
+                VoiceCoach.shared.stop()
+                pace = before.pace
+                restBeforeNext = before.restBeforeNext
+                bestWeights = before.best
+                withAnimation(.snappy) {
+                    celebration = nil
+                    if effortRequest?.setID == id { effortRequest = nil }
+                    offPlanNotice = nil
+                }
+                celebrationTask?.cancel()
+                beforeLastTick = nil
+                lastCompletedSetID = nil
+            } else {
+                pace.setUndone(previous: content.allItems.flatMap(\.sets).compactMap(\.doneAt).max())
+            }
+            undoableTick = nil
+            if let again = content.locate(setID: id) {
+                // Only an unticked set of the planned thread (or the last tick) becomes current again.
+                if wasLastTick || again.blockIndex == currentRef?.blockIndex || currentRef == nil {
+                    currentRef = again
+                    focusedItemID = content.item(at: again)?.id
+                }
+            }
             VoiceCoach.shared.moveOn(to: currentSet?.id)
+            persist()
         }
-        persist()
+    }
+
+    /// Undo for the last tick (the "Undo" pill after a set is ticked).
+    func undoLastTick() {
+        guard let tick = undoableTick, content.set(id: tick.setID)?.isDone == true else { return }
+        toggleSet(tick.setID)
+    }
+
+    @ObservationIgnored private var undoTask: Task<Void, Never>?
+
+    private func scheduleUndoExpiry() {
+        undoTask?.cancel()
+        undoTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { self?.undoableTick = nil }
+        }
     }
 
     /// "Bench Press, set 2 of 4: 8 reps at 60 kilos." for the set that's due.
@@ -511,42 +863,91 @@ final class LiveWorkoutController {
     }
 
     /// The answers of the quick card after an exercise: reps left (rep sets) and muscle fatigue.
+    /// Both at once (watch, older call sites); the card itself saves each tap with `recordFatigue` /
+    /// `recordReps`.
     func answerFeedback(repsInReserve rir: Int?, fatigue: Double?) {
-        effortTask?.cancel()
-        if let request = effortRequest {
-            if let rir {
-                updateSet(request.setID) { $0.rpe = EffortPrompt.rpe(forRepsInReserve: rir) }
-                AppLog.info("Effort logged: \(rir) reps in reserve", category: "workout")
-            }
-            if let fatigue {
-                edit { $0.updateItem(id: request.itemID) { $0.fatigue = fatigue } }
-                AppLog.info("Fatigue logged: \(Int(fatigue * 100)) %", category: "workout")
-            }
-        }
-        withAnimation(.snappy) { effortRequest = nil }
+        if let fatigue { recordFatigue(fatigue) }
+        if let rir { recordReps(inReserve: rir) }
+        if effortRequest != nil { closeFeedback() }
     }
 
     func answerEffort(repsInReserve rir: Int?) {
         answerFeedback(repsInReserve: rir, fatigue: nil)
     }
 
-    private func askForFeedbackIfUseful(afterSet id: UUID) {
-        guard let ref = content.locate(setID: id), let item = content.item(at: ref), let set = content.set(at: ref),
-              item.isComplete, item.sets.last?.id == set.id || item.sets.allSatisfy(\.isDone) else { return }
-        let asksReps = CoachPrefs.askEffort && EffortPrompt.shouldAsk(after: set, in: item, askedSoFar: effortAsked, limit: 99)
-        let asksFatigue = CoachPrefs.askFatigue && set.kind != .warmup
-        guard asksReps || asksFatigue else { return }
-        if asksReps { effortAsked += 1 }
-        let muscles = analyticsMuscles(item)
-        withAnimation(.snappy) {
-            effortRequest = EffortRequest(setID: id, itemID: item.id, itemName: item.name, muscles: muscles, asksReps: asksReps)
+    /// Saved as soon as it's tapped – the card may time out afterwards without losing it.
+    func recordFatigue(_ fatigue: Double) {
+        guard var request = effortRequest else { return }
+        edit { $0.updateItem(id: request.itemID) { $0.fatigue = fatigue } }
+        AppLog.info("Fatigue logged: \(Int(fatigue * 100)) %", category: "workout")
+        request.fatigue = fatigue
+        Haptics.tap()
+        if request.asksReps && request.repsInReserve == nil {
+            withAnimation(.snappy) { effortRequest = request }
+            restartFeedbackTimeout()
+        } else {
+            closeFeedback()
         }
+    }
+
+    func recordReps(inReserve rir: Int) {
+        guard var request = effortRequest else { return }
+        updateSet(request.setID) { $0.rpe = EffortPrompt.rpe(forRepsInReserve: rir) }
+        AppLog.info("Effort logged: \(rir) reps in reserve", category: "workout")
+        request.repsInReserve = rir
+        Haptics.tap()
+        if request.asksFatigue && request.fatigue == nil {
+            withAnimation(.snappy) { effortRequest = request }
+            restartFeedbackTimeout()
+        } else {
+            closeFeedback()
+        }
+    }
+
+    func closeFeedback() {
+        effortTask?.cancel()
+        withAnimation(.snappy) { effortRequest = nil }
+        syncLive()
+    }
+
+    /// "Not in this workout" on the card.
+    func skipFeedbackForThisWorkout() {
+        skipFeedbackThisWorkout = true
+        closeFeedback()
+    }
+
+    /// "Stop asking": both questions off in Settings.
+    func stopAskingFeedback() {
+        UserDefaults.standard.set(false, forKey: Prefs.askFatigue)
+        UserDefaults.standard.set(false, forKey: Prefs.askEffort)
+        closeFeedback()
+    }
+
+    private func restartFeedbackTimeout() {
         effortTask?.cancel()
         effortTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 25_000_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.snappy) { self?.effortRequest = nil }
+            self?.closeFeedback()
         }
+    }
+
+    private func askForFeedbackIfUseful(afterSet id: UUID) {
+        guard !skipFeedbackThisWorkout, let session,
+              let ref = content.locate(setID: id), let item = content.item(at: ref), let set = content.set(at: ref),
+              item.isComplete, item.sets.last?.id == set.id || item.sets.allSatisfy(\.isDone) else { return }
+        // Holds in a stretch/yoga/mobility flow and cardio don't tire muscles in a way worth asking about.
+        let kind = item.kind ?? session.kind
+        let calmKind = kind.isFlow || kind == .cardio
+        let asksReps = !calmKind && CoachPrefs.askEffort && EffortPrompt.shouldAsk(after: set, in: item, askedSoFar: effortAsked, limit: 99)
+        let asksFatigue = !calmKind && CoachPrefs.askFatigue && set.kind != .warmup
+        guard asksReps || asksFatigue else { return }
+        if asksReps { effortAsked += 1 }
+        let muscles = analyticsMuscles(item)
+        withAnimation(.snappy) {
+            effortRequest = EffortRequest(setID: id, itemID: item.id, itemName: item.name, muscles: muscles, asksReps: asksReps, asksFatigue: asksFatigue)
+        }
+        restartFeedbackTimeout()
     }
 
     private func analyticsMuscles(_ item: WorkoutItem) -> String {
@@ -558,6 +959,22 @@ final class LiveWorkoutController {
         guard let item = content.item(at: ref), let set = content.set(at: ref) else { return }
         let style = CoachPrefs.motivation
         var moment: Celebration?
+        if isFlow {
+            // A calm flow: only the end gets a word.
+            if content.isComplete {
+                moment = Celebration(kind: .allDone, title: "All done", subtitle: "Finish when you're ready", symbol: "flag.checkered")
+                VoiceCoach.shared.say("That's the whole routine. Well done.", cue: .summary, priority: .high)
+            }
+            guard let moment, style != .off else { return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { celebration = moment }
+            celebrationTask?.cancel()
+            celebrationTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 2_600_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) { self?.celebration = nil }
+            }
+            return
+        }
         if let weight = set.effectiveWeight, weight > 0, set.kind != .warmup,
            let best = bestWeights[item.exerciseKey], weight > best {
             bestWeights[item.exerciseKey] = weight
@@ -604,7 +1021,7 @@ final class LiveWorkoutController {
     }
 
     private func checkNudge() {
-        guard session != nil, !isPaused, phase == .ready, CoachPrefs.paceNudges, intensity != .calm,
+        guard session != nil, !isPaused, !isFlow, phase == .ready, CoachPrefs.paceNudges, intensity != .calm,
               let set = currentSet, let over = pace.waitingDelta(at: Date(), plannedRest: restBeforeNext) else { return }
         if nudgesGiven == 0, over > pace.slack {
             nudgesGiven = 1
@@ -626,12 +1043,20 @@ final class LiveWorkoutController {
     }
 
     /// The main button: Start when the set is waiting (and the Start button is on), otherwise Done.
+    /// A hold always starts its timer first – a hold can't be "done" without being held.
     func primaryAction() {
-        if phase != .working, CoachPrefs.startButton, currentSet != nil {
+        flushPersist()
+        let isHold = currentItem?.mode == .time
+        if phase != .working, currentSet != nil, CoachPrefs.startButton || isHold {
             startSet()
         } else {
             completeCurrentSet()
         }
+    }
+
+    /// What the main button does right now (for its icon and label).
+    var primaryIsStart: Bool {
+        phase != .working && currentSet != nil && (CoachPrefs.startButton || currentItem?.mode == .time)
     }
 
     /// Screenshots (`-DemoScreen live-mid` / `live-superset`): tick a few sets so momentum and the
@@ -660,23 +1085,33 @@ final class LiveWorkoutController {
         }
     }
 
+    /// A value edit (keypad, steppers): saved after a short pause in typing, so typing "62.5"
+    /// doesn't save, sync and recompute four times.
     func updateSet(_ id: UUID, _ body: (inout WorkoutSet) -> Void) {
         content.updateSet(id: id, body)
-        persist()
+        persist(debounced: true)
     }
 
-    /// Any structural change made mid-workout (add/remove/swap exercises, add sets, reorder).
+    /// Any structural change made mid-workout (add/remove/swap exercises, add sets, reorder). The
+    /// current set is kept by id – an edit elsewhere never moves "now" to something else.
     func edit(_ body: (inout WorkoutContent) -> Void) {
+        let currentID = currentSet?.id
+        let anchorID = currentRef.flatMap { content.setBefore($0) }.flatMap { content.set(at: $0)?.id }
         body(&content)
         content.normalizeBlocks()
-        if let currentRef, content.set(at: currentRef) == nil || content.set(at: currentRef)?.isDone == true {
-            self.currentRef = content.nextPendingSet()
-        } else if currentRef == nil {
-            currentRef = content.nextPendingSet()
+        let resolved = content.resolveCurrent(currentID: currentID, anchorID: anchorID)
+        let changed = resolved.flatMap { content.set(at: $0)?.id } != currentID
+        currentRef = resolved
+        if changed {
+            timedSetTask?.cancel()
+            timedSetEndsAt = nil
+            timedSide = nil
+            VoiceCoach.shared.moveOn(to: currentSet?.id)
         }
         if let focusedItemID, content.item(id: focusedItemID) == nil {
             self.focusedItemID = currentItem?.id
         }
+        plannedDuration = WorkoutPace.plannedSeconds(of: content, defaultRest: store.settings.defaultRestSeconds)
         persist()
     }
 
@@ -746,6 +1181,7 @@ final class LiveWorkoutController {
         let leaving = currentItem
         withAnimation(.snappy) { focus(itemID: item.id) }
         clearOffPlan()
+        lastOffPlanItemID = nil
         Haptics.tap()
         if let leaving, !leaving.isComplete {
             VoiceCoach.shared.say("\(offset > 0 ? "Skipping" : "Back") to \(item.name). \(leaving.name) stays open for later.", cue: .offPlan, context: currentSet?.id)
@@ -814,6 +1250,7 @@ final class LiveWorkoutController {
     // MARK: Off plan
 
     private func noteOffPlan(item: WorkoutItem, set: WorkoutSet) {
+        lastOffPlanItemID = item.id
         let planned = currentItem
         let notice = OffPlanNotice(
             itemID: item.id, itemName: item.name, setText: set.label(mode: item.mode, unit: unit),
@@ -841,6 +1278,7 @@ final class LiveWorkoutController {
     /// "Stay on plan": the banner goes, the plan's next set stays due.
     func stayOnPlan() {
         clearOffPlan()
+        lastOffPlanItemID = nil
         returnToCurrent()
     }
 
@@ -862,6 +1300,7 @@ final class LiveWorkoutController {
         isVoiceMuted.toggle()
         VoiceCoach.shared.isMuted = isVoiceMuted
         Haptics.tap()
+        syncLive()
     }
 
     /// Jumps the current set to a specific set (tap on an open set in live mode).
@@ -876,11 +1315,42 @@ final class LiveWorkoutController {
         syncLive()
     }
 
-    private func persist() {
+    /// Saves the live content. Never on the undo stack, no revision bump (dashboards refresh at
+    /// start/finish). `debounced` waits for a pause in typing.
+    private func persist(debounced: Bool = false) {
         guard let session else { return }
-        session.content = content
-        store.save()
+        if debounced {
+            persistTask?.cancel()
+            persistTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard !Task.isCancelled else { return }
+                self?.persist()
+            }
+            syncLiveThrottled()
+            return
+        }
+        persistTask?.cancel()
+        persistTask = nil
+        let content = content
+        store.saveWithoutUndo { session.content = content }
+        saveResume()
         syncLive()
+    }
+
+    /// Saves a pending value edit now (before ticks, starts, finishing, leaving the app).
+    func flushPersist() {
+        guard persistTask != nil else { return }
+        persist()
+    }
+
+    /// Where the workout stands, so a relaunch picks up the rest, the started set and the plan's place.
+    private func saveResume() {
+        guard let session else { return }
+        LiveResume(
+            currentSetID: currentSet?.id, focusedItemID: focusedItemID, restEndsAt: restEndsAt, restTotal: restTotal,
+            restBeforeNext: restBeforeNext, nudgesGiven: nudgesGiven, isPaused: isPaused,
+            pausedRestRemaining: pausedRest?.remaining, pausedAt: pausedAt
+        ).save(for: session.id)
     }
 
     // MARK: Rest
@@ -891,8 +1361,15 @@ final class LiveWorkoutController {
         restEndsAt = Date().addingTimeInterval(Double(seconds))
         scheduleRestTask()
         scheduleRestNotification()
+        saveResume()
         syncLive()
         let next = currentItem.flatMap { item in currentSet.map { (item: item, set: $0) } }
+        if isFlow, let next {
+            // Calm flow: just what's next.
+            let hold = next.set.targetSeconds.map { ", \(CoachScript.duration($0))" } ?? ""
+            VoiceCoach.shared.say("Next: \(next.item.name)\(hold).", cue: .restStart, context: currentSet?.id)
+            return
+        }
         let same = next?.item.id == lastCompletedItemID
         VoiceCoach.shared.say(CoachScript.restStart(seconds: seconds, next: next, sameExercise: same), cue: .restStart, context: currentSet?.id)
     }
@@ -906,6 +1383,7 @@ final class LiveWorkoutController {
         restTotal += seconds
         scheduleRestTask()
         scheduleRestNotification()
+        saveResume()
         syncLive()
     }
 
@@ -918,6 +1396,8 @@ final class LiveWorkoutController {
     private func cancelRest() {
         restTask?.cancel()
         restWarningTask?.cancel()
+        restNotificationTask?.cancel()
+        restNotificationTask = nil
         restEndsAt = nil
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["george.rest"])
     }
@@ -930,9 +1410,12 @@ final class LiveWorkoutController {
         restWarningTask = Task { [weak self] in
             if end.timeIntervalSinceNow > 15 {
                 try? await Task.sleep(nanoseconds: UInt64(max(0, end.timeIntervalSinceNow - 10) * 1_000_000_000))
-                guard !Task.isCancelled, self?.restEndsAt != nil else { return }
-                Haptics.tap()
-                VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
+                guard !Task.isCancelled, self?.restEndsAt == end else { return }
+                // Woken late (the app was suspended): "10 seconds" would be a lie now.
+                if end.timeIntervalSinceNow > 5 {
+                    Haptics.tap()
+                    VoiceCoach.shared.say("10 seconds.", cue: .countdown, context: setID)
+                }
             }
             if end.timeIntervalSinceNow > 4, self?.restEndsAt != nil {
                 await self?.countdown(to: end, setID: setID)
@@ -962,22 +1445,32 @@ final class LiveWorkoutController {
     }
 
     private func restFinished() {
-        guard restEndsAt != nil else { return }
+        guard let end = restEndsAt else { return }
         restEndsAt = nil
-        Haptics.heavy()
-        #if os(iOS)
-        if CoachPrefs.sounds && !(CoachPrefs.voice && VoiceSettings.isOn(.go)) {
-            AudioServicesPlaySystemSound(1007)
+        restNotificationTask = nil
+        // Woken more than a few seconds late (suspended): the notification already said "Go".
+        let late = Date().timeIntervalSince(end) > 3
+        if !late {
+            Haptics.heavy()
+            #if os(iOS)
+            if CoachPrefs.sounds && !(CoachPrefs.voice && VoiceSettings.isOn(.go)) {
+                AudioServicesPlaySystemSound(1007)
+            }
+            #endif
+            let next = currentItem.flatMap { item in currentSet.map { (item: item, set: $0) } }
+            VoiceCoach.shared.say(CoachScript.go(next: next, unit: unit), cue: .go, context: currentSet?.id, priority: .high)
         }
-        #endif
-        let next = currentItem.flatMap { item in currentSet.map { (item: item, set: $0) } }
-        VoiceCoach.shared.say(CoachScript.go(next: next, unit: unit), cue: .go, context: currentSet?.id, priority: .high)
+        if isFlow, CoachPrefs.autoStartHolds, currentItem?.mode == .time, currentSet?.isDone == false {
+            startSet()
+        }
+        saveResume()
         syncLive()
     }
 
     private func scheduleRestNotification() {
         guard let restEndsAt else { return }
         let center = UNUserNotificationCenter.current()
+        restNotificationTask?.cancel()
         center.removePendingNotificationRequests(withIdentifiers: ["george.rest"])
         let delay = restEndsAt.timeIntervalSinceNow
         guard delay > 1 else { return }
@@ -991,12 +1484,15 @@ final class LiveWorkoutController {
         }
         content.sound = .default
         let goLine = CoachScript.go(next: next, unit: unit)
-        Task {
+        let end = restEndsAt
+        restNotificationTask = Task { [weak self] in
             // Spoken "Go!" as the notification sound – heard even when the phone is locked.
             if let sound = await VoiceCoach.shared.notificationSound(for: goLine) {
                 content.sound = UNNotificationSound(named: UNNotificationSoundName(sound))
             }
-            let remaining = restEndsAt.timeIntervalSinceNow
+            // Skipped, finished or moved while the sound was being made: no stale alert.
+            guard !Task.isCancelled, self?.restEndsAt == end else { return }
+            let remaining = end.timeIntervalSinceNow
             guard remaining > 0.5 else { return }
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: remaining, repeats: false)
             try? await center.add(UNNotificationRequest(identifier: "george.rest", content: content, trigger: trigger))
@@ -1010,18 +1506,21 @@ final class LiveWorkoutController {
     // MARK: Finish
 
     /// Ends the workout, estimates energy, saves to Apple Health and returns a summary.
-    func finish(effort: Int, notes: String?) async {
+    func finish(effort: Int, notes: String?, showSummary: Bool = true) async {
+        guard let session, !isFinishing else { return }
         AppLog.info("Workout finished (\(content.completedSets)/\(content.totalSets) sets)", category: "workout")
-        guard let session else { return }
-        restTask?.cancel()
-        restEndsAt = nil
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["george.rest"])
+        isFinishing = true
+        defer { isFinishing = false }
+        flushPersist()
+        cancelRest()
+        timedSetTask?.cancel()
         let now = Date()
         session.accumulatedSeconds = session.elapsedSeconds(at: now)
         session.resumedAt = nil
         session.endedAt = now
         session.content = content
-        session.status = content.isComplete ? .completed : .partial
+        // A workout without sets (tennis, a run, "just track time") is complete when it's finished.
+        session.status = content.isComplete || content.totalSets == 0 ? .completed : .partial
         session.effort = effort
         if let notes, !notes.isEmpty {
             session.notes = session.notes.isEmpty ? notes : session.notes + "\n" + notes
@@ -1068,31 +1567,55 @@ final class LiveWorkoutController {
         }
         store.save()
 
-        let records = StatsEngine.newRecords(in: session.record(), comparedTo: store.performedRecords())
-        let canUpdate = settings.askToUpdateTemplate && store.sessionDiffersFromTemplate(session)
+        let history = store.performedRecords()
+        let record = session.record()
+        let records = StatsEngine.newRecords(in: record, comparedTo: history)
+        let template = store.template(id: session.templateID)
+        let loadChanges = template.map { content.loadChanges(comparedTo: $0.content, unit: unit) } ?? []
+        let canUpdate = settings.askToUpdateTemplate && (store.sessionDiffersFromTemplate(session) || !loadChanges.isEmpty)
+        let templateOf = Dictionary(store.fetchSessions().map { ($0.id, $0.templateID) }, uniquingKeysWith: { a, _ in a })
+        let comparison = StatsEngine.compare(record, templateID: session.templateID, previous: history) { id in
+            templateOf[id] ?? nil
+        }
+        let worked = MusclePlan.sets(of: content, completedOnly: true, kind: session.kind) { [library] item in library.contributions(for: item) }
+        let coolDown = CoachPrefs.offerCoolDown && !session.kind.isFlow && content.completedSets > 0
+            ? RoutineLibrary.coolDown(for: worked, catalog: library.catalog) : nil
         let finished = FinishSummary(
             sessionID: finishedID, title: session.title, duration: session.accumulatedSeconds,
             completedSets: content.completedSets, totalSets: content.totalSets, volumeKg: content.volumeKg,
             energyKcal: (measuredEnergy ?? 0) > 0 ? (measuredEnergy ?? 0) : session.energyKcal,
             averageHeartRate: (averageHeartRate ?? 0) > 0 ? averageHeartRate : nil,
-            records: records, canUpdateTemplate: canUpdate, templateName: session.templateName, savedToHealth: savedToHealth
+            records: records, canUpdateTemplate: canUpdate, templateName: session.templateName, savedToHealth: savedToHealth,
+            comparison: comparison, loadChanges: loadChanges,
+            canSaveAsTemplate: session.templateID == nil && content.exerciseCount >= 2,
+            kind: session.kind, coolDown: coolDown
+        )
+        lastFinished = WatchFinishSummary(
+            sessionID: finishedID, title: session.title, finishedAt: now, durationSeconds: finished.duration,
+            completedSets: finished.completedSets, totalSets: finished.totalSets, energyKcal: finished.energyKcal,
+            averageHeartRate: finished.averageHeartRate, records: records.count,
+            streakHeadline: store.streakSummary(healthEntries: health.externalWorkouts).headline
         )
         detach()
+        store.bump()
         Haptics.success()
         VoiceCoach.shared.stop()
-        VoiceCoach.shared.say("Workout complete! \(Int((finished.duration / 60).rounded())) minutes, \(finished.completedSets) sets. Well done.", cue: .summary, priority: .high)
-        // Present the summary once the live view has finished dismissing.
-        try? await Task.sleep(nanoseconds: 650_000_000)
-        summary = finished
+        if showSummary {
+            VoiceCoach.shared.say("Workout complete! \(Int((finished.duration / 60).rounded())) minutes, \(finished.completedSets) sets. Well done.", cue: .summary, priority: .high)
+            // Present the summary once the live view has finished dismissing.
+            try? await Task.sleep(nanoseconds: 650_000_000)
+            summary = finished
+        }
     }
+
+    /// The workout just saved (the watch shows it as a summary).
+    @ObservationIgnored private var lastFinished: WatchFinishSummary?
 
     /// Throw the running session away.
     func discard() {
+        guard let session, !isFinishing else { return }
         AppLog.info("Workout discarded", category: "workout")
-        guard let session else { return }
-        restTask?.cancel()
-        restEndsAt = nil
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["george.rest"])
+        cancelRest()
         if watchIsRecording { lastDiscardedSessionID = session.id }
         // A session that was planned earlier goes back to the plan; one created by "Start" is deleted.
         let wasPlannedEarlier = session.createdAt < (session.startedAt ?? Date()).addingTimeInterval(-120)
@@ -1107,9 +1630,16 @@ final class LiveWorkoutController {
         }
         store.save()
         detach()
+        store.bump()
     }
 
     private func detach() {
+        if let session { LiveResume.clear(for: session.id) }
+        UserDefaults.standard.removeObject(forKey: Prefs.liveSessionID)
+        resetTransientState()
+        undoTask?.cancel()
+        liveSyncTask?.cancel()
+        LiveActivityBridge.shared.end(liveState())
         timedSetTask?.cancel()
         timedSetEndsAt = nil
         offPlanTask?.cancel()
@@ -1153,7 +1683,15 @@ final class LiveWorkoutController {
             completedSets: content.completedSets, totalSets: content.totalSets,
             setStartedAt: pace.startedAt, lastSetEndedAt: pace.lastSetAt,
             plannedRestSeconds: Int(restBeforeNext), timedSetSeconds: timedTarget,
-            behindSeconds: pace.totalDelta, lastDeltaSeconds: pace.lastGap?.delta
+            behindSeconds: pace.totalDelta, lastDeltaSeconds: pace.lastGap?.delta,
+            usesStartButton: CoachPrefs.startButton,
+            question: effortRequest.map {
+                WatchQuestion(setID: $0.setID, exerciseName: $0.itemName, muscles: $0.muscles,
+                              asksReps: $0.asksReps && $0.repsInReserve == nil, asksFatigue: $0.asksFatigue && $0.fatigue == nil)
+            },
+            asksEnergy: needsEnergyCheckIn,
+            voiceMuted: isVoiceMuted,
+            viewingExerciseID: isViewingElsewhere ? focusedItemID : nil
         )
     }
 
@@ -1181,23 +1719,56 @@ final class LiveWorkoutController {
             weeks: streak.currentWeeks, doneDays: streak.thisWeek.workoutDays, goal: streak.thisWeek.goal,
             credits: streak.credits, headline: streak.headline, dots: streak.thisWeek.dots.map(\.didWorkout)
         )
-        return WatchSnapshot(templates: watchTemplates, upcoming: upcoming, streak: watchStreak, live: liveState(), unit: unit, discardedSessionID: lastDiscardedSessionID)
+        return WatchSnapshot(templates: watchTemplates, upcoming: upcoming, streak: watchStreak, live: liveState(), unit: unit,
+                             discardedSessionID: lastDiscardedSessionID, lastFinished: lastFinished)
     }
 
     func syncWatch() {
+        let snapshot = makeSnapshot()
         #if os(iOS)
-        watch.sendSnapshot(makeSnapshot())
+        watch.sendSnapshot(snapshot)
         if let live = liveState() { watch.sendLive(live) }
         #endif
+        // Widgets and the Lock Screen (deduplicated; also clears a Live Activity left over from a killed app).
+        WidgetBridge.write(snapshot: snapshot)
     }
 
     private func syncLive() {
+        lastLiveSync = Date()
+        liveSyncTask?.cancel()
+        liveSyncTask = nil
+        let state = liveState()
         #if os(iOS)
-        if let live = liveState() { watch.sendLive(live) }
+        if let state { watch.sendLive(state) }
         #endif
+        LiveActivityBridge.shared.update(state)
     }
 
-    private func handle(_ command: WatchCommand) {
+    /// At most twice a second for value edits (typing a weight shouldn't flood the watch).
+    private func syncLiveThrottled() {
+        let wait = 0.5 - Date().timeIntervalSince(lastLiveSync)
+        guard wait > 0 else { return syncLive() }
+        guard liveSyncTask == nil else { return }
+        liveSyncTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.syncLive()
+        }
+    }
+
+    /// A command from the watch: stale ones (queued while out of range, meant for another workout)
+    /// are dropped.
+    private func handle(_ envelope: WatchCommandEnvelope) {
+        guard envelope.isFresh(activeSessionID: session?.id) else {
+            AppLog.info("Ignored a stale watch command", category: "watch")
+            syncWatch()
+            return
+        }
+        perform(envelope.command)
+    }
+
+    /// Runs a live command (watch, Live Activity buttons, App Intents).
+    func perform(_ command: WatchCommand) {
         switch command {
         case .toggleSet(let id): toggleSet(id)
         case .completeCurrentSet: completeCurrentSet()
@@ -1207,14 +1778,56 @@ final class LiveWorkoutController {
         case .skipRest: skipRest()
         case .pause: pause()
         case .resume: resume()
-        case .finish(let effort): Task { await finish(effort: effort ?? 0, notes: nil) }
+        case .finish(let effort):
+            guard session != nil else { return }
+            Task { await finish(effort: effort ?? session?.kind.defaultEffort ?? 6, notes: nil) }
         case .discard: discard()
         case .startTemplate(let id):
+            guard session == nil else { return syncWatch() }
             if let template = store.template(id: id) { start(template: template) }
         case .startSession(let id):
+            guard session == nil else { return syncWatch() }
             if let target = store.session(id: id) { start(target) }
         case .requestSnapshot: syncWatch()
+        case .completeSet(let id, let reps, let weightKg):
+            if reps != nil || weightKg != nil {
+                content.updateSet(id: id) { set in
+                    if let reps { set.reps = reps }
+                    if let weightKg { set.weight = weightKg }
+                }
+            }
+            if content.set(id: id)?.isDone == false { toggleSet(id) } else { persist() }
+        case .dropWeight(let setID, let repsDone, let newWeightKg):
+            if currentSet?.id != setID { makeCurrent(setID: setID) }
+            dropWeight(repsDone: repsDone, newWeightKg: newWeightKg, applyToRemaining: true)
+        case .makeCurrent(let setID):
+            makeCurrent(setID: setID)
+            clearOffPlan()
+            announceSetUp(isFirst: false)
+        case .moveThread(let offset): moveThread(by: offset)
+        case .toggleVoiceMute: toggleVoiceMute()
+        case .answerFeedback(let setID, let rir, let fatigue):
+            guard effortRequest?.setID == setID else { return }
+            if let fatigue { recordFatigue(fatigue) }
+            if let rir { recordReps(inReserve: rir) }
+        case .recordEnergy(let level): recordEnergy(level)
         }
+    }
+
+    /// Adds warm-up sets in front of an exercise (empty bar, 50 %, 70 %, 85 % of the top weight).
+    func addWarmups(to itemID: UUID) {
+        var added = 0
+        edit { added = $0.addWarmups(to: itemID, barKg: CoachPrefs.barKg, incrementKg: unit.toKilograms(unit.increment)) }
+        guard added > 0 else { return }
+        // The first warm-up is due now.
+        if let loc = content.locate(itemID: itemID), let s = content.blocks[loc.block].items[loc.item].sets.firstIndex(where: { !$0.isDone }) {
+            currentRef = WorkoutContent.SetRef(blockIndex: loc.block, itemIndex: loc.item, setIndex: s)
+            focusedItemID = itemID
+            VoiceCoach.shared.moveOn(to: currentSet?.id)
+        }
+        Haptics.success()
+        announceSetUp(isFirst: false)
+        persist()
     }
 
     private func handle(_ metrics: WatchMetrics) {

@@ -231,22 +231,47 @@ struct URLItem: Identifiable {
     let url: URL
 }
 
-/// Caches "last time" sets per exercise for a short while so rows don't rescan history every render.
+/// "Last time" sets per exercise from one index of the performed history: built once per store
+/// revision (the revision also moves after iCloud imports, see `CloudImportRefresher`), newest
+/// session first per exercise, so a row's lookup doesn't rescan or re-sort the history.
 @MainActor
 final class PreviousPerformanceCache {
     static let shared = PreviousPerformanceCache()
-    private var records: [SessionRecord] = []
-    private var loadedRevision = -1
-    private var loadedAt = Date.distantPast
 
-    func sets(for key: String, store: GeorgeStore) -> [WorkoutSet]? {
-        if loadedRevision != store.revision || Date().timeIntervalSince(loadedAt) > 30 {
-            records = store.performedRecords()
-            loadedRevision = store.revision
-            loadedAt = Date()
+    private struct Entry {
+        let date: Date
+        let sessionID: UUID
+        let sets: [WorkoutSet]
+    }
+
+    private var index: [String: [Entry]] = [:]
+    private var loadedRevision = -1
+    private var loadedStore: ObjectIdentifier?
+
+    /// The sets of the latest performed session before `date` (default: now) that did this exercise.
+    /// The running workout is never in the history, so it needs no exclusion; pass `excluding` when
+    /// editing a performed session so it doesn't find itself.
+    func sets(for key: String, store: GeorgeStore, before date: Date? = nil, excluding sessionID: UUID? = nil) -> [WorkoutSet]? {
+        refresh(store)
+        let limit = date ?? Date()
+        return index[key]?.first { $0.date < limit && $0.sessionID != sessionID }?.sets
+    }
+
+    private func refresh(_ store: GeorgeStore) {
+        let id = ObjectIdentifier(store)
+        guard loadedRevision != store.revision || loadedStore != id else { return }
+        var built: [String: [Entry]] = [:]
+        // Oldest first from the shared history – walk it backwards so each list is newest first.
+        for record in SessionHistory.shared.records(store).reversed() {
+            var seen = Set<String>()
+            for item in record.content.allItems where item.completedSets > 0 && !seen.contains(item.exerciseKey) {
+                seen.insert(item.exerciseKey)
+                built[item.exerciseKey, default: []].append(Entry(date: record.date, sessionID: record.id, sets: item.sets))
+            }
         }
-        let activeID = store.activeSession?.id
-        return StatsEngine.lastPerformance(of: key, in: records, before: Date(), excluding: activeID)
+        index = built
+        loadedRevision = store.revision
+        loadedStore = id
     }
 }
 

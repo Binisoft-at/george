@@ -4,13 +4,19 @@ import SwiftData
 import Charts
 import GeorgeCore
 
+/// Insights → Progress: "am I getting stronger?" – one calendar-week window for every tile and
+/// chart, each tile compared with the period before, the lifts with their trend, the records of
+/// the range. Muscular load and freshness live on Today and Muscles.
 struct StatsView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(MuscleAnalytics.self) private var muscleAnalytics
+    @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
     @Query private var sessions: [WorkoutSession]
     @State private var range: StatsRange = .twelveWeeks
     @State private var selectedWeek: Date?
+    /// Built off the main thread whenever the inputs change (see `ModelKey`).
+    @State private var model: ProgressModel?
 
     enum StatsRange: String, CaseIterable, Identifiable {
         case fourWeeks, twelveWeeks, sixMonths, year
@@ -33,11 +39,19 @@ struct StatsView: View {
         }
     }
 
+    private struct ModelKey: Hashable {
+        var range: StatsRange
+        var engine: MuscleAnalytics.EngineKey
+        var sessionCount: Int
+        var healthVersion: Int
+        var weekStartsOn: Int
+    }
+
     var body: some View {
-        let records = sessions.filter { $0.status.isPerformed }.map { $0.record() }
-        let weeks = StatsEngine.weekly(records, calendar: store.calendar, weeks: range.weeks)
-        let since = store.calendar.addingWeeks(-range.weeks, to: Date())
-        let inRange = records.filter { $0.date >= since }
+        let key = ModelKey(range: range, engine: muscleAnalytics.engineKey, sessionCount: sessions.count,
+                           healthVersion: health.workoutsVersion, weekStartsOn: store.calendar.firstWeekday)
+        let unit = store.unit
+        let target = store.profile.weeklySets
 
         List {
             Section {
@@ -49,109 +63,51 @@ struct StatsView: View {
                 .listRowInsets(EdgeInsets())
             }
 
-            Section {
-                VStack(spacing: 12) {
-                    MuscularLoadCard(openIn: .muscles)
-                    MuscleFreshnessCard()
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
+            if let model, !model.isEmpty {
+                tiles(model, unit: unit)
+                liftsSection(model, unit: unit)
+                recordsSection(model, unit: unit)
 
-            Section {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
-                    StatTile(title: "Workouts", value: "\(inRange.count)", symbol: "figure.strengthtraining.functional")
-                    StatTile(title: "Active time", value: Format.minutes(inRange.reduce(0) { $0 + $1.durationSeconds }), symbol: "clock")
-                    StatTile(title: "Sets", value: "\(inRange.reduce(0) { $0 + $1.content.completedSets })", symbol: "checklist")
-                    StatTile(title: "Volume", value: Format.volume(inRange.reduce(0) { $0 + $1.content.volumeKg }, unit: store.unit), symbol: "scalemass")
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
-
-            Section {
-                WorkoutDaysChart(weeks: weeks, goal: store.settings.weeklyGoal, selection: $selectedWeek)
-                    .frame(height: 200)
-                    .padding(.vertical, 8)
-            } header: {
-                Text("Workout days per week")
-            } footer: {
-                Text("Dashed line: your weekly goal of \(store.settings.weeklyGoal) days.")
-            }
-
-            Section("Active minutes per week") {
-                MinutesChart(weeks: weeks)
-                    .frame(height: 180)
-                    .padding(.vertical, 8)
-            }
-
-            let muscles = muscleAnalytics.engine.totals(in: DateInterval(start: since, end: Date().addingTimeInterval(1)))
-                .filter { $0.sets > 0 }
-                .sorted { $0.sets > $1.sets }
-            if !muscles.isEmpty {
                 Section {
-                    MuscleChart(rows: muscles.prefix(12).map { MuscleChart.Row(muscle: $0.group.displayName, sets: $0.sets, perWeek: $0.setsPerWeek) })
-                        .frame(height: CGFloat(min(12, muscles.count)) * 28 + 20)
+                    WorkoutDaysChart(weeks: model.weeks, goal: store.settings.weeklyGoal, selection: $selectedWeek)
+                        .frame(height: 200)
                         .padding(.vertical, 8)
                 } header: {
-                    Text("Sets per muscle")
+                    Text("Workout days per week")
                 } footer: {
-                    Text("Secondary muscles count half a set. Colour shows sets per week against the common 10–20 set target.")
+                    Text("Dashed line: your weekly goal of \(store.settings.weeklyGoal) days.")
                 }
-            }
 
-            let kinds = StatsEngine.kindMinutes(in: inRange, since: since)
-            if !kinds.isEmpty {
-                Section("Time by type") {
-                    KindChart(rows: kinds.map { KindChart.Row(kind: $0.kind, minutes: $0.minutes) })
-                        .frame(height: CGFloat(kinds.count) * 30 + 20)
+                Section("Active minutes per week") {
+                    MinutesChart(weeks: model.weeks)
+                        .frame(height: 180)
                         .padding(.vertical, 8)
                 }
-            }
 
-            let prs = StatsEngine.personalRecords(in: records).filter { $0.metric == .weight || $0.metric == .duration }
-            if !prs.isEmpty {
-                Section("Personal records") {
-                    ForEach(Array(prs.prefix(15))) { record in
-                        Button {
-                            if !record.exerciseKey.hasPrefix("name:") {
-                                router.open(.exercise(record.exerciseKey))
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "trophy.fill").foregroundStyle(.yellow)
-                                VStack(alignment: .leading) {
-                                    Text(record.exerciseName).foregroundStyle(.primary)
-                                    Text(record.date.formatted(date: .abbreviated, time: .omitted))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(record.metric == .weight ? Format.weight(record.value, unit: store.unit) : Format.shortDuration(Int(record.value)))
-                                    .font(.headline)
-                                    .monospacedDigit()
-                                    .foregroundStyle(.primary)
-                            }
-                        }
-                        .buttonStyle(.plain)
+                if !model.muscles.isEmpty {
+                    let rows = model.muscles.prefix(12).map { MuscleChart.Row(muscle: $0.group.displayName, sets: $0.sets, perWeek: $0.setsPerWeek) }
+                    Section {
+                        MuscleChart(rows: Array(rows), target: target)
+                            .frame(height: CGFloat(rows.count) * 28 + 20)
+                            .padding(.vertical, 8)
+                    } header: {
+                        Text("Hard sets per muscle and week")
+                    } footer: {
+                        Text("Average per week in this range. Dashed lines: your target \(target.lowerBound)–\(target.upperBound) (\(store.profile.headline)) – ↓ below, ✓ in target, ↑ above. Secondary muscles count half a set; stretching, yoga and other sports don't count.")
                     }
                 }
-            }
 
-            let exercises = StatsEngine.exercises(in: records)
-            if !exercises.isEmpty {
-                Section("Most trained") {
-                    ForEach(Array(exercises.sorted { $0.sessions > $1.sessions }.prefix(10))) { summary in
-                        Button {
-                            if !summary.key.hasPrefix("name:") { router.open(.exercise(summary.key)) }
-                        } label: {
-                            HStack {
-                                Text(summary.name).foregroundStyle(.primary)
-                                Spacer()
-                                Text("\(summary.sessions)×").foregroundStyle(.secondary).monospacedDigit()
-                            }
+                if !model.types.isEmpty {
+                    Section {
+                        KindChart(rows: model.types)
+                            .frame(height: CGFloat(model.types.count) * 30 + 20)
+                            .padding(.vertical, 8)
+                    } header: {
+                        Text("Time by type")
+                    } footer: {
+                        if model.types.contains(where: \.includesHealth) {
+                            Label("Includes workouts from Apple Health (other apps and devices).", systemImage: "heart.fill")
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -159,9 +115,162 @@ struct StatsView: View {
         .groupedList()
         .navigationTitle("Stats & Records")
         .overlay {
-            if records.isEmpty {
+            if model?.isEmpty == true {
                 MessageView(title: "No data yet", systemImage: "chart.xyaxis.line", message: "Finish a workout to see your progress here.")
+            } else if model == nil {
+                ProgressView()
             }
+        }
+        .task(id: key) {
+            let records = SessionHistory.shared.records(store)
+            let input = ProgressModel.Input(
+                records: records, external: health.healthWorkouts, engine: muscleAnalytics.engine,
+                calendar: store.calendar, weeks: range.weeks, now: Date()
+            )
+            let built = await Task.detached(priority: .userInitiated) { ProgressModel.build(input) }.value
+            guard !Task.isCancelled else { return }
+            model = built
+        }
+    }
+
+    // MARK: Sections
+
+    private func tiles(_ model: ProgressModel, unit: WeightUnit) -> some View {
+        let now = model.current
+        let before = model.previous
+        let period = "prev. \(range.title)"
+        return Section {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+                StatTile(title: "Workouts", value: "\(now.workouts)", symbol: "figure.strengthtraining.functional",
+                         delta: StatDelta(Double(now.workouts - before.workouts), period: period) { "\(Int($0))" })
+                StatTile(title: "Active time", value: Format.minutes(now.seconds), symbol: "clock",
+                         delta: StatDelta(now.seconds - before.seconds, period: period, threshold: 60) { Format.minutes($0) })
+                StatTile(title: "Sets", value: "\(now.sets)", symbol: "checklist",
+                         delta: StatDelta(Double(now.sets - before.sets), period: period) { "\(Int($0))" })
+                StatTile(title: "Volume", value: Format.volume(now.volumeKg, unit: unit), symbol: "scalemass",
+                         delta: StatDelta(now.volumeKg - before.volumeKg, period: period, threshold: 1) { Format.volume($0, unit: unit) })
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+    }
+
+    @ViewBuilder
+    private func liftsSection(_ model: ProgressModel, unit: WeightUnit) -> some View {
+        Section {
+            if model.lifts.isEmpty {
+                Text("Do an exercise at least twice in this range to see whether it's going up.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(model.lifts) { trend in
+                Button {
+                    if !trend.exerciseKey.hasPrefix("name:") { router.open(.exercise(trend.exerciseKey)) }
+                } label: {
+                    LiftTrendRow(trend: trend, unit: unit)
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Lifts · \(range.title)")
+        } footer: {
+            if !model.lifts.isEmpty {
+                Text("Your most-done exercises, first session of the range against the last: estimated one-rep max for lifts with weight, total reps without, the longest hold for timed moves.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func recordsSection(_ model: ProgressModel, unit: WeightUnit) -> some View {
+        if !model.records.isEmpty {
+            Section("Records · \(range.title)") {
+                ForEach(Array(model.records.prefix(15))) { record in
+                    Button {
+                        if !record.exerciseKey.hasPrefix("name:") {
+                            router.open(.exercise(record.exerciseKey))
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "trophy.fill")
+                                .foregroundStyle(Tone.record)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading) {
+                                Text(record.exerciseName).foregroundStyle(.primary)
+                                Text(record.date.formatted(date: .abbreviated, time: .omitted))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(record.detail(unit: unit))
+                                .font(.headline)
+                                .monospacedDigit()
+                                .foregroundStyle(.primary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+/// Everything the Progress tab shows, computed in one go off the main thread.
+struct ProgressModel: Sendable {
+    struct Input: Sendable {
+        var records: [SessionRecord]
+        var external: [ExternalWorkout]
+        var engine: MuscleEngine
+        var calendar: Calendar
+        var weeks: Int
+        var now: Date
+    }
+
+    var weeks: [WeekStat]
+    var current: PeriodTotals
+    var previous: PeriodTotals
+    var muscles: [MuscleTotal]
+    var types: [TypeTime]
+    var records: [PersonalRecord]
+    var lifts: [ExerciseTrend]
+    var isEmpty: Bool
+
+    static func build(_ input: Input) -> ProgressModel {
+        let calendar = input.calendar
+        let now = input.now
+        // One window for everything: whole calendar weeks, the current one included.
+        let start = calendar.addingWeeks(-(max(1, input.weeks) - 1), to: calendar.weekStart(for: now))
+        let end = max(start, now).addingTimeInterval(1)
+        let window = DateInterval(start: start, end: end)
+        // The period before, just as long (so a half-finished week compares fairly).
+        let previous = DateInterval(start: calendar.addingWeeks(-input.weeks, to: start),
+                                    end: calendar.addingWeeks(-input.weeks, to: end))
+        return ProgressModel(
+            weeks: StatsEngine.weekly(input.records, calendar: calendar, weeks: input.weeks, now: now),
+            current: StatsEngine.totals(of: input.records, in: window),
+            previous: StatsEngine.totals(of: input.records, in: previous),
+            muscles: input.engine.totals(in: window).filter { $0.sets > 0 }.sorted { $0.setsPerWeek > $1.setsPerWeek },
+            types: StatsEngine.timeByType(input.records, external: input.external, in: window),
+            records: StatsEngine.recordsSet(in: input.records, since: start),
+            lifts: StatsEngine.topTrends(in: input.records, since: start, limit: 6),
+            isEmpty: input.records.isEmpty
+        )
+    }
+}
+
+/// "+3 vs prev. 12W" under a tile.
+struct StatDelta {
+    let text: String
+    /// 1 more, -1 less, 0 about the same.
+    let sign: Int
+
+    init(_ change: Double, period: String, threshold: Double = 0.5, format: (Double) -> String) {
+        if abs(change) < threshold {
+            text = "Same as \(period)"
+            sign = 0
+        } else {
+            text = (change > 0 ? "+" : "−") + format(abs(change)) + " vs \(period)"
+            sign = change > 0 ? 1 : -1
         }
     }
 }
@@ -170,6 +279,7 @@ struct StatTile: View {
     let title: String
     let value: String
     let symbol: String
+    var delta: StatDelta? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -182,10 +292,116 @@ struct StatTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .contentTransition(.numericText())
+            if let delta {
+                Label(delta.text, systemImage: delta.sign > 0 ? "arrow.up.right" : (delta.sign < 0 ? "arrow.down.right" : "equal"))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(delta.sign > 0 ? Tone.goodText : Color.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .card(padding: 0, cornerRadius: 20)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// One lift: name, latest value, a sparkline and the change over the range.
+struct LiftTrendRow: View {
+    let trend: ExerciseTrend
+    let unit: WeightUnit
+    @ScaledMetric(relativeTo: .body) private var sparkWidth: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var sparkHeight: CGFloat = 28
+
+    var body: some View {
+        let change = deltaText
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(trend.exerciseName)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text("\(measureTitle) \(format(trend.last)) · \(trend.sessions) sessions")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Sparkline(points: trend.points)
+                .frame(width: sparkWidth, height: sparkHeight)
+            Label(change.text, systemImage: change.sign > 0 ? "arrow.up.right" : (change.sign < 0 ? "arrow.down.right" : "equal"))
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(change.sign > 0 ? Tone.goodText : Color.secondary)
+                .lineLimit(1)
+                .frame(minWidth: 72, alignment: .trailing)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(trend.exerciseName): \(measureTitle) \(format(trend.last)), \(change.sign == 0 ? "about the same" : change.text) over \(trend.sessions) sessions")
+    }
+
+    private var measureTitle: String {
+        switch trend.measure {
+        case .oneRepMax: return "e1RM"
+        case .reps: return "Reps"
+        case .seconds: return "Hold"
+        }
+    }
+
+    private func format(_ value: Double) -> String {
+        switch trend.measure {
+        case .oneRepMax: return Format.weight((value * 2).rounded() / 2, unit: unit)
+        case .reps: return "\(Int(value.rounded()))"
+        case .seconds: return Format.clock(Int(value.rounded()))
+        }
+    }
+
+    private var deltaText: (text: String, sign: Int) {
+        let delta = trend.delta
+        let threshold: Double = trend.measure == .oneRepMax ? 0.5 : 1
+        guard abs(delta) >= threshold else { return ("Same", 0) }
+        let sign = delta > 0 ? "+" : "−"
+        switch trend.measure {
+        case .oneRepMax:
+            return (sign + Format.weight((abs(delta) * 2).rounded() / 2, unit: unit), delta > 0 ? 1 : -1)
+        case .reps:
+            return (sign + "\(Int(abs(delta).rounded())) reps", delta > 0 ? 1 : -1)
+        case .seconds:
+            return (sign + Format.shortDuration(Int(abs(delta).rounded())), delta > 0 ? 1 : -1)
+        }
+    }
+}
+
+/// A tiny line of a trend, last point marked.
+struct Sparkline: View {
+    let points: [TrendPoint]
+
+    var body: some View {
+        let values = points.map(\.value)
+        let low = values.min() ?? 0
+        let high = values.max() ?? 1
+        let pad = max(0.5, (high - low) * 0.15)
+        Chart {
+            ForEach(points) { point in
+                LineMark(x: .value("Date", point.date), y: .value("Value", point.value))
+                    .foregroundStyle(Tone.accent)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .interpolationMethod(.monotone)
+            }
+            if let last = points.last {
+                PointMark(x: .value("Date", last.date), y: .value("Value", last.value))
+                    .foregroundStyle(Tone.accent)
+                    .symbolSize(24)
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartLegend(.hidden)
+        .chartYScale(domain: (low - pad)...(high + pad))
+        .accessibilityHidden(true)
     }
 }
 
@@ -202,8 +418,9 @@ struct WorkoutDaysChart: View {
                     x: .value("Week", week.weekStart, unit: .weekOfYear),
                     y: .value("Days", week.workoutDays)
                 )
-                .foregroundStyle(week.workoutDays >= goal ? Color.orange : Color.orange.opacity(0.45))
+                .foregroundStyle(week.workoutDays >= goal ? Tone.accent : Tone.accent.opacity(0.4))
                 .cornerRadius(4)
+                .accessibilityValue("\(week.workoutDays) days\(week.workoutDays >= goal ? ", goal reached" : "")")
             }
             RuleMark(y: .value("Goal", goal))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
@@ -244,7 +461,7 @@ struct MinutesChart: View {
                 x: .value("Week", week.weekStart, unit: .weekOfYear),
                 y: .value("Minutes", week.minutes)
             )
-            .foregroundStyle(Color.blue)
+            .foregroundStyle(Tone.accent)
             .cornerRadius(4)
         }
         .chartYAxis {
@@ -256,6 +473,7 @@ struct MinutesChart: View {
     }
 }
 
+/// Hard sets per week for each muscle, coloured against the profile's weekly target (band behind).
 struct MuscleChart: View {
     struct Row: Identifiable {
         var id: String { muscle }
@@ -264,45 +482,60 @@ struct MuscleChart: View {
         let perWeek: Double
     }
     let rows: [Row]
+    var target: ClosedRange<Int> = 10...20
 
     var body: some View {
-        Chart(rows) { row in
-            BarMark(
-                x: .value("Sets", row.sets),
-                y: .value("Muscle", row.muscle)
-            )
-            .foregroundStyle(MusclePalette.heat(min(1, row.perWeek / 20)))
-            .cornerRadius(4)
-            .annotation(position: .trailing) {
-                Text(Format.number((row.sets * 10).rounded() / 10))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        Chart {
+            // The target range as two dashed rules behind the bars.
+            ForEach([target.lowerBound, target.upperBound], id: \.self) { bound in
+                RuleMark(x: .value("Target", Double(bound)))
+                    .foregroundStyle(Tone.inTarget.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            }
+            ForEach(rows) { row in
+                let status = TargetStatus(row.perWeek, target: target)
+                BarMark(
+                    x: .value("Sets per week", row.perWeek),
+                    y: .value("Muscle", row.muscle)
+                )
+                .foregroundStyle(TargetStatus.fill(row.perWeek, target: target))
+                .cornerRadius(4)
+                .annotation(position: .trailing) {
+                    HStack(spacing: 2) {
+                        Image(systemName: status.symbol)
+                        Text(Format.number((row.perWeek * 10).rounded() / 10))
+                    }
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(status.textColor)
+                }
+                .accessibilityValue("\(Format.number((row.perWeek * 10).rounded() / 10)) sets per week, \(status.title.lowercased())")
             }
         }
         .chartXAxis(.hidden)
     }
 }
 
+/// Minutes per type (George workouts and Apple Health workouts).
 struct KindChart: View {
-    struct Row: Identifiable {
-        var id: String { kind.rawValue }
-        let kind: WorkoutKind
-        let minutes: Double
-    }
-    let rows: [Row]
+    let rows: [TypeTime]
 
     var body: some View {
         Chart(rows) { row in
             BarMark(
                 x: .value("Minutes", row.minutes),
-                y: .value("Type", row.kind.displayName)
+                y: .value("Type", row.title)
             )
             .foregroundStyle(row.kind.color)
             .cornerRadius(4)
             .annotation(position: .trailing) {
-                Text(Format.minutes(row.minutes * 60))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 3) {
+                    if row.includesHealth {
+                        Image(systemName: "heart.fill").accessibilityLabel("Apple Health")
+                    }
+                    Text(Format.minutes(row.minutes * 60))
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
         }
         .chartXAxis(.hidden)

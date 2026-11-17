@@ -32,6 +32,8 @@
 	<string>George reads your workouts, heart rate and body weight to count Apple Watch sessions toward your streak and to estimate calories.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>George saves your finished workouts, calories and effort to Apple Health so apps like Fitness and Bevel can use them.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

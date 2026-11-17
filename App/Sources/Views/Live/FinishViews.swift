@@ -42,7 +42,7 @@ struct FinishWorkoutSheet: View {
                             stat("Volume", Format.volume(live.content.volumeKg, unit: live.unit))
                         }
                     }
-                    if live.content.completedSets < live.content.totalSets {
+                    if live.content.totalSets > 0 && live.content.completedSets < live.content.totalSets {
                         Label("\(live.content.totalSets - live.content.completedSets) sets left — it will be saved as “stopped early” and still counts.", systemImage: "info.circle")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -129,6 +129,8 @@ struct FinishWorkoutSheet: View {
     private func prefillEffort() {
         guard !prefilled else { return }
         prefilled = true
+        // A calm yoga flow isn't "somewhat hard": the default follows the kind of workout.
+        effort = live.session?.kind.defaultEffort ?? 6
         let rpes = loggedRPEs
         guard !rpes.isEmpty else { return }
         effort = min(10, max(1, Int((rpes.reduce(0, +) / Double(rpes.count)).rounded())))

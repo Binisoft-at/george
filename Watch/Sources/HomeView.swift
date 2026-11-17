@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var showingLive = false
     @State private var didAutoOpen = false
     @State private var pendingStart: PendingStart?
+    @State private var shownSummary: ShownSummary?
 
     var body: some View {
         NavigationStack {
@@ -22,7 +23,7 @@ struct HomeView: View {
                     titleVisibility: .visible,
                     presenting: pendingStart
                 ) { start in
-                    Button("Start") { connector.perform(start.command) }
+                    Button("Start") { connector.requestStart(start.command, title: start.name) }
                     Button("Cancel", role: .cancel) {}
                 } message: { start in
                     Text(start.message)
@@ -34,10 +35,27 @@ struct HomeView: View {
                 showingLive = false
                 return
             }
+            shownSummary = nil
             if newValue != oldValue || !didAutoOpen {
                 didAutoOpen = true
                 showingLive = true
             }
+        }
+        // The summary of a just-saved workout, once the live pages are gone.
+        .onChange(of: connector.finishSummary?.sessionID, initial: true) { _, newValue in
+            guard newValue != nil else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(700))
+                guard let summary = connector.finishSummary, !showingLive, shownSummary == nil else { return }
+                shownSummary = ShownSummary(summary: summary)
+            }
+        }
+        .sheet(item: $shownSummary) { shown in
+            FinishSummaryView(summary: shown.summary) {
+                shownSummary = nil
+            }
+            // Closed with Done or swiped away: don't offer it again.
+            .onDisappear { connector.dismissFinishSummary(shown.summary.sessionID) }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { connector.refresh() }
@@ -59,14 +77,25 @@ struct HomeView: View {
     @ViewBuilder
     private var content: some View {
         if let snapshot = connector.snapshot {
+            let canStart = connector.live == nil && connector.startRequest == nil
             List {
                 if let live = connector.live {
                     Section {
                         ResumeRow(live: live) { showingLive = true }
                     }
+                } else if let request = connector.startRequest {
+                    Section {
+                        StartRequestRow(request: request, isReachable: connector.isReachable) { connector.cancelStart() }
+                    }
                 } else if workout.phase.isActive {
                     Section {
                         UnmatchedRecordingRow { workout.end() }
+                    }
+                }
+
+                if let problem = connector.startProblem, connector.live == nil, connector.startRequest == nil {
+                    Section {
+                        StartProblemRow(message: problem) { connector.clearStartProblem() }
                     }
                 }
 
@@ -84,7 +113,7 @@ struct HomeView: View {
                             } label: {
                                 WorkoutRow(kind: planned.kind, title: planned.title, subtitle: DayLabel.text(for: planned.date))
                             }
-                            .disabled(connector.live != nil)
+                            .disabled(!canStart)
                         }
                     }
                 }
@@ -102,7 +131,7 @@ struct HomeView: View {
                                     isSuggested: template.isSuggested
                                 )
                             }
-                            .disabled(connector.live != nil)
+                            .disabled(!canStart)
                         }
                     }
                 }
@@ -153,11 +182,13 @@ struct HomeView: View {
 // MARK: - Start confirmation
 
 private struct PendingStart {
+    let name: String
     let title: String
     let message: String
     let command: WatchCommand
 
     init(template: WatchTemplate, reachable: Bool) {
+        name = template.name
         title = "Start \(template.name)?"
         var details: [String] = []
         if !template.programName.isEmpty { details.append(template.programName) }
@@ -167,6 +198,7 @@ private struct PendingStart {
     }
 
     init(session: WatchSessionSummary, reachable: Bool) {
+        name = session.title
         title = "Start \(session.title)?"
         message = PendingStart.composeMessage(details: [session.kind.displayName, DayLabel.text(for: session.date)], reachable: reachable)
         command = .startSession(session.id)
@@ -174,8 +206,78 @@ private struct PendingStart {
 
     private static func composeMessage(details: [String], reachable: Bool) -> String {
         var lines = [details.joined(separator: " · ")]
-        if !reachable { lines.append("It starts as soon as your iPhone is reachable.") }
+        if !reachable {
+            let minutes = Int(WatchConnector.startLifetime / 60)
+            lines.append("Your iPhone isn't connected. The watch waits up to \(minutes) min for it – you can cancel.")
+        }
         return lines.filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+}
+
+/// A just-saved workout's summary, presented once.
+private struct ShownSummary: Identifiable {
+    let summary: WatchFinishSummary
+    var id: UUID { summary.sessionID }
+}
+
+// MARK: - Start status
+
+/// "Waiting for iPhone…" / "Starting…" with Cancel, so a start never fires unnoticed later.
+private struct StartRequestRow: View {
+    let request: StartRequest
+    let isReachable: Bool
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .frame(width: 20, height: 20)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(request.status == .waitingForPhone ? "Waiting for iPhone…" : "Starting on iPhone…")
+                        .font(.headline)
+                        .lineLimit(2)
+                    if let title = request.title {
+                        Text(title)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            if request.status == .waitingForPhone {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let left = max(0, Int(request.sentAt.addingTimeInterval(WatchConnector.startLifetime).timeIntervalSince(context.date).rounded()))
+                    Text(isReachable
+                         ? "Sending… gives up in \(Format.clock(left))."
+                         : "Bring your iPhone closer or turn on Bluetooth. Gives up in \(Format.clock(left)).")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button("Cancel", role: .cancel, action: onCancel)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct StartProblemRow: View {
+    let message: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Not started", systemImage: "exclamationmark.triangle.fill")
+                .font(.headline)
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("OK", action: onDismiss)
+        }
+        .padding(.vertical, 4)
     }
 }
 

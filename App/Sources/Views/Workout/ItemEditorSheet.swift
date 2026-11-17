@@ -113,6 +113,9 @@ struct ItemEditorSheet: View {
 
     private var setsSection: some View {
         Section {
+            if item.wrappedValue.sets.count > 1 {
+                AllSetsRow(content: $content, itemID: itemID, inSession: mode.isSession, unit: store.unit)
+            }
             ForEach(Array(item.wrappedValue.sets.enumerated()), id: \.element.id) { index, set in
                 SetEditRow(
                     set: Binding(
@@ -200,6 +203,95 @@ struct ItemEditorSheet: View {
         } header: {
             Text("Tutorials")
         }
+    }
+}
+
+/// "All sets": the number of sets, reps and weight (or time / distance) for every open working set
+/// at once – e.g. all Deadlift sets +2.5 kg with one tap. Done sets and warm-ups stay as they are.
+struct AllSetsRow: View {
+    @Binding var content: WorkoutContent
+    let itemID: UUID
+    let inSession: Bool
+    let unit: WeightUnit
+
+    var body: some View {
+        let item = content.item(id: itemID)
+        let open = content.openSetIDs(of: itemID).count
+        let total = item?.sets.count ?? 0
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("All sets", systemImage: "square.stack.3d.up")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(open == total ? "every set" : "the \(open) open sets")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    stepper("\(total) sets", minus: total > 1 ? { content.setSetCount(of: itemID, to: total - 1) } : nil) {
+                        content.setSetCount(of: itemID, to: total + 1)
+                    }
+                    switch item?.mode ?? .reps {
+                    case .reps:
+                        stepper(repsText, minus: { adjust(.reps, by: -1) }) { adjust(.reps, by: 1) }
+                        stepper(weightText, minus: { adjust(.weight, by: -weightStep) }) { adjust(.weight, by: weightStep) }
+                    case .time:
+                        stepper(secondsText, minus: { adjust(.seconds, by: -5) }) { adjust(.seconds, by: 5) }
+                    case .distance:
+                        stepper(metersText, minus: { adjust(.meters, by: -50) }) { adjust(.meters, by: 50) }
+                    }
+                }
+            }
+            .disabled(open == 0)
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// 2.5 kg, or 5 lb.
+    private var weightStep: Double { unit == .kg ? 2.5 : unit.toKilograms(5) }
+
+    private func value(_ field: SetField) -> Double? {
+        content.allSetsValue(field, of: itemID, inSession: inSession)
+    }
+
+    private var repsText: String { value(.reps).map { "\(Int($0)) reps" } ?? "– reps" }
+    private var weightText: String {
+        guard let kg = value(.weight), kg > 0 else { return "no weight" }
+        return Format.weight(kg, unit: unit)
+    }
+    private var secondsText: String { value(.seconds).map { Format.shortDuration(Int($0)) } ?? "– s" }
+    private var metersText: String { value(.meters).map { Format.distance($0) } ?? "– m" }
+
+    private func adjust(_ field: SetField, by delta: Double) {
+        Haptics.tap()
+        content.adjustOpenSets(of: itemID, field, by: delta, inSession: inSession)
+    }
+
+    private func stepper(_ title: String, minus: (() -> Void)?, plus: @escaping () -> Void) -> some View {
+        HStack(spacing: 2) {
+            Button {
+                minus?()
+            } label: {
+                Image(systemName: "minus")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 28, height: 28)
+            }
+            .disabled(minus == nil)
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+            Button(action: plus) {
+                Image(systemName: "plus")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 28, height: 28)
+            }
+        }
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 4)
+        .background(Color.accentColor.opacity(0.1), in: Capsule())
     }
 }
 

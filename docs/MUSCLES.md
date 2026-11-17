@@ -29,6 +29,14 @@ Every completed set becomes "hard-set equivalents" per muscle:
 | Workout type | stretching / yoga / mobility 0.15 · cardio 0.4 · everything else 1 |
 | Muscle | primary 1 · secondary 0.5 |
 
+Stretching, yoga, mobility and cardio add this (small) load but **no hard sets** – a stretch-only week
+doesn't fill your weekly set targets (`MuscleEngine.countsAsHardSets`).
+
+**Other sports** (v6, Settings → Training → *Count other sports in muscle recovery*): Apple Health
+workouts such as tennis, runs, rides, hikes, HIIT, swimming or climbing add load to the muscles that
+sport uses – scaled by duration (per hour) and effort (5 = neutral) – but never sets
+(`GeorgeCore/SportLoad.swift`). So freshness is honest on the day after two hours of tennis.
+
 ## Freshness (per muscle)
 
 - Each set adds fatigue `load / capacity` that fades as `e^(−t/τ)`.
@@ -38,20 +46,23 @@ Every completed set becomes "hard-set equivalents" per muscle:
 - **Capacity** starts at 10 hard sets (roughly where one session per muscle stops adding much) and
   is personalised to 1.25 × your median session load for that muscle (between 6 and 16) once you
   have three sessions within six weeks.
-- Freshness = 1 − remaining fatigue. **Recovered** ≥ 80 %, **Fatigued** 40–80 %, **Depleted** < 40 %.
+- Freshness = 1 − remaining fatigue. **Recovered** ≥ 80 %, **Recovering** 40–80 %, **Depleted** < 40 %.
   "Ready in ~X h" solves the decay for the time to reach 80 %.
 - **Calibrating:** fewer than three workouts that trained the muscle in the last six weeks.
 
 ## Muscular load (whole body or one muscle)
 
-- **Acute:** the load of the last 7 days. **Chronic:** the weekly average of the last 6 weeks.
-- **Optimal range:** 80–130 % of the chronic value.
+- **Acute:** the load of the last 7 days. **Chronic:** the weekly average of the history so far –
+  up to 6 weeks, at least 2 (v6: before, the first weeks were divided by 6 weeks and steady training
+  read as "Fatigued"). Shown as **% of your usual week** ("150 % of your usual week").
+- **Optimal range:** 80–130 % of the chronic value (beginners and 60+: 80–120 %, from Your Profile).
 - **Status** from the acute:chronic ratio:
   - < 0.8 Detraining
   - 0.8–1.0 Maintaining, or **Peaking** if the ratio was ≥ 1.1 within the previous two weeks (tapering off a hard block)
-  - 1.0–1.3 Productive
-  - 1.3–1.5 Fatigued
-  - > 1.5 Overtraining
+  - 1.0–1.3 Productive (up to the profile's upper bound)
+  - up to 0.2 above it: Fatigued
+  - beyond: Overtraining
+  - Ratios of the first two weeks don't count toward "Peaking".
 - **Calibrating** until there are 14 days since the first logged set and at least 4 sessions
   (whole body) or 3 sessions (one muscle) in the last six weeks.
 

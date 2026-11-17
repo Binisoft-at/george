@@ -46,6 +46,46 @@ enum Prefs {
     static let naturalVoiceName = "naturalVoiceName"
     /// Live mode: show the Start button between sets (measures the real rest).
     static let startButton = "startButton"
+    /// Stretch/yoga/mobility: start the next hold by itself after the short rest.
+    static let autoStartHolds = "autoStartHolds"
+    /// Where the voice coach may speak: everywhere, headphones only, or following the silent switch.
+    static let voiceRoute = "voiceRoute"
+    /// The one-time "Voice coach is on" banner in the first live workout was answered.
+    static let voiceBannerSeen = "voiceBannerSeen"
+    /// Offer a matching cool-down routine on the finish screen.
+    static let offerCoolDown = "offerCoolDown"
+    /// Apple Health workouts (tennis, runs …) count toward muscle recovery and load.
+    static let countOtherSports = "countOtherSports"
+    /// Training-day and streak reminders (iOS notifications).
+    static let trainingReminders = "trainingReminders"
+    /// Reminder time (minutes after midnight).
+    static let reminderMinutes = "reminderMinutes"
+    /// Barbell weight for plate maths and warm-ups (kg).
+    static let barKg = "barKg"
+    /// The plates at hand for plate maths (`PlateSet` raw value, Settings → Training).
+    static let plateSet = "plateSet"
+    /// The running workout started on this device (only this device attaches to it on launch).
+    static let liveSessionID = "george.liveSessionID"
+}
+
+/// Where the voice coach may speak.
+enum VoiceRoute: String, CaseIterable, Identifiable {
+    case everywhere, headphones, silentSwitch
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .everywhere: return "Headphones & speaker"
+        case .headphones: return "Headphones only"
+        case .silentSwitch: return "Follow silent mode"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .everywhere: return "George speaks through whatever is playing – also the phone's speaker in the gym."
+        case .headphones: return "On the speaker George stays quiet; haptics and the rest sound still work."
+        case .silentSwitch: return "Quiet when the phone is set to silent."
+        }
+    }
 }
 
 /// How much the live workout cheers you on.
@@ -54,15 +94,15 @@ enum MotivationStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .full: return "Full"
-        case .calm: return "Calm"
-        case .off: return "Off"
+        case .full: return "Lots"
+        case .calm: return "Subtle"
+        case .off: return "None"
         }
     }
     var detail: String {
         switch self {
         case .full: return "Flame, growing muscles, bursts and cheers."
-        case .calm: return "Progress only, no bursts or nudges."
+        case .calm: return "Progress only – no bursts or banners."
         case .off: return "Just your sets and the rest timer."
         }
     }
@@ -83,6 +123,16 @@ enum CoachPrefs {
     static var startButton: Bool { bool(Prefs.startButton, default: true) }
     static var energyCheckIn: Bool { bool(Prefs.energyCheckIn, default: true) }
     static var healthSignals: Bool { bool(Prefs.healthSignals, default: true) }
+    static var autoStartHolds: Bool { bool(Prefs.autoStartHolds, default: true) }
+    static var offerCoolDown: Bool { bool(Prefs.offerCoolDown, default: true) }
+    static var countOtherSports: Bool { bool(Prefs.countOtherSports, default: true) }
+    static var voiceRoute: VoiceRoute {
+        VoiceRoute(rawValue: UserDefaults.standard.string(forKey: Prefs.voiceRoute) ?? "") ?? .everywhere
+    }
+    static var barKg: Double {
+        let value = UserDefaults.standard.double(forKey: Prefs.barKg)
+        return value > 0 ? value : 20
+    }
     static var motivation: MotivationStyle {
         MotivationStyle(rawValue: UserDefaults.standard.string(forKey: Prefs.motivation) ?? "") ?? .full
     }

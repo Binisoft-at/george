@@ -200,18 +200,22 @@ struct ExerciseAnimation: View {
     let urls: [URL]
     let symbol: String
     var tint: Color = .accentColor
+    /// Settings → Show exercise pictures (off: the symbol only, no downloads).
+    @AppStorage(Prefs.showImages) private var showImages = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        if urls.isEmpty {
+        if urls.isEmpty || !showImages {
             ZStack {
                 tint.opacity(0.12)
                 Image(systemName: symbol)
-                    .font(.system(size: 64, weight: .semibold))
+                    .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(tint)
             }
         } else {
             TimelineView(.periodic(from: .now, by: 1.1)) { context in
-                let index = Int(context.date.timeIntervalSinceReferenceDate / 1.1) % urls.count
+                // Reduce Motion: the first picture only, no flip-book.
+                let index = reduceMotion ? 0 : Int(context.date.timeIntervalSinceReferenceDate / 1.1) % urls.count
                 ZStack {
                     ForEach(Array(urls.enumerated()), id: \.offset) { offset, url in
                         CachedImage(url: url) { Color.clear }

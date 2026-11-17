@@ -26,9 +26,15 @@ struct SessionListView: View {
     @State private var isSelecting = false
     @State private var selection = Set<UUID>()
     @State private var confirmBulkDelete = false
+    @State private var logSession: WorkoutSession?
+
+    /// The Planned list reads soonest first unless another order was picked.
+    private var effectiveSort: SessionSort {
+        scope == .planned && sort == .date ? .planned : sort
+    }
 
     var body: some View {
-        let groups = SessionGrouper.group(sort.sort(filtered), by: grouping, calendar: store.calendar)
+        let groups = SessionGrouper.group(effectiveSort.sort(filtered), by: grouping, calendar: store.calendar)
 
         Group {
             if isSelecting {
@@ -84,6 +90,9 @@ struct SessionListView: View {
             }
         }
         .animation(.default, value: filtered.map(\.id))
+        .sheet(item: $logSession) { session in
+            NavigationStack { LogPastWorkoutSheet(session: session) }
+        }
     }
 
     @ViewBuilder
@@ -111,7 +120,7 @@ struct SessionListView: View {
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         if session.status != .completed {
                             Button {
-                                live.start(session)
+                                live.requestStart(.session(session))
                             } label: {
                                 Label(session.status == .active ? "Continue" : "Start", systemImage: "play.fill")
                             }
@@ -148,7 +157,7 @@ struct SessionListView: View {
                         }
                     }
                     .contextMenu {
-                        SessionMenuItems(session: session)
+                        SessionMenuItems(session: session) { logSession = $0 }
                     } preview: {
                         WorkoutPreview(title: session.title, subtitle: session.subtitle, kind: session.kind, content: session.content)
                     }
@@ -175,9 +184,10 @@ struct SessionListView: View {
 
     // MARK: Data
 
+    /// The program label only helps when there's more than one program to tell apart.
     private var showProgramInRows: Bool {
         if case .program = scope { return false }
-        return true
+        return programs.filter { !$0.isArchived }.count > 1
     }
 
     private var scoped: [WorkoutSession] {

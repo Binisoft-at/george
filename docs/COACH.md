@@ -3,6 +3,57 @@
 Everything that makes live mode feel like training with a coach. Every extra can be switched off in
 **Settings → Workout Coach** (voice: **Settings → Workout Coach → Voice Coach**).
 
+## What v6 changed in live mode
+
+- **Nothing ends by accident.** Every Start button goes through `LiveWorkoutController.requestStart`:
+  with another workout running, George asks – *Keep going*, *Finish it first* (opens its finish
+  sheet) or *Save it and start* (saved properly, Apple Health included). Watch starts older than two
+  minutes, or arriving while a workout runs, are dropped (`WatchCommandEnvelope.isFresh`).
+- **"Now" stays put.** The current set is kept by id through edits (add, delete, reorder, swap –
+  `WorkoutContent.resolveCurrent`). Unticking a mistaken tick makes that set current again and takes
+  back what the tick started (rest, banner, question, pace). After every tick an **Undo** pill shows
+  for a few seconds (also in the minimised bar).
+- **Coach bar: one number.** Ready shows the rest still left, then “+1:46 over rest”; the headline is
+  just NOW (always the accent colour – only lateness is tinted); “2:11 behind plan” appears only
+  when it's over a minute (the full pace is in the panel). Rest is teal everywhere. With the Start
+  button off, the button is Done in every phase (phone, watch, Live Activity).
+- **Pause really pauses**: the clock, the rest and a running hold stop and resume where they were;
+  no countdown or notification in between, and the pause doesn't count as rest (`PaceTracker.shift`).
+- **Relaunch picks up where you were** (`LiveResume`): the rest still running, a started set, the
+  plan's place, a pause. Only the device that started a workout attaches to it; others show
+  “Running on another device · Continue here” instead of writing a stale copy.
+- **Stretch, yoga, mobility – a calm flow**: per-side holds run side 1 → “Switch sides” → side 2;
+  the next hold starts by itself after the short rest (Settings → Coach → Auto-start holds); no
+  banners, nudges or questions between poses, one short line “Next: Lizard Pose, 45 seconds”.
+- **Questions only when they help**: the fatigue / reps-left card asks one thing at a time, saves
+  each tap at once, never after holds or cardio, and its ⋯ menu has *Not in this workout* and
+  *Stop asking*.
+- **Less tapping**: the page scrolls to the set that's due; − / + buttons step reps and weight
+  (no drag that fights the page swipe; VoiceOver: swipe up/down); the strip marks the exercise that's
+  due with a filled ▶; new exercises start from last time's numbers; *Can't finish?* shows while a set
+  runs; a double tap on the picture only acts on the exercise that's due.
+- **At the station**: your own notes and links for an exercise (Exercise Library) show in live mode;
+  *Band: red* chip for band work; *Add warm-up sets* (empty bar, 50 / 70 / 85 %) for heavy lifts;
+  plates per side for barbell weights (bar weight in Settings); “Last: …” opens the exercise's history.
+- **The day steers the advice**: on a low-energy day or with high muscular load “Go up” becomes
+  “Hold last time's numbers”, with overtraining-level load “A step lighter” (`ProgressionAdvisor`).
+- **Supersets keep their rounds** after a swap or a drop set (`WorkoutContent.roundSlots`); a swap in
+  straight sets gets its own block (never a fake superset).
+- **Rest alerts are exact**: a skipped or finished rest never buzzes later; “10 seconds” isn't said
+  when the app woke up late; the countdown and “Go” cut off a less important line.
+- **Voice: Speak through** headphones & speaker / headphones only / follow silent mode, asked once in
+  the first workout.
+- **Saving is light**: typed values are saved after a short pause (and before ticks, finishing or
+  leaving the app), live edits are not on the undo stack, and dashboards refresh at start and finish.
+- **Finish**: Share and Done right away at the bottom, a tap shows everything, Reduce Motion turns
+  the animation off; *Beat last time on 3 of 4* with a “vs. last time” card (`StatsEngine.compare`);
+  heavier loads offer to update the template, a workout without a template can become one; a
+  matching **cool-down** routine is offered (`RoutineLibrary.coolDown`). Effort defaults by kind.
+- **Empty workout** (tennis, a run): add exercises, use a routine's moves, or just track the time; it
+  finishes as completed, not “stopped early”.
+- **iPad and Mac**: the plan as a list next to the exercise; keyboard: ␣ Start/Done, ←/→ look,
+  ⌥←/→ move the plan, menu bar Workout and Go menus.
+
 ## Flow of a set (v3)
 
 Each set goes **ready → working → resting**:

@@ -94,13 +94,14 @@ struct TemplateListView: View {
 
     private func row(_ template: WorkoutTemplate) -> some View {
         DetailLink(.template(template.id)) {
-            TemplateRow(template: template, showProgram: programID == nil) {
-                live.start(template: template)
+            // Grouped by program already – no program label on the rows.
+            TemplateRow(template: template) {
+                store.requestStart(template, live: live, toasts: toasts)
             }
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
-                live.start(template: template)
+                store.requestStart(template, live: live, toasts: toasts)
             } label: {
                 Label("Start", systemImage: "play.fill")
             }

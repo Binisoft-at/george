@@ -48,6 +48,24 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
   shows the sync status and explains where the data lives.
 - **Design** — native SwiftUI on iOS/macOS 26 with Liquid Glass controls, light/dark/system themes.
 
+### New in v6
+
+- **Hands-free**: Live Activity on the Lock Screen and in the Dynamic Island (what's due, the rest
+  countdown, Start/Done, +15 s, skip rest), Siri and Shortcuts ("Start my workout in George",
+  "Next set in George"), the Action Button, a Control Center control, Home/Lock Screen widgets
+  (next workout, streak) and a watch complication.
+- **Apple Watch as a remote**: log the reps and weight you really did, lower the weight, do another
+  exercise now, skip, mute, answer the coach's questions, energy check-in, a summary after saving;
+  the set is the hero, Double Tap for Start/Done, wrist taps for 3-2-1.
+- **Live mode you can trust**: nothing ends by accident, "now" stays put through edits, Undo after
+  each tick, real pause, relaunch continues where you were, calm stretch/yoga flow with per-side
+  holds, − / + steppers, auto-scroll, warm-up sets, plates per side, your exercise notes.
+- **Planning**: plan the week in one go, missed plans on Today, starting a template reuses its
+  planned session, log tennis or a run without a template, reminders, reorder, "Add to…".
+- **Insights that answer questions**: "Beat last time on 3 of 4", strength trends per lift (e1RM),
+  muscular load in % of your usual week, honest numbers in the first weeks, other sports count in
+  recovery.
+
 ## Project layout
 
 George follows the Binisoft handbook, Binisoft's internal app conventions (version in

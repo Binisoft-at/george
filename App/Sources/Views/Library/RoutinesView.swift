@@ -18,7 +18,7 @@ struct RoutinesView: View {
                     }
                 }
             } footer: {
-                Text("Every routine becomes a normal template: change holds and exercises, start it, or share it as a PDF or George file. Build your own from Exercise Library → Stretching / Yoga.")
+                Text("Start a routine right away, or add it to your templates (program “Stretch & Yoga”) to change holds and moves, plan it or share it as a PDF or George file. To build your own: + → New Template, then add stretches from the Exercise Library.")
             }
         }
         .groupedList()
@@ -26,7 +26,7 @@ struct RoutinesView: View {
     }
 }
 
-private struct RoutineRow: View {
+struct RoutineRow: View {
     let routine: Routine
     let content: WorkoutContent
 
@@ -85,7 +85,7 @@ struct RoutineDetailView: View {
             Section {
                 Button {
                     let template = add(content)
-                    live.start(template: template)
+                    store.requestStart(template, live: live, toasts: toasts)
                 } label: {
                     Label("Start Now", systemImage: "play.fill")
                 }
@@ -106,16 +106,8 @@ struct RoutineDetailView: View {
 
     /// The routine's template in "Stretch & Yoga" (reused when it was added before).
     private func add(_ content: WorkoutContent) -> WorkoutTemplate {
-        let programName = "Stretch & Yoga"
-        let program = store.fetchPrograms(includeArchived: false).first { $0.name == programName }
-            ?? store.createProgram(name: programName, kind: .stretch, symbol: "figure.yoga")
-        if let existing = program.orderedTemplates.first(where: { $0.name == routine.name }) {
-            return existing
-        }
-        let template = store.createTemplate(in: program, name: routine.name, kind: routine.kind, content: content)
-        template.subtitle = routine.subtitle.uppercased()
-        store.save()
-        toasts.show("Added “\(routine.name)”")
-        return template
+        let result = store.templateForRoutine(routine, catalog: library.catalog)
+        if result.created { toasts.show("Added “\(routine.name)”") }
+        return result.template
     }
 }

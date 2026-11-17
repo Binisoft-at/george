@@ -16,6 +16,7 @@ struct ImportView: View {
 
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Program.sortIndex) private var programs: [Program]
 
@@ -25,7 +26,9 @@ struct ImportView: View {
     @State private var result: CSVImportResult?
     @State private var errorMessage: String?
     @State private var targetProgramID: UUID?
-    @State private var replaceExisting = true
+    /// Off for files (a shared plan must not overwrite yours), on for pasted AI text (usually your own
+    /// plan, edited).
+    @State private var replaceExisting = false
     @State private var copiedPrompt = false
 
     var body: some View {
@@ -76,7 +79,7 @@ struct ImportView: View {
 
             if let result {
                 previewSection(result)
-                Section("Import Into") {
+                Section {
                     Picker("Program", selection: $targetProgramID) {
                         Text(result.programs.count == 1 ? "New / matching program “\(result.programs[0].name)”" : "New / matching programs").tag(UUID?.none)
                         ForEach(programs) { program in
@@ -84,13 +87,18 @@ struct ImportView: View {
                         }
                     }
                     Toggle("Replace templates with the same name", isOn: $replaceExisting)
+                } header: {
+                    Text("Import Into")
+                } footer: {
+                    Text(replaceExisting
+                         ? "A template with the same name gets the imported exercises, notes and weekdays. You can undo the import right after."
+                         : "Nothing of yours is overwritten: a name that's taken gets a number, e.g. “UPPER (2)”.")
                 }
-                let workoutCount: Int = result.programs.reduce(0) { $0 + $1.workouts.count }
                 Section {
                     Button {
                         performImport(result)
                     } label: {
-                        Label("Import \(workoutCount) Workouts", systemImage: "square.and.arrow.down.fill")
+                        Label(importTitle(result), systemImage: "square.and.arrow.down.fill")
                             .frame(maxWidth: .infinity)
                             .font(.headline)
                     }
@@ -138,9 +146,12 @@ struct ImportView: View {
                                     .lineLimit(1)
                             }
                             Spacer()
-                            Text("\(workout.content.exerciseCount) ex.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                tag(for: workout, in: program)
+                                Text("\(workout.content.exerciseCount) ex.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -156,6 +167,49 @@ struct ImportView: View {
         }
     }
 
+    // MARK: What the import does
+
+    /// The template an imported workout would replace (or collide with), in the program it goes into.
+    private func existing(_ workout: ImportedWorkout, in program: ImportedProgram) -> WorkoutTemplate? {
+        let target = store.importTarget(for: program, into: programs.first { $0.id == targetProgramID })
+        return target?.orderedTemplates.first { $0.name.caseInsensitiveCompare(workout.name) == .orderedSame }
+    }
+
+    @ViewBuilder
+    private func tag(for workout: ImportedWorkout, in program: ImportedProgram) -> some View {
+        if let old = existing(workout, in: program) {
+            if replaceExisting {
+                Text("Replaces your \(old.name)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Tone.cautionText)
+            } else {
+                let taken = store.importTarget(for: program, into: programs.first { $0.id == targetProgramID })?.orderedTemplates.map(\.name) ?? []
+                Text("New · as \(ImportNaming.uniqueName(workout.name, taken: taken))")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Tone.goodText)
+            }
+        } else {
+            Text("New")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(Tone.goodText)
+        }
+    }
+
+    private func replaceCount(_ result: CSVImportResult) -> Int {
+        guard replaceExisting else { return 0 }
+        return result.programs.reduce(0) { sum, program in
+            sum + program.workouts.filter { existing($0, in: program) != nil }.count
+        }
+    }
+
+    /// "Import 3 Workouts", "Import 2 · replace 1".
+    private func importTitle(_ result: CSVImportResult) -> String {
+        let total = result.programs.reduce(0) { $0 + $1.workouts.count }
+        let replacing = replaceCount(result)
+        if replacing > 0 { return "Import \(total - replacing) · replace \(replacing)" }
+        return total == 1 ? "Import 1 Workout" : "Import \(total) Workouts"
+    }
+
     // MARK: Actions
 
     private func load(url: URL) {
@@ -168,6 +222,7 @@ struct ImportView: View {
                 return
             }
             fileName = url.lastPathComponent
+            replaceExisting = false
             parse(string, defaultName: url.deletingPathExtension().lastPathComponent)
         } catch {
             errorMessage = error.localizedDescription
@@ -189,6 +244,7 @@ struct ImportView: View {
             .replacingOccurrences(of: "```csv", with: "")
             .replacingOccurrences(of: "```", with: "")
         fileName = "Pasted text"
+        replaceExisting = true
         parse(cleaned, defaultName: "Imported Program")
     }
 
@@ -205,13 +261,17 @@ struct ImportView: View {
 
     private func performImport(_ result: CSVImportResult) {
         let target = programs.first { $0.id == targetProgramID }
-        let created = store.importPrograms(result.programs, into: target, replaceTemplates: replaceExisting)
-        AppLog.info("Imported \(created.count) program(s), \(result.programs.reduce(0) { $0 + $1.workouts.count }) workouts", category: "import")
-        if let first = created.first {
+        let outcome = store.importProgramsWithUndo(result.programs, into: target, replaceTemplates: replaceExisting)
+        AppLog.info("Imported \(outcome.programs.count) program(s), \(outcome.created) new, \(outcome.replaced) replaced", category: "import")
+        if let first = outcome.programs.first {
             if store.settings.activeProgramID == nil { store.setActive(first) }
             router.show(.program(first.id))
         }
         Haptics.success()
+        let message = outcome.replaced > 0
+            ? "Imported \(outcome.created) · replaced \(outcome.replaced)"
+            : (outcome.created == 1 ? "Imported 1 workout" : "Imported \(outcome.created) workouts")
+        toasts.show(message, symbol: "square.and.arrow.down.fill", undo: outcome.undo)
         dismiss()
     }
 

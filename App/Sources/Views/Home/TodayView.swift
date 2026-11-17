@@ -13,6 +13,7 @@ struct TodayView: View {
     @Query private var sessions: [WorkoutSession]
     @Query private var templates: [WorkoutTemplate]
     @AppStorage(Prefs.energyCheckIn) private var energyCheckIn = true
+    @State private var showPlanWeek = false
 
     var body: some View {
         let _ = sessions.count + templates.count + store.revision
@@ -24,6 +25,8 @@ struct TodayView: View {
                     .padding(.horizontal, 4)
 
                 UpNextCard()
+                MissedPlansCard()
+                WhatsNewCard()
                 StreakCard()
                 if energyCheckIn {
                     EnergyTodayCard()
@@ -68,6 +71,13 @@ struct TodayView: View {
             await health.loadSignals()
             store.bump()
         }
+        .sheet(isPresented: $showPlanWeek) {
+            PlanWeekSheet()
+        }
+        .reminderScheduling()
+        .onChange(of: health.latestBodyMassKg, initial: true) { _, mass in
+            store.healthBodyMassKg = mass
+        }
     }
 
     // MARK: Sections
@@ -75,11 +85,10 @@ struct TodayView: View {
     private var quickActions: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
             QuickAction(title: "Empty Workout", symbol: "bolt.fill", tint: .accentColor) {
-                if live.isActive { live.isPresented = true } else { live.startEmpty(program: store.activeProgram) }
+                live.requestStart(.empty(program: store.activeProgram, kind: nil, rescue: false))
             }
-            QuickAction(title: "Plan", symbol: "calendar.badge.plus", tint: .indigo) {
-                router.createStep = .plan
-                router.showCreate = true
+            QuickAction(title: "Plan Week", symbol: "calendar.badge.plus", tint: .indigo) {
+                showPlanWeek = true
             }
             QuickAction(title: "New Template", symbol: "square.on.square.fill", tint: .orange) {
                 router.createStep = .newTemplate
@@ -92,9 +101,11 @@ struct TodayView: View {
         }
     }
 
+    /// Coming planned workouts – without the one Today's hero already shows.
     @ViewBuilder
     private var plannedSection: some View {
-        let planned = store.upcomingSessions(limit: 4)
+        let heroID = live.session == nil ? store.plannedToday().first?.id : nil
+        let planned = Array(store.upcomingSessions(limit: 5).filter { $0.id != heroID }.prefix(4))
         if !planned.isEmpty {
             sectionTitle("Planned", symbol: "calendar")
             VStack(spacing: 0) {
@@ -119,7 +130,7 @@ struct TodayView: View {
                         }
                         .buttonStyle(.plain)
                         Button {
-                            live.start(session)
+                            live.requestStart(.session(session))
                         } label: {
                             Image(systemName: "play.fill")
                                 .font(.subheadline.weight(.semibold))
@@ -127,7 +138,6 @@ struct TodayView: View {
                         }
                         .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
-                        .disabled(live.isActive)
                         .accessibilityLabel("Start \(session.title)")
                     }
                     .padding(.horizontal, 14)
@@ -163,9 +173,36 @@ struct TodayView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                // Tennis, runs, classes from Apple Health (read-only; they count toward recovery).
+                ForEach(recentHealthWorkouts) { workout in
+                    Divider().padding(.leading, 56)
+                    HStack(spacing: 12) {
+                        Image(systemName: "heart.fill")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(.pink)
+                            .frame(width: 30, height: 30)
+                            .background(Color.pink.opacity(0.14), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(workout.name).font(.subheadline.weight(.semibold))
+                            Text("\(workout.start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))) · \(Format.minutes(workout.durationSeconds)) · Apple Health")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .accessibilityElement(children: .combine)
+                }
             }
             .card(padding: 0, cornerRadius: 22)
         }
+    }
+
+    /// Other workouts from Apple Health in the last three days (at most two).
+    private var recentHealthWorkouts: [ExternalWorkout] {
+        let since = Date().addingTimeInterval(-3 * 86_400)
+        return Array(health.healthWorkouts.filter { $0.start >= since }.sorted { $0.start > $1.start }.prefix(2))
     }
 
     private func sectionTitle(_ title: String, symbol: String) -> some View {

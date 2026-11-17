@@ -212,9 +212,9 @@ public enum CoachIntensity: String, CaseIterable, Sendable, Identifiable {
 
     public var title: String {
         switch self {
-        case .calm: return "Calm"
+        case .calm: return "Low energy"
         case .normal: return "Normal"
-        case .hype: return "Full energy"
+        case .hype: return "High energy"
         }
     }
 

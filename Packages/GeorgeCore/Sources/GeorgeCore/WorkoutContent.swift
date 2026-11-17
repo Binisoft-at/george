@@ -206,6 +206,9 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
     public var imageURL: String?
     /// How fatigued the trained muscles felt after this exercise, 0…1 (asked after the last set).
     public var fatigue: Double?
+    /// In a superset/circuit: the round this item's first set belongs to. Set when an exercise
+    /// is swapped mid-workout, so the replacement continues in the round the old one stopped at.
+    public var roundOffset: Int?
 
     public init(
         id: UUID = UUID(), exerciseID: String? = nil, name: String, kind: WorkoutKind? = nil,
@@ -231,7 +234,7 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, exerciseID, name, kind, mode, sets, perSide, restSeconds, tempo, notes, links, equipment, muscles, imageURL, fatigue
+        case id, exerciseID, name, kind, mode, sets, perSide, restSeconds, tempo, notes, links, equipment, muscles, imageURL, fatigue, roundOffset
     }
 
     public init(from decoder: Decoder) throws {
@@ -251,6 +254,7 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
         muscles = try c.decodeIfPresent([String].self, forKey: .muscles) ?? []
         imageURL = try c.decodeIfPresent(String.self, forKey: .imageURL)
         fatigue = try c.decodeIfPresent(Double.self, forKey: .fatigue)
+        roundOffset = try c.decodeIfPresent(Int.self, forKey: .roundOffset)
     }
 
     /// Stable key used to match the same exercise across sessions.
@@ -603,17 +607,52 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
 
     // MARK: Execution order
 
+    /// One set's place in a superset/circuit: its round, and whether it is a drop set that follows the
+    /// set before it straight away (same round, no rest).
+    public struct RoundSlot: Hashable, Sendable {
+        public var round: Int
+        public var itemIndex: Int
+        public var setIndex: Int
+        /// 0 for the set itself, 1, 2 … for drop sets that follow it.
+        public var follower: Int
+    }
+
+    /// The slots of a grouped block in the order they are done: round by round, each item's set
+    /// followed by its drop sets. Items that replaced a swapped exercise start at their `roundOffset`.
+    public func roundSlots(ofBlock b: Int) -> [RoundSlot] {
+        guard blocks.indices.contains(b) else { return [] }
+        var slots: [RoundSlot] = []
+        for (i, item) in blocks[b].items.enumerated() {
+            var round = (item.roundOffset ?? 0) - 1
+            var follower = 0
+            for (s, set) in item.sets.enumerated() {
+                if set.kind == .drop && s > 0 {
+                    follower += 1
+                } else {
+                    round += 1
+                    follower = 0
+                }
+                slots.append(RoundSlot(round: max(0, round), itemIndex: i, setIndex: s, follower: follower))
+            }
+        }
+        return slots.sorted { ($0.round, $0.itemIndex, $0.follower) < ($1.round, $1.itemIndex, $1.follower) }
+    }
+
+    /// Rows of a grouped block for the board: per round, the (item, set) pairs done in it.
+    public func roundGrid(ofBlock b: Int) -> [[RoundSlot]] {
+        var rows: [Int: [RoundSlot]] = [:]
+        for slot in roundSlots(ofBlock: b) { rows[slot.round, default: []].append(slot) }
+        return rows.keys.sorted().map { rows[$0] ?? [] }
+    }
+
     /// The order sets are performed in. Straight sets run item by item; grouped blocks
-    /// alternate exercises round by round (A1, B1, A2, B2, ...).
+    /// alternate exercises round by round (A1, B1, A2, B2, ...), drop sets right after their set.
     public func executionOrder() -> [SetRef] {
         var order: [SetRef] = []
         for (b, block) in blocks.enumerated() {
             if block.style.isGrouped && block.items.count > 1 {
-                let rounds = block.items.map(\.sets.count).max() ?? 0
-                for r in 0..<rounds {
-                    for (i, item) in block.items.enumerated() where item.sets.indices.contains(r) {
-                        order.append(SetRef(blockIndex: b, itemIndex: i, setIndex: r))
-                    }
+                for slot in roundSlots(ofBlock: b) {
+                    order.append(SetRef(blockIndex: b, itemIndex: slot.itemIndex, setIndex: slot.setIndex))
                 }
             } else {
                 for (i, item) in block.items.enumerated() {
@@ -624,6 +663,22 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
             }
         }
         return order
+    }
+
+    /// Where "current" belongs after the workout was edited: the same set while it is still open,
+    /// otherwise the next open set after the one that came before it (`anchorID`), so an edit
+    /// elsewhere never moves the plan back to something skipped earlier.
+    public func resolveCurrent(currentID: UUID?, anchorID: UUID?) -> SetRef? {
+        if let currentID, let ref = locate(setID: currentID), set(at: ref)?.isDone == false { return ref }
+        if let anchorID, let anchor = locate(setID: anchorID) { return nextPendingSet(after: anchor) }
+        return nextPendingSet()
+    }
+
+    /// The set before `ref` in execution order (the anchor for `resolveCurrent`).
+    public func setBefore(_ ref: SetRef) -> SetRef? {
+        let order = executionOrder()
+        guard let index = order.firstIndex(of: ref), index > 0 else { return nil }
+        return order[index - 1]
     }
 
     /// The first set not yet done, in execution order.
@@ -639,14 +694,18 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
         return nil
     }
 
-    /// Rest to take after finishing the set at `ref`, or nil when no rest is needed.
+    /// Rest to take after finishing the set at `ref`, or nil when no rest is needed. A set followed
+    /// by its drop set gets no rest; grouped blocks rest after the last set of a round.
     public func restAfter(_ ref: SetRef, defaultRest: Int) -> Int? {
         guard let item = item(at: ref) else { return nil }
+        if item.sets.indices.contains(ref.setIndex + 1), item.sets[ref.setIndex + 1].kind == .drop { return nil }
         let block = blocks[ref.blockIndex]
         if block.style.isGrouped && block.items.count > 1 {
-            // Rest only after the last exercise of a round.
-            let lastInRound = block.items.indices.last { block.items[$0].sets.indices.contains(ref.setIndex) }
-            if ref.itemIndex == lastInRound {
+            // Rest only after the last set of a round.
+            let slots = roundSlots(ofBlock: ref.blockIndex)
+            guard let slot = slots.first(where: { $0.itemIndex == ref.itemIndex && $0.setIndex == ref.setIndex }) else { return nil }
+            let lastInRound = slots.last { $0.round == slot.round }
+            if lastInRound?.itemIndex == slot.itemIndex && lastInRound?.setIndex == slot.setIndex {
                 return block.restAfterRoundSeconds ?? item.restSeconds ?? defaultRest
             }
             return nil

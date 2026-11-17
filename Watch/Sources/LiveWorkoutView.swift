@@ -12,9 +12,12 @@ struct LiveWorkoutView: View {
 
     var body: some View {
         if let live = connector.live {
+            let unit = connector.snapshot?.unit ?? .kg
             TabView(selection: $page) {
-                MetricsPage(live: live)
-                    .tag(Page.metrics)
+                MetricsPage(live: live, unit: unit) {
+                    withAnimation { page = .controls }
+                }
+                .tag(Page.metrics)
                 ExercisesPage(live: live)
                     .tag(Page.exercises)
                 ControlsPage(live: live)
@@ -30,115 +33,120 @@ struct LiveWorkoutView: View {
 
 // MARK: - Metrics
 
+/// The glance page: the current set as the hero, the rest ring while resting, a green ring while a hold runs.
 private struct MetricsPage: View {
     let live: WatchLiveState
+    let unit: WeightUnit
+    let onFinish: () -> Void
     @Environment(WatchConnector.self) private var connector
-    @Environment(WorkoutManager.self) private var workout
+    @State private var logging: SetLogTarget?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            if let remaining = live.restRemaining(at: context.date) {
-                rest(remaining: remaining)
-            } else {
-                metrics(at: context.date)
+            ScrollView {
+                content(at: context.date)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
         .containerBackground(live.kind.pageBackground, for: .tabView)
+        .sheet(item: $logging) { target in
+            SetLogSheet(target: target, unit: unit, kind: live.kind)
+                .environment(connector)
+        }
     }
 
-    private func metrics(at now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(Format.clock(Int(live.elapsed(at: now))))
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.yellow)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                if live.isPaused {
-                    Text("PAUSED")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.yellow)
-                }
-            }
-            .opacity(live.isPaused ? 0.7 : 1)
+    @ViewBuilder
+    private func content(at now: Date) -> some View {
+        if let remaining = live.restRemaining(at: now) {
+            RestLayout(live: live, remaining: remaining)
+        } else if let remaining = live.holdRemaining(at: now) {
+            HoldLayout(live: live, remaining: remaining)
+        } else {
+            WorkingLayout(live: live, date: now, onLog: { logging = $0 }, onFinish: onFinish)
+        }
+    }
+}
 
-            HStack(spacing: 10) {
-                MetricValue(symbol: "heart.fill", tint: .red, value: Self.whole(workout.heartRate), unit: "BPM")
-                MetricValue(symbol: "flame.fill", tint: .orange, value: Self.whole(workout.activeEnergy), unit: "KCAL")
-            }
+/// Waiting for or doing a set: clock, heart rate and kcal on top, the set big below.
+private struct WorkingLayout: View {
+    let live: WatchLiveState
+    let date: Date
+    let onLog: (SetLogTarget) -> Void
+    let onFinish: () -> Void
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text("Sets")
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    Text("\(live.completedSets)/\(live.totalSets)")
-                        .monospacedDigit()
-                }
-                .font(.footnote)
-                ProgressView(
-                    value: Double(min(live.completedSets, max(live.totalSets, 0))),
-                    total: Double(max(live.totalSets, 1))
-                )
-                .tint(live.kind.tint)
-            }
-
-            Spacer(minLength: 2)
-
-            if let exercise = live.currentExercise, let currentSet = live.currentSet {
-                Text("NOW · \(exercise.name) · \(currentSet.label)")
-                    .font(.caption2)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TopMetricsRow(live: live, date: date)
+            if let due = live.due {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(due.exercise.name)
+                        .font(.headline)
+                        .lineLimit(2)
+                    Button {
+                        onLog(SetLogTarget(
+                            exerciseName: due.exercise.name, workoutSet: due.set, number: due.number,
+                            setCount: due.of, isCurrent: due.set.id == live.currentSetID
+                        ))
+                    } label: {
+                        Text(due.set.label.isEmpty ? "Set \(due.number)" : due.set.label)
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("Log the reps and weight you did"))
+                    HStack(spacing: 4) {
+                        Text("Set \(due.number) of \(due.of)")
+                        Spacer(minLength: 4)
+                        Text("\(live.completedSets)/\(live.totalSets)")
+                            .monospacedDigit()
+                            .accessibilityLabel(Text("\(live.completedSets) of \(live.totalSets) sets done"))
+                    }
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            PaceLine(live: live, date: now)
-            if live.setStartedAt == nil && live.firstOpenSet() != nil {
-                StartSetButton(live: live)
+                }
             } else {
-                DoneSetButton(live: live)
+                Label("All sets done", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(live.kind.tint)
             }
+            PaceLine(live: live, date: date)
+            LivePrompts(live: live)
+            PrimaryButton(live: live, onFinish: onFinish)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
 
-    private func rest(remaining: TimeInterval) -> some View {
-        let total = max(Double(live.restTotalSeconds ?? 0), remaining, 1)
-        let fraction = min(1, max(0, remaining / total))
-        return VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .stroke(live.kind.tint.opacity(0.25), lineWidth: 8)
-                Circle()
-                    .trim(from: 0, to: CGFloat(fraction))
-                    .stroke(live.kind.tint, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 0) {
-                    Text(Format.clock(Int(remaining.rounded(.up))))
-                        .font(.system(size: 28, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                    Text("REST")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+/// Clock, heart rate and active energy in one compact row.
+private struct TopMetricsRow: View {
+    let live: WatchLiveState
+    let date: Date
+    @Environment(WorkoutManager.self) private var workout
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                if live.isPaused {
+                    Image(systemName: "pause.fill")
+                        .font(.caption2)
+                        .accessibilityLabel(Text("Paused"))
                 }
+                Text(Format.clock(Int(live.elapsed(at: date))))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
             }
-            .frame(width: 92, height: 92)
-
-            HStack(spacing: 6) {
-                Button("Start") { connector.perform(.startSet) }
-                    .buttonStyle(CapsuleButtonStyle(fill: live.kind.tint, foreground: live.kind.onTint))
-                Button("+15s") { connector.perform(.addRest(15)) }
-                    .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
-            }
-
-            if let next = live.currentExercise {
-                Text("Up next: \(next.name)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            .foregroundStyle(.yellow)
+            .opacity(live.isPaused ? 0.7 : 1)
+            Spacer(minLength: 2)
+            CompactMetric(symbol: "heart.fill", tint: .red, value: Self.whole(workout.heartRate), label: "Heart rate")
+            CompactMetric(symbol: "flame.fill", tint: .orange, value: Self.whole(workout.activeEnergy), label: "Active kilocalories")
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 
     private static func whole(_ value: Double?) -> String {
@@ -147,40 +155,150 @@ private struct MetricsPage: View {
     }
 }
 
-private struct MetricValue: View {
+private struct CompactMetric: View {
     let symbol: String
     let tint: Color
     let value: String
-    let unit: String
+    let label: String
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
             Image(systemName: symbol)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(tint)
             Text(value)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .font(.system(.footnote, design: .rounded).weight(.semibold))
                 .monospacedDigit()
-            Text(unit)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(label) \(value)"))
     }
 }
 
-/// After the rest: tap when you actually start – the phone measures the real rest against the plan.
-private struct StartSetButton: View {
+/// The rest ring with what's next and the main button. With a question or check-in open, the ring
+/// shrinks so the card fits.
+private struct RestLayout: View {
     let live: WatchLiveState
+    let remaining: TimeInterval
     @Environment(WatchConnector.self) private var connector
 
     var body: some View {
-        Button {
-            connector.perform(.startSet)
-        } label: {
-            Label("Start set", systemImage: "play.fill")
+        let total = Double(live.restTotalSeconds ?? 0)
+        VStack(spacing: 6) {
+            if live.hasPrompt {
+                HStack(spacing: 8) {
+                    CountdownRing(remaining: remaining, total: total, tint: live.kind.tint, caption: "", lineWidth: 5, fontSize: 14)
+                        .frame(width: 48, height: 48)
+                    UpNext(live: live, alignment: .leading)
+                    Spacer(minLength: 0)
+                }
+                LivePrompts(live: live)
+            } else {
+                CountdownRing(remaining: remaining, total: total, tint: live.kind.tint, caption: "REST")
+                    .frame(width: 80, height: 80)
+                UpNext(live: live, alignment: .center)
+            }
+            HStack(spacing: 6) {
+                PrimaryButton(live: live, compact: true)
+                Button("+15s") { connector.perform(.addRest(15)) }
+                    .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
+            }
         }
-        .buttonStyle(CapsuleButtonStyle(fill: .green, foreground: .black))
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The next exercise and its set line, e.g. "8 × 60 kg · set 2/4".
+private struct UpNext: View {
+    let live: WatchLiveState
+    let alignment: HorizontalAlignment
+
+    var body: some View {
+        if let due = live.due {
+            VStack(alignment: alignment, spacing: 0) {
+                Text(due.exercise.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(Self.setLine(label: due.set.label, number: due.number, of: due.of))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("Up next: \(due.exercise.name), \(due.set.label), set \(due.number) of \(due.of)"))
+        }
+    }
+
+    private static func setLine(label: String, number: Int, of count: Int) -> String {
+        let position = "set \(number)/\(count)"
+        return label.isEmpty ? position : "\(label) · \(position)"
+    }
+}
+
+/// A running hold: the rest ring's style in green with the seconds left.
+private struct HoldLayout: View {
+    let live: WatchLiveState
+    let remaining: TimeInterval
+
+    var body: some View {
+        VStack(spacing: 6) {
+            CountdownRing(remaining: remaining, total: Double(live.timedSetSeconds ?? 0), tint: .green, caption: "HOLD")
+                .frame(width: 80, height: 80)
+            if let due = live.due {
+                VStack(spacing: 0) {
+                    Text(due.exercise.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("Set \(due.number) of \(due.of)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            PrimaryButton(live: live)
+            LivePrompts(live: live)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The page's one primary action (Double Tap): Start while a set waits and the Start button is on,
+/// otherwise Done – or Finish once every set is done.
+private struct PrimaryButton: View {
+    let live: WatchLiveState
+    var compact = false
+    var onFinish: (() -> Void)? = nil
+    @Environment(WatchConnector.self) private var connector
+
+    var body: some View {
+        if live.primaryIsStart {
+            Button {
+                connector.perform(.startSet)
+            } label: {
+                Label(compact ? "Start" : "Start set", systemImage: "play.fill")
+            }
+            .buttonStyle(CapsuleButtonStyle(fill: .green, foreground: .black))
+            .handGestureShortcut(.primaryAction)
+        } else if !live.hasOpenSet, let onFinish {
+            Button(action: onFinish) {
+                Label("Finish", systemImage: "flag.checkered")
+            }
+            .buttonStyle(CapsuleButtonStyle(fill: live.kind.tint, foreground: live.kind.onTint))
+            .handGestureShortcut(.primaryAction)
+        } else {
+            Button {
+                connector.perform(.completeCurrentSet)
+            } label: {
+                Label(compact ? "Done" : "Done set", systemImage: "checkmark")
+            }
+            .buttonStyle(CapsuleButtonStyle(fill: live.kind.tint, foreground: live.kind.onTint))
+            .disabled(!live.hasOpenSet)
+            .opacity(live.hasOpenSet ? 1 : 0.4)
+            .handGestureShortcut(.primaryAction)
+        }
     }
 }
 
@@ -191,7 +309,9 @@ private struct PaceLine: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if let started = live.setStartedAt {
+            if live.isPaused {
+                Text("Paused").foregroundStyle(.yellow)
+            } else if let started = live.setStartedAt {
                 if let target = live.timedSetSeconds {
                     let left = max(0, Double(target) - date.timeIntervalSince(started))
                     Text("\(Format.clock(Int(left.rounded(.up)))) left").foregroundStyle(.green)
@@ -214,28 +334,37 @@ private struct PaceLine: View {
     }
 }
 
+/// Quick "done" on the exercises page (no Double Tap: that belongs to the metrics page).
 private struct DoneSetButton: View {
     let live: WatchLiveState
     @Environment(WatchConnector.self) private var connector
 
     var body: some View {
-        let hasOpenSet = live.firstOpenSet() != nil
         Button {
             connector.perform(.completeCurrentSet)
         } label: {
             Label("Done set", systemImage: "checkmark")
         }
         .buttonStyle(CapsuleButtonStyle(fill: live.kind.tint, foreground: live.kind.onTint))
-        .disabled(!hasOpenSet)
-        .opacity(hasOpenSet ? 1 : 0.4)
+        .disabled(!live.hasOpenSet)
+        .opacity(live.hasOpenSet ? 1 : 0.4)
     }
 }
 
 // MARK: - Exercises
 
+/// An open set of another exercise the user tapped: do it now, or log it as done.
+private struct SteerTarget {
+    let setID: UUID
+    let exerciseName: String
+    let index: String
+    let label: String
+}
+
 private struct ExercisesPage: View {
     let live: WatchLiveState
     @Environment(WatchConnector.self) private var connector
+    @State private var steering: SteerTarget?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -249,8 +378,8 @@ private struct ExercisesPage: View {
                                 .foregroundStyle(.secondary)
                                 .padding(.top, 4)
                         }
-                        ExerciseBlockView(block: block, currentSetID: live.currentSetID, kind: live.kind) { setID in
-                            connector.perform(.toggleSet(setID))
+                        ExerciseBlockView(block: block, currentSetID: live.currentSetID, kind: live.kind) { exercise, workoutSet in
+                            tap(workoutSet, of: exercise)
                         }
                     }
                 }
@@ -261,6 +390,37 @@ private struct ExercisesPage: View {
             }
         }
         .containerBackground(live.kind.pageBackground, for: .tabView)
+        .confirmationDialog(
+            steering?.exerciseName ?? "",
+            isPresented: isSteering,
+            titleVisibility: .visible,
+            presenting: steering
+        ) { target in
+            Button("Do this now") { connector.perform(.makeCurrent(setID: target.setID)) }
+            Button("Log as done") { connector.perform(.completeSet(id: target.setID, reps: nil, weightKg: nil)) }
+            Button("Cancel", role: .cancel) {}
+        } message: { target in
+            Text(target.label.isEmpty ? "Set \(target.index)" : "Set \(target.index) · \(target.label)")
+        }
+    }
+
+    private var isSteering: Binding<Bool> {
+        Binding(
+            get: { steering != nil },
+            set: { isPresented in
+                if !isPresented { steering = nil }
+            }
+        )
+    }
+
+    /// Done sets toggle back; open sets of the exercise that's due toggle done; open sets of
+    /// another exercise ask whether to do them now or log them.
+    private func tap(_ workoutSet: WatchSet, of exercise: WatchExercise) {
+        if !workoutSet.isDone, let due = live.due, due.exercise.id != exercise.id {
+            steering = SteerTarget(setID: workoutSet.id, exerciseName: exercise.name, index: workoutSet.index, label: workoutSet.label)
+        } else {
+            connector.perform(.toggleSet(workoutSet.id))
+        }
     }
 
     private func scrollToCurrentSet(_ proxy: ScrollViewProxy, animated: Bool) {
@@ -305,7 +465,7 @@ private struct ExerciseBlockView: View {
     let block: ExerciseBlock
     let currentSetID: UUID?
     let kind: WorkoutKind
-    let onToggle: (UUID) -> Void
+    let onTap: (WatchExercise, WatchSet) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -318,7 +478,9 @@ private struct ExerciseBlockView: View {
                 if index > 0 {
                     Divider()
                 }
-                ExerciseSetsView(exercise: exercise, currentSetID: currentSetID, kind: kind, onToggle: onToggle)
+                ExerciseSetsView(exercise: exercise, currentSetID: currentSetID, kind: kind) { workoutSet in
+                    onTap(exercise, workoutSet)
+                }
             }
         }
         .padding(10)
@@ -334,7 +496,7 @@ private struct ExerciseSetsView: View {
     let exercise: WatchExercise
     let currentSetID: UUID?
     let kind: WorkoutKind
-    let onToggle: (UUID) -> Void
+    let onTap: (WatchSet) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -361,7 +523,7 @@ private struct ExerciseSetsView: View {
             }
             ForEach(exercise.sets) { workoutSet in
                 SetPill(workoutSet: workoutSet, isCurrent: workoutSet.id == currentSetID, kind: kind) {
-                    onToggle(workoutSet.id)
+                    onTap(workoutSet)
                 }
                 .id(workoutSet.id)
             }
@@ -417,29 +579,54 @@ private struct ControlsPage: View {
     @State private var pendingFinish: PendingFinish?
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                ControlButton(title: "End", systemImage: "xmark", tint: .red) {
-                    showingEnd = true
+        let isMuted = live.voiceMuted == true
+        let canMove = live.hasOpenSet
+        ScrollView {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    ControlButton(title: "End", systemImage: "xmark", tint: .red) {
+                        showingEnd = true
+                    }
+                    ControlButton(
+                        title: live.isPaused ? "Resume" : "Pause",
+                        systemImage: live.isPaused ? "play.fill" : "pause.fill",
+                        tint: .yellow
+                    ) {
+                        connector.perform(live.isPaused ? .resume : .pause)
+                    }
                 }
-                ControlButton(
-                    title: live.isPaused ? "Resume" : "Pause",
-                    systemImage: live.isPaused ? "play.fill" : "pause.fill",
-                    tint: .yellow
-                ) {
-                    connector.perform(live.isPaused ? .resume : .pause)
+                HStack(spacing: 8) {
+                    ControlButton(title: "Back", systemImage: "backward.end.fill", tint: .cyan) {
+                        connector.perform(.moveThread(-1))
+                    }
+                    .disabled(!canMove)
+                    .opacity(canMove ? 1 : 0.4)
+                    ControlButton(title: "Skip exercise", systemImage: "forward.end.fill", tint: .cyan) {
+                        connector.perform(.moveThread(1))
+                    }
+                    .disabled(!canMove)
+                    .opacity(canMove ? 1 : 0.4)
                 }
+                HStack(spacing: 8) {
+                    ControlButton(
+                        title: isMuted ? "Unmute voice" : "Mute voice",
+                        systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                        tint: isMuted ? .orange : .mint
+                    ) {
+                        connector.perform(.toggleVoiceMute)
+                    }
+                    .accessibilityValue(Text(isMuted ? "Voice muted" : "Voice on"))
+                    ControlButton(title: "Discard", systemImage: "trash", tint: .red) {
+                        confirmingDiscard = true
+                    }
+                }
+                recordingStatus
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            Button(role: .destructive) {
-                confirmingDiscard = true
-            } label: {
-                Label("Discard", systemImage: "trash")
-            }
-            recordingStatus
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .scrollBounceBehavior(.basedOnSize)
         .sheet(isPresented: $showingEnd, onDismiss: commitFinish) {
             EndWorkoutSheet(kind: live.kind) { effort in
                 pendingFinish = PendingFinish(effort: effort)
@@ -505,6 +692,8 @@ private struct ControlButton: View {
             .accessibilityLabel(Text(title))
             Text(title)
                 .font(.caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
     }
 }

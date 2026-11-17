@@ -14,7 +14,8 @@ final class PhoneWatchConnector: NSObject {
     private(set) var isWatchAppInstalled = false
     private(set) var isReachable = false
 
-    var onCommand: ((WatchCommand) -> Void)?
+    /// Commands from the watch, with when and for which workout they were sent.
+    var onCommand: ((WatchCommandEnvelope) -> Void)?
     var onMetrics: ((WatchMetrics) -> Void)?
     /// Supplies a fresh snapshot when the watch asks for one.
     var snapshotProvider: (() -> WatchSnapshot)?
@@ -53,12 +54,15 @@ final class PhoneWatchConnector: NSObject {
         let message: [String: Any] = [WatchWire.typeKey: type, WatchWire.payloadKey: payload]
         switch kind {
         case .command:
-            guard let command = WatchWire.unpack(message, as: WatchCommand.self) else { return }
-            if command == .requestSnapshot {
+            // Newer watches send an envelope (time + workout id); older ones the bare command.
+            let envelope = WatchWire.unpack(message, as: WatchCommandEnvelope.self)
+                ?? WatchWire.unpack(message, as: WatchCommand.self).map { WatchCommandEnvelope(command: $0, sessionID: nil) }
+            guard let envelope else { return }
+            if envelope.command == .requestSnapshot {
                 if let snapshot = snapshotProvider?() { sendSnapshot(snapshot) }
                 if let live = snapshotProvider?().live { sendLive(live) }
             } else {
-                onCommand?(command)
+                onCommand?(envelope)
             }
         case .metrics:
             guard let metrics = WatchWire.unpack(message, as: WatchMetrics.self) else { return }

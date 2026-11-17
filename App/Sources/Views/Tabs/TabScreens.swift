@@ -213,12 +213,13 @@ struct ProgramRow: View {
     }
 }
 
-/// The active program with its templates as start-able cards.
+/// The active program with its templates as start-able cards, and "Plan this week".
 struct ActiveProgramCard: View {
     let program: Program
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
+    @State private var showPlanWeek = false
 
     var body: some View {
         let tint = Color(hex: program.colorHex)
@@ -274,18 +275,31 @@ struct ActiveProgramCard: View {
                     .padding(.vertical, 2)
                 }
                 .scrollClipDisabled()
+                Button {
+                    showPlanWeek = true
+                } label: {
+                    Label("Plan This Week", systemImage: "calendar.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
             }
         }
         .padding(16)
         .card(padding: 0, cornerRadius: 26)
+        .sheet(isPresented: $showPlanWeek) {
+            PlanWeekSheet()
+        }
     }
 }
 
 /// Small card: tap to open, ▶︎ to start.
 struct TemplateCard: View {
     let template: WorkoutTemplate
+    @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(ToastCenter.self) private var toasts
 
     var body: some View {
         let tint = Color(hex: template.displayColorHex)
@@ -296,7 +310,7 @@ struct TemplateCard: View {
                     .foregroundStyle(tint)
                 Spacer()
                 Button {
-                    live.start(template: template)
+                    store.requestStart(template, live: live, toasts: toasts)
                 } label: {
                     Image(systemName: "play.fill")
                         .font(.caption.weight(.bold))
@@ -304,7 +318,6 @@ struct TemplateCard: View {
                 }
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.circle)
-                .disabled(live.isActive)
                 .accessibilityLabel("Start \(template.name)")
             }
             Text(template.name.isEmpty ? "Untitled" : template.name)
@@ -362,6 +375,8 @@ struct SearchView: View {
 
     var body: some View {
         let words = query.lowercased().split(separator: " ").map(String.init)
+        // The program label only helps with more than one program.
+        let showProgram = programs.filter { !$0.isArchived }.count > 1
         List {
             if words.isEmpty {
                 Section("Browse") {
@@ -396,14 +411,14 @@ struct SearchView: View {
                 if !matchingTemplates.isEmpty {
                     Section("Templates") {
                         ForEach(Array(matchingTemplates)) { template in
-                            DetailLink(.template(template.id)) { TemplateRow(template: template, showProgram: true) }
+                            DetailLink(.template(template.id)) { TemplateRow(template: template, showProgram: showProgram) }
                         }
                     }
                 }
                 if !matchingSessions.isEmpty {
                     Section("Workouts") {
                         ForEach(Array(matchingSessions)) { session in
-                            DetailLink(.session(session.id)) { SessionRow(session: session, showProgram: true) }
+                            DetailLink(.session(session.id)) { SessionRow(session: session, showProgram: showProgram) }
                         }
                     }
                 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import BinisoftKit
 import TipKit
 import GeorgeCore
@@ -21,6 +22,12 @@ struct LiveWorkoutView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var dropRequest: DropWeightRequest?
     @State private var swapItem: URLItemID?
+    @State private var showCoachSettings = false
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+    @State private var showReorder = false
+    @State private var history: ExerciseHistoryRequest?
 
     private var motivation: MotivationStyle { MotivationStyle(rawValue: motivationRaw) ?? .full }
 
@@ -44,8 +51,29 @@ struct LiveWorkoutView: View {
             editSet: { setID, itemID in editingSet = SetEditRequest(setID: setID, itemID: itemID) },
             tutorial: { tutorial = $0 },
             dropWeight: { setID, itemID in dropRequest = DropWeightRequest(setID: setID, itemID: itemID) },
-            swap: { itemID in swapItem = URLItemID(id: itemID) }
+            swap: { itemID in swapItem = URLItemID(id: itemID) },
+            history: { key, name in history = ExerciseHistoryRequest(exerciseKey: key, name: name) }
         ))
+        .onChange(of: live.requestAddExercise) { _, requested in
+            guard requested else { return }
+            live.requestAddExercise = false
+            showAdd = true
+        }
+        .onChange(of: live.finishRequest) { _, requested in
+            guard requested else { return }
+            live.finishRequest = false
+            showFinish = true
+        }
+        .sheet(isPresented: $showCoachSettings) {
+            CoachSettingsSheet()
+        }
+        .sheet(isPresented: $showReorder) {
+            ReorderBlocksSheet(content: Binding(get: { live.content }, set: { live.replaceContent($0) }))
+        }
+        .sheet(item: $history) { request in
+            ExerciseHistorySheet(exerciseKey: request.exerciseKey, name: request.name)
+                .presentationDetents([.medium, .large])
+        }
         .onChange(of: live.demoSheetRequest) { _, request in
             guard let request, let item = live.currentItem, let set = live.currentSet else { return }
             live.demoSheetRequest = nil
@@ -112,6 +140,22 @@ struct LiveWorkoutView: View {
             Text("Nothing is saved and it won't count toward your streak.")
         }
         .onAppear { if !LaunchOptions.current.isDemo { live.requestNotificationPermission() } }
+        .onChange(of: live.discardRequest) { _, requested in
+            guard requested else { return }
+            live.discardRequest = false
+            confirmDiscard = true
+        }
+        .background {
+            // Keyboard: ←/→ look at the previous/next exercise, ⌥←/⌥→ move the plan's thread.
+            Group {
+                Button("") { move(by: -1) }.keyboardShortcut(.leftArrow, modifiers: [])
+                Button("") { move(by: 1) }.keyboardShortcut(.rightArrow, modifiers: [])
+                Button("") { live.moveThread(by: -1) }.keyboardShortcut(.leftArrow, modifiers: .option)
+                Button("") { live.moveThread(by: 1) }.keyboardShortcut(.rightArrow, modifiers: .option)
+            }
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
     }
 
     private var background: some View {
@@ -140,8 +184,8 @@ struct LiveWorkoutView: View {
                 VStack(spacing: 2) {
                     Text(session.title)
                         .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .multilineTextAlignment(.center)
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         HStack(spacing: 8) {
@@ -195,6 +239,10 @@ struct LiveWorkoutView: View {
         Menu {
             Button { showAdd = true } label: { Label("Add Exercise", systemImage: "plus") }
             Button { showEditor = true } label: { Label("Edit Workout", systemImage: "list.bullet.rectangle") }
+            Button { showReorder = true } label: { Label("Reorder Exercises", systemImage: "arrow.up.arrow.down") }
+            if let item = live.currentItem, canAddWarmups(item) {
+                Button { live.addWarmups(to: item.id) } label: { Label("Add Warm-up Sets", systemImage: "flame") }
+            }
             Menu {
                 ForEach([30, 60, 90, 120, 180], id: \.self) { seconds in
                     Button(Format.shortDuration(seconds)) { live.startRest(seconds) }
@@ -205,7 +253,7 @@ struct LiveWorkoutView: View {
             Picker(selection: Binding(get: { live.intensity }, set: { live.setIntensity($0) })) {
                 ForEach(CoachIntensity.allCases) { Text($0.title).tag($0) }
             } label: {
-                Label("Today's Pace", systemImage: "gauge.with.dots.needle.33percent")
+                Label("Today's Energy", systemImage: "gauge.with.dots.needle.33percent")
             }
             Button { live.togglePause() } label: {
                 Label(live.isPaused ? "Resume" : "Pause", systemImage: live.isPaused ? "play" : "pause")
@@ -214,6 +262,7 @@ struct LiveWorkoutView: View {
                 Label(live.isVoiceMuted ? "Unmute Voice" : "Mute Voice", systemImage: live.isVoiceMuted ? "speaker.wave.2" : "speaker.slash")
             }
             Button { live.showPanel = true } label: { Label("Pace & Controls", systemImage: "rectangle.expand.vertical") }
+            Button { showCoachSettings = true } label: { Label("Coach Settings…", systemImage: "slider.horizontal.3") }
             Divider()
             Button { showFinish = true } label: { Label("Finish Workout…", systemImage: "flag.checkered") }
             Button(role: .destructive) { confirmDiscard = true } label: { Label("Discard…", systemImage: "trash") }
@@ -231,43 +280,73 @@ struct LiveWorkoutView: View {
     @ViewBuilder
     private var pager: some View {
         let blocks = live.content.blocks
-        #if os(iOS)
-        TabView(selection: blockSelection) {
-            ForEach(blocks) { block in
-                ScrollView {
-                    BlockPage(block: block, letter: groupLetter(for: block.id))
-                        .padding(.horizontal)
-                        .padding(.bottom, 24)
-                }
-                .scrollIndicators(.hidden)
-                .tag(Optional(block.id))
-            }
+        if blocks.isEmpty {
+            EmptyLiveWorkout(onAdd: { showAdd = true })
+        } else {
+            pages(blocks)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        .animation(.snappy, value: live.focusedItemID)
+    }
+
+    @ViewBuilder
+    private func pages(_ blocks: [WorkoutBlock]) -> some View {
+        #if os(iOS)
+        if sizeClass == .regular {
+            // iPad: the whole plan on the left, the exercise on the right – not a stretched phone.
+            splitPager(blocks)
+        } else {
+            TabView(selection: blockSelection) {
+                ForEach(blocks) { block in
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            BlockPage(block: block, letter: groupLetter(for: block.id))
+                                .padding(.horizontal)
+                                .padding(.bottom, 24)
+                        }
+                        .scrollIndicators(.hidden)
+                        .onAppear { scrollToCurrent(in: block, proxy: proxy, animated: false) }
+                        .onChange(of: live.currentSet?.id) { _, _ in scrollToCurrent(in: block, proxy: proxy, animated: true) }
+                    }
+                    .tag(Optional(block.id))
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.snappy, value: live.focusedItemID)
+        }
         #else
+        splitPager(blocks)
+        #endif
+    }
+
+    /// Mac and iPad: the exercises as a list (what's due marked), the selected one next to it.
+    private func splitPager(_ blocks: [WorkoutBlock]) -> some View {
         HStack(spacing: 0) {
             List(selection: Binding(get: { live.focusedItem?.id }, set: { if let id = $0 { live.view(itemID: id) } })) {
                 ForEach(live.content.allItems) { item in
                     HStack {
-                        Image(systemName: item.isComplete ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(item.isComplete ? Color.accentColor : Color.secondary)
+                        Image(systemName: item.isComplete ? "checkmark.circle.fill" : (item.id == live.currentItem?.id ? "play.circle.fill" : "circle"))
+                            .foregroundStyle(item.isComplete || item.id == live.currentItem?.id ? Color.accentColor : Color.secondary)
                         Text(item.name).lineLimit(1)
                         Spacer()
                         Text("\(item.completedSets)/\(item.sets.count)").foregroundStyle(.secondary).monospacedDigit()
                     }
                     .tag(item.id)
+                    .accessibilityLabel("\(item.name), \(item.completedSets) of \(item.sets.count)\(item.id == live.currentItem?.id ? ", due now" : "")")
                 }
             }
-            .frame(width: 230)
-            ScrollView {
-                if let block = focusedBlock {
-                    BlockPage(block: block, letter: groupLetter(for: block.id))
-                        .padding()
+            .frame(width: 250)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    if let block = focusedBlock {
+                        BlockPage(block: block, letter: groupLetter(for: block.id))
+                            .padding()
+                            .frame(maxWidth: 640)
+                            .frame(maxWidth: .infinity)
+                            .onAppear { scrollToCurrent(in: block, proxy: proxy, animated: false) }
+                            .onChange(of: live.currentSet?.id) { _, _ in scrollToCurrent(in: block, proxy: proxy, animated: true) }
+                    }
                 }
             }
         }
-        #endif
     }
 
     private var focusedBlock: WorkoutBlock? {
@@ -289,9 +368,26 @@ struct LiveWorkoutView: View {
     }
 
     private func groupLetter(for blockID: UUID) -> String {
-        let grouped = live.content.blocks.filter { $0.items.count > 1 }
+        let grouped = live.content.blocks.filter { $0.style.isGrouped && $0.items.count > 1 }
         let index = grouped.firstIndex { $0.id == blockID } ?? 0
         return String(Character(UnicodeScalar(65 + (index % 26)) ?? "A"))
+    }
+
+    /// Keeps the set that's due in view (its numbers and the tick start below the top of the page).
+    private func scrollToCurrent(in block: WorkoutBlock, proxy: ScrollViewProxy, animated: Bool) {
+        guard let set = live.currentSet, block.items.contains(where: { $0.sets.contains { $0.id == set.id } }) else { return }
+        let target: AnyHashable = block.style.isGrouped && block.items.count > 1 ? AnyHashable("now-\(block.id)") : AnyHashable(set.id)
+        if animated {
+            withAnimation(.snappy) { proxy.scrollTo(target, anchor: .center) }
+        } else {
+            DispatchQueue.main.async { proxy.scrollTo(target, anchor: .center) }
+        }
+    }
+
+    /// Weighted rep exercises from 40 kg up get an "Add warm-up sets" offer (once, before the first set).
+    private func canAddWarmups(_ item: WorkoutItem) -> Bool {
+        item.mode == .reps && item.completedSets == 0 && !item.sets.contains { $0.kind == .warmup }
+            && (item.sets.compactMap(\.effectiveWeight).max() ?? 0) >= 40
     }
 
     // MARK: Bottom
@@ -310,7 +406,11 @@ struct LiveWorkoutView: View {
                 if let request = live.effortRequest {
                     FeedbackCard(request: request)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let tick = live.undoableTick {
+                    UndoTickPill(tick: tick)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                VoiceIntroBanner()
                 CoachBar(onExpand: { live.showPanel = true }, onFinish: { showFinish = true })
                     .transition(.opacity)
             }
@@ -319,6 +419,7 @@ struct LiveWorkoutView: View {
         }
         .animation(.snappy, value: live.restEndsAt)
         .animation(.snappy, value: live.effortRequest)
+        .animation(.snappy, value: live.undoableTick)
         .animation(.snappy, value: live.offPlanNotice)
         .animation(.snappy, value: live.isViewingElsewhere)
     }
@@ -366,6 +467,14 @@ struct LiveActions {
     var dropWeight: (UUID, UUID) -> Void = { _, _ in }
     /// "Not available": swap the exercise (item id).
     var swap: (UUID) -> Void = { _ in }
+    /// History of an exercise (key, name) – the "Last:" line.
+    var history: (String, String) -> Void = { _, _ in }
+}
+
+struct ExerciseHistoryRequest: Identifiable {
+    var id: String { exerciseKey }
+    let exerciseKey: String
+    let name: String
 }
 
 private struct LiveActionsKey: EnvironmentKey {
@@ -387,10 +496,14 @@ struct BlockPage: View {
     let letter: String
 
     var body: some View {
-        if block.items.count > 1 {
+        if block.style.isGrouped && block.items.count > 1 {
             SupersetCard(block: block, letter: letter)
-        } else if let item = block.items.first {
-            LiveExerciseCard(item: item)
+        } else {
+            VStack(spacing: 24) {
+                ForEach(block.items) { item in
+                    LiveExerciseCard(item: item)
+                }
+            }
         }
     }
 }
@@ -403,14 +516,31 @@ struct LiveExerciseCard: View {
     @Environment(ExerciseLibrary.self) private var library
     @Environment(GeorgeStore.self) private var store
     @Environment(\.liveActions) private var actions
+    @Query private var userExercises: [UserExercise]
+
+    /// The user's own notes and links for this exercise ("Seat 4, red band").
+    private var userEntry: UserExercise? {
+        let key = item.exerciseID ?? library.exercise(for: item)?.id
+        guard let key else { return nil }
+        return userExercises.first { $0.key == key }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             ExerciseAnimation(urls: library.imageURLs(for: item), symbol: (item.kind ?? .gym).symbol, tint: .accentColor)
-                .frame(height: 150)
+                // Smaller once you know the movement – the sets matter more then.
+                .frame(height: item.completedSets > 0 ? 96 : 150)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .onTapGesture(count: 2) { live.completeCurrentSet() }
+                .onTapGesture(count: 2) {
+                    // Only the exercise that's due is ticked by a double tap; elsewhere it brings you there.
+                    if live.planPosition(of: item) == .now {
+                        live.primaryAction()
+                    } else {
+                        live.returnToCurrent()
+                    }
+                }
+                .animation(.snappy, value: item.completedSets > 0)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -425,6 +555,7 @@ struct LiveExerciseCard: View {
                         }
                         .buttonStyle(.glass)
                         .accessibilityHint("Pick another exercise for the same muscles")
+                        .popoverTip(GeorgeTips.SwapTip())
                     }
                 }
                 Text(item.name)
@@ -440,15 +571,23 @@ struct LiveExerciseCard: View {
                         .italic()
                         .foregroundStyle(.secondary)
                 }
+                if let setup = userEntry?.notes, !setup.isEmpty, setup != item.notes {
+                    Label(setup, systemImage: "wrench.adjustable")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Your setup: \(setup)")
+                }
             }
+
+            StationChips(item: item)
 
             ProgressionChip(item: item)
 
             TipView(GeorgeTips.LiveSetTip())
 
             VStack(spacing: 8) {
-                ForEach(Array(item.sets.enumerated()), id: \.element.id) { index, set in
-                    LiveSetRow(item: item, set: set, previous: previous(at: index), isCurrent: set.id == live.currentSet?.id)
+                ForEach(item.sets) { set in
+                    LiveSetRow(item: item, set: set, previous: previous(for: set), isCurrent: set.id == live.currentSet?.id)
                 }
                 Button {
                     live.edit { $0.addSet(to: item.id) }
@@ -461,35 +600,37 @@ struct LiveExerciseCard: View {
                 .buttonStyle(.glass)
             }
 
-            TutorialRow(item: item)
+            TutorialRow(item: item, userLinks: userEntry?.links ?? [])
         }
         .padding(.top, 10)
     }
 
-    private func previous(at index: Int) -> WorkoutSet? {
-        guard let sets = PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store), !sets.isEmpty else { return nil }
-        let candidate = index < sets.count ? sets[index] : sets[sets.count - 1]
-        return candidate.isDone ? candidate : nil
+    private func previous(for set: WorkoutSet) -> WorkoutSet? {
+        LastTime.matching(set, in: item, previous: PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store))
     }
 }
 
 /// Watch a tutorial / how-to steps.
 struct TutorialRow: View {
     let item: WorkoutItem
+    var userLinks: [String] = []
     @Environment(LiveWorkoutController.self) private var live
     @Environment(ExerciseLibrary.self) private var library
     @Environment(\.liveActions) private var actions
 
+    /// The exercise's own link, else the one saved in the library for this exercise.
+    private var link: String? { item.links.first ?? userLinks.first }
+
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                if let link = item.links.first, let url = URL(string: link) {
+                if let link, let url = URL(string: link) {
                     actions.tutorial(url)
                 } else if let url = TutorialLinks.youtubeSearch(for: item.name, kind: item.kind ?? live.session?.kind) {
                     actions.tutorial(url)
                 }
             } label: {
-                Label(item.links.isEmpty ? "Find Tutorial" : "Watch Tutorial", systemImage: "play.rectangle.fill")
+                Label(link == nil ? "Find Tutorial" : "Watch Tutorial", systemImage: "play.rectangle.fill")
             }
             .buttonStyle(.glass)
             .tint(.red)
@@ -513,6 +654,9 @@ struct ProgressionChip: View {
     let item: WorkoutItem
     @Environment(LiveWorkoutController.self) private var live
     @Environment(GeorgeStore.self) private var store
+    @Environment(MuscleAnalytics.self) private var analytics
+    /// This week's muscular load for the exercise's muscles (the advice holds back when it's high).
+    @State private var loadStatus: LoadStatus?
 
     var body: some View {
         if item.completedSets == 0, let suggestion {
@@ -537,13 +681,23 @@ struct ProgressionChip: View {
                 .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.plain)
+            .task(id: item.id) { loadStatus = currentLoadStatus() }
         }
     }
 
     private var suggestion: ProgressionSuggestion? {
         let last = PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store)
         let plan = item.sets.first { !$0.isDone && $0.kind != .warmup }
-        return ProgressionAdvisor.suggest(lastSets: last, mode: item.mode, plan: plan, incrementKg: live.unit.toKilograms(live.unit.increment))
+        return ProgressionAdvisor.suggest(lastSets: last, mode: item.mode, plan: plan, incrementKg: live.unit.toKilograms(live.unit.increment),
+                                          intensity: live.intensity, loadStatus: loadStatus)
+    }
+
+    /// The highest load status among the exercise's main muscles.
+    private func currentLoadStatus() -> LoadStatus? {
+        let order: [LoadStatus] = [.calibrating, .detraining, .peaking, .maintaining, .productive, .fatigued, .overtraining]
+        let groups = analytics.contributions(for: item).filter { $0.weight >= 1 }.map(\.group)
+        let statuses = groups.map { analytics.engine.loadSummary(group: $0, days: 1).current.status }
+        return statuses.max { (order.firstIndex(of: $0) ?? 0) < (order.firstIndex(of: $1) ?? 0) }
     }
 
     private func title(for suggestion: ProgressionSuggestion) -> String {
@@ -609,15 +763,26 @@ struct LiveSetRow: View {
                         .monospacedDigit()
                         .foregroundStyle(set.isDone || isCurrent ? Color.primary : Color.secondary)
                     if let previous {
-                        Text("Last: \(previous.label(mode: item.mode, unit: live.unit))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Button {
+                            actions.history(item.exerciseKey, item.name)
+                        } label: {
+                            Label("Last: \(previous.label(mode: item.mode, unit: live.unit))", systemImage: "chart.line.uptrend.xyaxis")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Shows this exercise's history")
                     }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { actions.editValue(set.id, item.id, primaryField) }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { actions.editValue(set.id, item.id, primaryField) }
                 Spacer(minLength: 4)
-                CheckButton(isDone: set.isDone, isCurrent: isCurrent, burst: (MotivationStyle(rawValue: motivationRaw) ?? .full) == .full) {
+                CheckButton(isDone: set.isDone, isCurrent: isCurrent, burst: (MotivationStyle(rawValue: motivationRaw) ?? .full) == .full,
+                            label: "\(item.name), set \(item.displayIndex(of: set)) of \(item.sets.count), \(set.label(mode: item.mode, unit: live.unit))") {
                     live.toggleSet(set.id)
                 }
             }
@@ -626,7 +791,14 @@ struct LiveSetRow: View {
                     TimedSetDial(item: item, set: set)
                 }
                 ValueTiles(item: item, set: set)
-                if (set.effectiveWeight ?? 0) > 0 {
+                if let plates = plateText {
+                    Label(plates, systemImage: "circle.grid.2x1")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Plates: \(plates)")
+                }
+                // While the set is being done (or always, without the Start button).
+                if (set.effectiveWeight ?? 0) > 0, live.phase == .working || !CoachPrefs.startButton {
                     Button {
                         actions.dropWeight(set.id, item.id)
                     } label: {
@@ -636,6 +808,7 @@ struct LiveSetRow: View {
                     }
                     .buttonStyle(.glass)
                     .tint(.orange)
+                    .popoverTip(GeorgeTips.LowerWeightTip())
                 }
             }
         }
@@ -649,9 +822,14 @@ struct LiveSetRow: View {
                 .strokeBorder(isCurrent && !set.isDone ? Color.accentColor.opacity(0.8) : Color.clear, lineWidth: 2)
         )
         .contentShape(Rectangle())
-        .onLongPressGesture(minimumDuration: 0.35) {
-            Haptics.tap()
-            actions.editSet(set.id, item.id)
+        .contextMenu {
+            Button { actions.editSet(set.id, item.id) } label: { Label("Edit Set…", systemImage: "slider.horizontal.3") }
+            if !set.isDone && !isCurrent {
+                Button { live.makeCurrent(setID: set.id) } label: { Label("Do This Set Now", systemImage: "play.circle") }
+            }
+            if !item.isComplete {
+                Button { actions.swap(item.id) } label: { Label("Swap Exercise…", systemImage: "arrow.triangle.swap") }
+            }
         }
         .animation(.snappy, value: set.isDone)
         .animation(.snappy, value: isCurrent)
@@ -661,6 +839,13 @@ struct LiveSetRow: View {
         if set.isDone { return Color.accentColor.opacity(0.08) }
         if isCurrent { return Color.accentColor.opacity(0.16) }
         return Color.secondary.opacity(0.06)
+    }
+
+    /// "20 + 15 per side" for barbell lifts.
+    private var plateText: String? {
+        guard item.mode == .reps, let weight = set.effectiveWeight, weight > CoachPrefs.barKg,
+              (item.equipment ?? "").lowercased().contains("barbell") || item.name.lowercased().contains("barbell") else { return nil }
+        return PlateMath.text(totalKg: weight, barKg: CoachPrefs.barKg, plates: PlateSet.current.platesKg, unit: live.unit)
     }
 
     private var primaryField: SetField {
@@ -707,9 +892,14 @@ struct CheckButton: View {
     let isDone: Bool
     let isCurrent: Bool
     let burst: Bool
+    /// "Bench Press, set 2 of 4, 8 × 60 kg" for VoiceOver.
+    var label: String = ""
     let action: () -> Void
 
     @State private var burstTrigger = 0
+    @ScaledMetric(relativeTo: .title) private var currentSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .title) private var openSize: CGFloat = 34
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button {
@@ -717,20 +907,22 @@ struct CheckButton: View {
             action()
         } label: {
             Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: isCurrent ? 44 : 34))
+                .font(.system(size: isCurrent ? currentSize : openSize))
                 .foregroundStyle(isDone ? Color.accentColor : (isCurrent ? Color.accentColor : Color.secondary.opacity(0.5)))
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: 52, height: 52)
+                .frame(minWidth: 52, minHeight: 52)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .overlay {
-            if burst {
+            if burst && !reduceMotion {
                 BurstView(trigger: burstTrigger)
                     .allowsHitTesting(false)
             }
         }
-        .accessibilityLabel(isDone ? "Mark set not done" : "Mark set done")
+        .accessibilityLabel(label.isEmpty ? "Set" : label)
+        .accessibilityValue(isDone ? "Done" : (isCurrent ? "Due now" : "Open"))
+        .accessibilityHint(isDone ? "Double-tap to mark not done" : "Double-tap to mark done")
     }
 }
 
@@ -748,6 +940,7 @@ struct ValueTiles: View {
                 ValueTile(
                     text: text(for: field),
                     caption: caption(for: field),
+                    accessibilityName: accessibilityName(for: field),
                     onTap: { actions.editValue(set.id, item.id, field) },
                     onStep: { steps in step(field, by: steps) }
                 )
@@ -778,6 +971,16 @@ struct ValueTiles: View {
         }
     }
 
+    private func accessibilityName(for field: SetField) -> String {
+        switch field {
+        case .reps: return "Reps"
+        case .weight: return "Weight in \(live.unit == .kg ? "kilograms" : "pounds")"
+        case .seconds: return "Seconds"
+        case .meters: return "Meters"
+        case .rpe: return "RPE"
+        }
+    }
+
     private func step(_ field: SetField, by steps: Int) {
         let size: Double
         switch field {
@@ -786,67 +989,78 @@ struct ValueTiles: View {
         case .meters: size = 50
         default: size = 1
         }
-        let current = set.value(field, inSession: true) ?? 0
-        live.updateSet(set.id) { $0.setValue(field, max(0, current + Double(steps) * size), inSession: true) }
+        // Computed from the stored set, so quick taps add up instead of overwriting each other.
+        live.updateSet(set.id) { stored in
+            let current = stored.value(field, inSession: true) ?? 0
+            stored.setValue(field, max(0, current + Double(steps) * size), inSession: true)
+        }
     }
 }
 
+/// One number of the current set: − and + step it (sweaty hands, no drag that fights the page
+/// swipe), a tap on the number opens the keypad.
 struct ValueTile: View {
     let text: String
     let caption: String
+    var accessibilityName: String = ""
     let onTap: () -> Void
     let onStep: (Int) -> Void
 
-    @State private var applied = 0
-    @State private var dragging = false
-
     var body: some View {
-        VStack(spacing: 2) {
-            Text(text)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.left").font(.system(size: 8, weight: .bold))
-                Text(caption)
-                Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold))
+        HStack(spacing: 0) {
+            stepButton(-1, symbol: "minus")
+            Button(action: onTap) {
+                VStack(spacing: 0) {
+                    Text(text)
+                        .font(.largeTitle.weight(.bold))
+                        .fontDesign(.rounded)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            stepButton(1, symbol: "plus")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.primary.opacity(dragging ? 0.1 : 0.06))
+                .fill(Color.primary.opacity(0.06))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(dragging ? Color.accentColor : Color.clear, lineWidth: 2)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
-        .gesture(
-            DragGesture(minimumDistance: 8)
-                .onChanged { value in
-                    dragging = true
-                    let steps = Int((value.translation.width / 22).rounded(.towardZero))
-                    if steps != applied {
-                        onStep(steps - applied)
-                        applied = steps
-                        Haptics.tap()
-                    }
-                }
-                .onEnded { _ in
-                    applied = 0
-                    dragging = false
-                }
-        )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityName.isEmpty ? caption : accessibilityName)
+        .accessibilityValue(text)
+        .accessibilityHint("Swipe up or down to change, double-tap to type")
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Tap to type, drag sideways to change")
+        .accessibilityAction { onTap() }
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: onStep(1)
+            case .decrement: onStep(-1)
+            @unknown default: break
+            }
+        }
+    }
+
+    private func stepButton(_ steps: Int, symbol: String) -> some View {
+        Button {
+            onStep(steps)
+            Haptics.tap()
+        } label: {
+            Image(systemName: symbol)
+                .font(.headline.weight(.bold))
+                .frame(width: 44, height: 56)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.accentColor)
+        .buttonRepeatBehavior(.enabled)
     }
 }
 
@@ -888,41 +1102,34 @@ struct SupersetCard: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            ForEach(0..<block.maxSetCount, id: \.self) { round in
+            ForEach(Array(rounds.enumerated()), id: \.offset) { round, slots in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Round \(round + 1)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 10) {
                         ForEach(block.items) { item in
-                            if item.sets.indices.contains(round) {
-                                SupersetCell(item: item, set: item.sets[round], isCurrent: item.sets[round].id == live.currentSet?.id)
-                            } else {
+                            let cells = slots.filter { block.items.indices.contains($0.itemIndex) && block.items[$0.itemIndex].id == item.id }
+                            if cells.isEmpty {
                                 Text("—")
                                     .frame(maxWidth: .infinity, minHeight: 56)
                                     .foregroundStyle(.tertiary)
                                     .background(Color.secondary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            } else {
+                                VStack(spacing: 4) {
+                                    ForEach(cells, id: \.setIndex) { slot in
+                                        let set = item.sets[slot.setIndex]
+                                        SupersetCell(item: item, set: set, isCurrent: set.id == live.currentSet?.id)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
                             }
                         }
                     }
-                }
-            }
-            if let current = currentItemInBlock, let set = live.currentSet {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Now: \(current.name)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                    ValueTiles(item: current, set: set)
-                    if (set.effectiveWeight ?? 0) > 0 {
-                        Button {
-                            actions.dropWeight(set.id, current.id)
-                        } label: {
-                            Label("Can't finish? Lower the weight", systemImage: "arrow.down.circle")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, minHeight: 36)
-                        }
-                        .buttonStyle(.glass)
-                        .tint(.orange)
+                    // What's due is edited right under its round, not at the bottom of the board.
+                    if slots.contains(where: { slot in block.items.indices.contains(slot.itemIndex) && block.items[slot.itemIndex].sets[slot.setIndex].id == live.currentSet?.id }),
+                       let current = currentItemInBlock, let set = live.currentSet {
+                        nowTiles(current, set)
                     }
                 }
             }
@@ -980,6 +1187,35 @@ struct SupersetCard: View {
         guard let current = live.currentItem, block.items.contains(where: { $0.id == current.id }) else { return nil }
         return current
     }
+
+    /// Rounds as the plan runs them (drop sets with their set, a swapped exercise continuing its round).
+    private var rounds: [[WorkoutContent.RoundSlot]] {
+        guard let index = live.content.blocks.firstIndex(where: { $0.id == block.id }) else { return [] }
+        return live.content.roundGrid(ofBlock: index)
+    }
+
+    private func nowTiles(_ current: WorkoutItem, _ set: WorkoutSet) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Now: \(current.name)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+            ValueTiles(item: current, set: set)
+            if (set.effectiveWeight ?? 0) > 0, live.phase == .working || !CoachPrefs.startButton {
+                Button {
+                    actions.dropWeight(set.id, current.id)
+                } label: {
+                    Label("Can't finish? Lower the weight", systemImage: "arrow.down.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.glass)
+                .tint(.orange)
+                .popoverTip(GeorgeTips.LowerWeightTip())
+            }
+        }
+        .padding(.top, 4)
+        .id("now-\(block.id)")
+    }
 }
 
 struct SupersetCell: View {
@@ -1004,12 +1240,15 @@ struct SupersetCell: View {
                 live.toggleSet(set.id)
             } label: {
                 Image(systemName: set.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 28))
+                    .font(.title)
                     .foregroundStyle(set.isDone || isCurrent ? Color.accentColor : Color.secondary.opacity(0.5))
                     .contentTransition(.symbolEffect(.replace))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(set.isDone ? "Mark not done" : "Mark done")
+            .accessibilityLabel("\(item.name), \(set.kind == .drop ? "drop set" : "set \(item.displayIndex(of: set))"), \(set.label(mode: item.mode, unit: live.unit))")
+            .accessibilityValue(set.isDone ? "Done" : (isCurrent ? "Due now" : "Open"))
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, minHeight: 56)
@@ -1030,34 +1269,39 @@ struct SupersetCell: View {
 
 // MARK: - Strip, rest, timer
 
-/// Every exercise as a chip with its progress – tap to jump.
+/// Every exercise as a chip with its progress – tap to look. The exercise that's due carries a
+/// filled marker, the one you're looking at a highlight.
 struct ExerciseStrip: View {
     @Environment(LiveWorkoutController.self) private var live
 
     var body: some View {
         let items = live.content.allItems
         let focused = live.focusedItem?.id
+        let due = live.currentItem?.id
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         let isFocused = item.id == focused
+                        let isDue = item.id == due
                         Button {
                             withAnimation(.snappy) { live.view(itemID: item.id) }
                             Haptics.tap()
                         } label: {
-                            HStack(spacing: 5) {
+                            HStack(spacing: 6) {
                                 ZStack {
-                                    Circle().fill(item.isComplete ? Color.accentColor : Color.secondary.opacity(0.18))
+                                    Circle().fill(item.isComplete || isDue ? Color.accentColor : Color.secondary.opacity(0.18))
                                     if item.isComplete {
-                                        Image(systemName: "checkmark").font(.system(size: 8, weight: .heavy)).foregroundStyle(.white)
+                                        Image(systemName: "checkmark").font(.caption2.weight(.heavy)).foregroundStyle(.white)
+                                    } else if isDue {
+                                        Image(systemName: "play.fill").font(.caption2.weight(.heavy)).foregroundStyle(.white)
                                     } else {
-                                        Text("\(index + 1)").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                                        Text("\(index + 1)").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
                                     }
                                 }
-                                .frame(width: 16, height: 16)
+                                .frame(width: 22, height: 22)
                                 Text(item.name)
-                                    .font(.caption.weight(isFocused ? .semibold : .regular))
+                                    .font(.caption.weight(isFocused || isDue ? .semibold : .regular))
                                     .lineLimit(1)
                                 Text("\(item.completedSets)/\(item.sets.count)")
                                     .font(.caption2)
@@ -1065,12 +1309,14 @@ struct ExerciseStrip: View {
                                     .foregroundStyle(.secondary)
                             }
                             .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: 190)
+                            .frame(minHeight: 44)
+                            .frame(maxWidth: 200)
                             .background(Capsule().fill(isFocused ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.08)))
-                            .overlay(Capsule().strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Color.clear, lineWidth: 1))
+                            .overlay(Capsule().strokeBorder(isFocused || isDue ? Color.accentColor.opacity(isDue ? 1 : 0.6) : Color.clear, lineWidth: isDue ? 1.5 : 1))
+                            .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("\(item.name), \(item.completedSets) of \(item.sets.count) sets\(isDue ? ", due now" : "")\(item.isComplete ? ", done" : "")")
                         .id(item.id)
                     }
                 }
@@ -1084,11 +1330,132 @@ struct ExerciseStrip: View {
     }
 }
 
+/// Small helpers at the station: warm-up sets before heavy lifts, the band in use.
+struct StationChips: View {
+    let item: WorkoutItem
+    @Environment(LiveWorkoutController.self) private var live
+
+    var body: some View {
+        let warmups = canAddWarmups
+        let band = isBand
+        if warmups || band {
+            HStack(spacing: 8) {
+                if warmups {
+                    Button {
+                        live.addWarmups(to: item.id)
+                    } label: {
+                        Label("Add warm-up sets", systemImage: "flame")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.glass)
+                    .accessibilityHint("Empty bar, then 50, 70 and 85 percent of your top weight")
+                }
+                if band {
+                    Menu {
+                        ForEach(["Yellow", "Red", "Green", "Blue", "Black", "Purple", "Orange"], id: \.self) { color in
+                            Button(color) { setBand(color.lowercased() + " band") }
+                        }
+                        Button("No band") { setBand(nil) }
+                    } label: {
+                        Label("Band: \(currentBand ?? "choose")", systemImage: "circle.dashed")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.glass)
+                    .accessibilityHint("Changes the band for the open sets")
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var canAddWarmups: Bool {
+        item.mode == .reps && item.completedSets == 0 && !item.sets.contains { $0.kind == .warmup }
+            && (item.sets.compactMap(\.effectiveWeight).max() ?? 0) >= 40
+    }
+
+    private var isBand: Bool {
+        item.kind == .band || (item.equipment ?? "").lowercased().contains("band") || item.sets.contains { ($0.targetLoad ?? "").lowercased().contains("band") }
+    }
+
+    private var currentBand: String? {
+        (item.sets.first { !$0.isDone } ?? item.sets.last)?.targetLoad
+    }
+
+    private func setBand(_ band: String?) {
+        live.edit { content in
+            for set in item.sets where !set.isDone {
+                content.updateSet(id: set.id) { $0.targetLoad = band }
+            }
+        }
+        Haptics.tap()
+    }
+}
+
+/// "Bench Press · set 2 of 4 done · Undo" for a few seconds after each tick.
+struct UndoTickPill: View {
+    let tick: LiveWorkoutController.UndoableTick
+    @Environment(LiveWorkoutController.self) private var live
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.accentColor)
+            Text(tick.text)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 4)
+            Button("Undo") { live.undoLastTick() }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.glass)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .glassEffect(.regular, in: Capsule())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Once, in the first live workout: the voice coach speaks out loud – keep it, headphones only, or off.
+struct VoiceIntroBanner: View {
+    @AppStorage(Prefs.voiceBannerSeen) private var seen = false
+    @AppStorage(Prefs.voiceCoach) private var voiceOn = true
+    @AppStorage(Prefs.voiceRoute) private var route = VoiceRoute.everywhere.rawValue
+
+    var body: some View {
+        if !seen && voiceOn && !LaunchOptions.current.isDemo {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("The voice coach speaks out loud – also on the phone's speaker.", systemImage: "speaker.wave.2.fill")
+                    .font(.subheadline.weight(.medium))
+                HStack(spacing: 8) {
+                    Button("Keep") { seen = true }
+                        .buttonStyle(.glassProminent)
+                    Button("Headphones only") {
+                        route = VoiceRoute.headphones.rawValue
+                        seen = true
+                    }
+                    .buttonStyle(.glass)
+                    Button("Off") {
+                        voiceOn = false
+                        seen = true
+                    }
+                    .buttonStyle(.glass)
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+}
+
 /// Full editor over the running workout.
 struct LiveEditSheet: View {
     @Environment(LiveWorkoutController.self) private var live
     @Environment(\.dismiss) private var dismiss
     @State private var editor = EditorState()
+    @State private var showReorder = false
 
     var body: some View {
         let binding = Binding(get: { live.content }, set: { live.replaceContent($0) })
@@ -1108,6 +1475,12 @@ struct LiveEditSheet: View {
             .inlineTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showReorder = true } label: { Label("Reorder", systemImage: "arrow.up.arrow.down") }
+                }
+            }
+            .sheet(isPresented: $showReorder) {
+                ReorderBlocksSheet(content: binding)
             }
         }
     }
@@ -1116,4 +1489,56 @@ struct LiveEditSheet: View {
 /// Identifiable wrapper for a sheet keyed by an exercise id.
 struct URLItemID: Identifiable {
     let id: UUID
+}
+
+/// An empty workout (started without a template, a tennis match, a run): add exercises, take a
+/// ready-made routine's moves, or just let the clock run and finish.
+struct EmptyLiveWorkout: View {
+    let onAdd: () -> Void
+    @Environment(LiveWorkoutController.self) private var live
+    @Environment(ExerciseLibrary.self) private var library
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("What are you doing today?")
+                    .font(.title2.weight(.bold))
+                Button(action: onAdd) {
+                    row("plus.circle.fill", "Add exercises", "From the library or your own")
+                }
+                .buttonStyle(.plain)
+                Menu {
+                    ForEach(RoutineLibrary.all) { routine in
+                        Button {
+                            let moves = routine.content(using: library.catalog)
+                            live.edit { $0.append(items: moves.allItems, asGroup: false) }
+                        } label: {
+                            Label(routine.name, systemImage: routine.symbol)
+                        }
+                    }
+                } label: {
+                    row("figure.yoga", "Use a stretch or yoga routine", "Its moves come into this workout")
+                }
+                .buttonStyle(.plain)
+                row("stopwatch", "Just track the time", "Tennis, a run, a class: the clock runs – tap Finish when you're done")
+            }
+            .padding()
+        }
+    }
+
+    private func row(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline).foregroundStyle(.primary)
+                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 }

@@ -17,6 +17,15 @@ enum SidebarItem: Hashable {
     case streak
     case muscles
     case energy
+    case routines
+
+    /// Overview screens that fill the window on the Mac (no list + detail columns).
+    var isDashboard: Bool {
+        switch self {
+        case .today, .muscles, .stats, .energy, .streak: return true
+        default: return false
+        }
+    }
 }
 
 /// One thing to look at: a workout, template, exercise or muscle.
@@ -131,6 +140,7 @@ final class Router {
         case .streak: insights = .streak; select(.insights)
         case .muscles: insights = .muscles; select(.insights)
         case .energy: insights = .energy; select(.insights)
+        case .routines: select(.plans, path: [.screen(item)])
         }
         #endif
     }
@@ -167,8 +177,13 @@ final class Router {
     }
 
     /// Opens the tour by itself once after install, and the "What's new" steps after an update.
-    func offerTourIfNeeded() {
+    func offerTourIfNeeded(live: LiveWorkoutController? = nil, store: GeorgeStore? = nil) {
         guard tour == nil else { return }
+        // Never over a running workout, and not when a planned workout is due today (likely at the gym).
+        if live?.isActive == true { return }
+        if let store, case .planned = store.nextWorkout() { return }
+        // After an update the Today card offers what's new – no automatic cover.
+        guard TourSchedule().seenVersion == 0 else { return }
         let steps = TourSchedule().stepsToOffer(GeorgeTour.catalog)
         guard !steps.isEmpty else { return }
         AppLog.info("Tour offered (\(steps.count) steps)", category: "tour")
@@ -258,12 +273,17 @@ final class Router {
             // The finish screen for the last workout of the demo history.
             if let session = store.fetchSessions().filter({ $0.status.isPerformed }).max(by: { $0.date < $1.date }) {
                 let content = session.content
+                let history = store.performedRecords()
+                let templateOf = Dictionary(store.fetchSessions().map { ($0.id, $0.templateID) }, uniquingKeysWith: { a, _ in a })
                 live.summary = LiveWorkoutController.FinishSummary(
                     sessionID: session.id, title: session.title, duration: session.durationSeconds,
                     completedSets: content.completedSets, totalSets: content.totalSets, volumeKg: content.volumeKg,
                     energyKcal: session.energyKcal, averageHeartRate: 128,
-                    records: StatsEngine.newRecords(in: session.record(), comparedTo: store.performedRecords()),
-                    canUpdateTemplate: false, templateName: session.templateName, savedToHealth: true
+                    records: StatsEngine.newRecords(in: session.record(), comparedTo: history),
+                    canUpdateTemplate: false, templateName: session.templateName, savedToHealth: true,
+                    comparison: StatsEngine.compare(session.record(), templateID: session.templateID, previous: history) { templateOf[$0] ?? nil },
+                    kind: session.kind,
+                    coolDown: RoutineLibrary.all.first { $0.id == "post-workout" }
                 )
             }
         case "share-card":
@@ -282,6 +302,33 @@ final class Router {
             show(.stats)
         case "streak":
             show(.streak)
+        case "routines":
+            show(.routines)
+        case "plan-week":
+            demoSheet = .planWeek
+        case "log-activity":
+            demoSheet = .logActivity
+        case "live-empty":
+            live.start(store.makeEmptySession(program: store.activeProgram, start: true))
+        case "live-paused":
+            if let template = store.suggestedTemplate(in: store.activeProgram) {
+                live.start(template: template)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    live.demoProgress(sets: 2, focusSuperset: false)
+                    live.pause()
+                }
+            }
+        case "live-flow":
+            // A stretch routine: a per-side hold running (side 1 of 2).
+            if let routine = RoutineLibrary.all.first(where: { $0.id == "hip-openers" }) {
+                let template = store.templateForRoutine(routine, catalog: live.catalog).template
+                live.start(template: template)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_400_000_000)
+                    live.startSet()
+                }
+            }
         case "energy":
             show(.energy)
         case "library":
@@ -303,9 +350,13 @@ enum DemoSheet: Identifiable, Hashable {
     case voice
     case share(UUID)
     case shareCard(UUID)
+    case planWeek
+    case logActivity
     var id: String {
         switch self {
         case .voice: return "voice"
+        case .planWeek: return "plan-week"
+        case .logActivity: return "log-activity"
         case .share(let id): return "share-\(id)"
         case .shareCard(let id): return "card-\(id)"
         }
@@ -377,17 +428,38 @@ struct SplitRootView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
-        } content: {
-            ScreenView(item: router.sidebar)
-                .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
-        } detail: {
-            NavigationStack {
-                DetailScreen(item: router.detail)
+        @Bindable var router = router
+        Group {
+            if router.sidebar?.isDashboard == true {
+                // Dashboards use the whole width; a tapped muscle or workout opens on top.
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    SidebarView()
+                        .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
+                } detail: {
+                    NavigationStack {
+                        ScreenView(item: router.sidebar)
+                            .frame(maxWidth: 980)
+                            .frame(maxWidth: .infinity)
+                            .navigationDestination(item: $router.detail) { item in
+                                DetailScreen(item: item)
+                            }
+                    }
+                    .id(router.sidebar)
+                }
+            } else {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
+                    SidebarView()
+                        .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
+                } content: {
+                    ScreenView(item: router.sidebar)
+                        .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
+                } detail: {
+                    NavigationStack {
+                        DetailScreen(item: router.detail)
+                    }
+                    .id(router.detail)
+                }
             }
-            .id(router.detail)
         }
         .safeAreaInset(edge: .bottom) {
             if live.isActive && !live.isPresented {
@@ -447,7 +519,7 @@ struct TabRootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .liveWorkoutAccessory(enabled: live.isActive)
+        .liveWorkoutAccessory(enabled: live.isActive || live.workoutOnOtherDevice != nil)
     }
 }
 
@@ -549,6 +621,10 @@ struct RootPresentation: ViewModifier {
                     if let template = store.template(id: id) { RoutineShareSheet(template: template) }
                 case .shareCard(let id):
                     DemoShareCard(sessionID: id)
+                case .planWeek:
+                    PlanWeekSheet()
+                case .logActivity:
+                    LogActivitySheet()
                 }
             }
             .sheet(isPresented: $router.showImport) {
@@ -568,7 +644,7 @@ struct RootPresentation: ViewModifier {
                 if !didOnboard || welcomeVersion < Prefs.currentWelcomeVersion {
                     router.showWelcome = true
                 } else {
-                    router.offerTourIfNeeded()
+                    router.offerTourIfNeeded(live: live, store: store)
                 }
             }
             .onChange(of: router.pendingRequest) { _, request in
@@ -576,6 +652,24 @@ struct RootPresentation: ViewModifier {
                 router.pendingRequest = nil
                 handle(request)
             }
+            // A Start while another workout runs: ask instead of ending it silently.
+            .confirmationDialog(
+                live.session.map { "“\($0.title)” is still running" } ?? "A workout is running",
+                isPresented: Binding(get: { live.pendingStart != nil }, set: { if !$0 { live.pendingStart = nil } }),
+                titleVisibility: .visible,
+                presenting: live.pendingStart
+            ) { target in
+                Button("Keep Going with \(live.session?.title ?? "It")") { live.keepCurrentWorkout() }
+                Button("Finish It First") { live.finishCurrentFirst() }
+                Button("Save It and Start \(target.title)") {
+                    Task { await live.finishCurrentAndStart() }
+                }
+                Button("Cancel", role: .cancel) { live.pendingStart = nil }
+            } message: { target in
+                Text("Starting “\(target.title)” ends the running workout. Finishing first lets you rate it; saving keeps every set and the time so far.")
+            }
+            // The workout ended on another device (synced through iCloud): let go here.
+            .onChange(of: store.revision) { _, _ in live.syncedStatusChanged() }
             .onOpenURL { url in
                 if url.pathExtension.lowercased() == "csv" {
                     ImportView.pendingURL = url
@@ -604,10 +698,13 @@ struct RootPresentation: ViewModifier {
         case .startSuggested:
             if live.isActive {
                 live.isPresented = true
-            } else if let template = store.suggestedTemplate(in: store.activeProgram) {
-                live.start(template: template)
+            } else if let next = store.nextWorkout() {
+                switch next {
+                case .planned(let session): live.requestStart(.session(session))
+                case .template(let template): live.requestStart(.template(template))
+                }
             } else {
-                live.startEmpty(program: store.activeProgram)
+                live.requestStart(.empty(program: store.activeProgram, kind: nil, rescue: false))
             }
         }
     }
@@ -651,6 +748,8 @@ struct ScreenView: View {
             MusclesView()
         case .energy:
             EnergyView()
+        case .routines:
+            RoutinesView()
         case .none:
             MessageView(title: "George", systemImage: "dumbbell", message: "Pick a program or a list in the sidebar.")
         }
@@ -766,9 +865,35 @@ struct NowPlayingAccessory: View {
         let _ = templates.count + store.revision
         if live.isActive {
             active
+        } else if let other = live.workoutOnOtherDevice {
+            otherDevice(other)
         } else {
             idle
         }
+    }
+
+    /// A workout running on another iPhone, iPad or Mac (synced): read-only, with "Continue here".
+    private func otherDevice(_ session: WorkoutSession) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "iphone.and.arrow.forward")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Running on another device")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                if placement != .inline {
+                    Text("\(session.title) · \(session.content.completedSets)/\(session.content.totalSets) sets")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            Button("Continue Here") { live.continueHere(session) }
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 14)
     }
 
     private var active: some View {
@@ -793,12 +918,18 @@ struct NowPlayingAccessory: View {
                                     Text("Rest \(Format.clock(live.restRemaining(at: context.date)))")
                                         .monospacedDigit()
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(.teal)
                                 }
                             }
                         }
-                        if placement != .inline, let item = live.currentItem {
-                            Text(item.name)
+                        if placement != .inline, let undo = live.undoableTick {
+                            Text(undo.text)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        } else if placement != .inline, let item = live.currentItem, let set = live.currentSet {
+                            // Which set the button logs – never a blind tick.
+                            Text("\(item.name) · \(set.label(mode: item.mode, unit: live.unit))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -809,23 +940,37 @@ struct NowPlayingAccessory: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            Button {
-                live.completeCurrentSet()
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.subheadline.weight(.bold))
+            if placement != .inline {
+                if live.undoableTick != nil {
+                    Button("Undo") { live.undoLastTick() }
+                        .font(.subheadline.weight(.semibold))
+                } else if live.currentSet != nil {
+                    Button {
+                        live.primaryAction()
+                    } label: {
+                        Image(systemName: live.isPaused ? "play.fill" : (live.primaryIsStart ? "play.fill" : "checkmark"))
+                            .font(.subheadline.weight(.bold))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(accessoryLabel)
+                }
             }
-            .disabled(live.currentSet == nil)
-            .accessibilityLabel("Complete set")
         }
         .padding(.horizontal, 14)
+    }
+
+    private var accessoryLabel: String {
+        guard let item = live.currentItem, let set = live.currentSet else { return "Set" }
+        let what = "\(item.name), \(set.label(mode: item.mode, unit: live.unit))"
+        return live.primaryIsStart ? "Start \(what)" : "Mark \(what) done"
     }
 
     private var idle: some View {
         let suggestion = store.suggestedTemplate(in: store.activeProgram)
         return HStack(spacing: 10) {
             Button {
-                if let suggestion { live.start(template: suggestion) } else { router.showCreate = true }
+                if let suggestion { live.requestStart(.template(suggestion)) } else { router.showCreate = true }
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "play.fill")
@@ -886,7 +1031,7 @@ struct MiniPlayerBar: View {
                             if live.restEndsAt != nil {
                                 Text("· Rest \(Format.clock(live.restRemaining(at: context.date)))")
                                     .monospacedDigit()
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(.teal)
                             } else if let item = live.currentItem {
                                 Text("· \(item.name)").lineLimit(1)
                             }
@@ -896,16 +1041,23 @@ struct MiniPlayerBar: View {
                     }
                 }
                 Spacer(minLength: 8)
+                if let set = live.currentSet, let item = live.currentItem {
+                    Text(set.label(mode: item.mode, unit: live.unit))
+                        .font(.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
                 Button {
-                    live.completeCurrentSet()
+                    live.primaryAction()
                 } label: {
-                    Image(systemName: "checkmark")
+                    Image(systemName: live.primaryIsStart ? "play.fill" : "checkmark")
                         .font(.body.weight(.bold))
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.circle)
                 .disabled(live.currentSet == nil)
+                .accessibilityLabel(live.primaryIsStart ? "Start the set" : "Mark set done")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)

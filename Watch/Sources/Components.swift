@@ -68,6 +68,65 @@ struct KindIcon: View {
     }
 }
 
+/// The rest ring: a countdown with the time left in the middle (rest in the workout's tint,
+/// a running hold in green).
+struct CountdownRing: View {
+    let remaining: TimeInterval
+    let total: Double
+    let tint: Color
+    let caption: String
+    var lineWidth: CGFloat = 8
+    var fontSize: CGFloat = 28
+
+    var body: some View {
+        let fraction = min(1, max(0, remaining / max(total, remaining, 1)))
+        let clock = Format.clock(Int(remaining.rounded(.up)))
+        ZStack {
+            Circle()
+                .stroke(tint.opacity(0.25), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: CGFloat(fraction))
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 0) {
+                Text(clock)
+                    .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                if !caption.isEmpty {
+                    Text(caption)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(lineWidth)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(caption.isEmpty ? "\(clock) left" : "\(caption.capitalized), \(clock) left"))
+    }
+}
+
+/// Small rounded chip for quick answers (energy, fatigue, reps left).
+struct ChipButtonStyle: ButtonStyle {
+    var fill: Color = Color.white.opacity(0.18)
+    var foreground: Color = .white
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.footnote.weight(.semibold))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: .infinity, minHeight: 30)
+            .padding(.horizontal, 2)
+            .foregroundStyle(foreground)
+            .background(Capsule().fill(fill.opacity(configuration.isPressed ? 0.6 : 1)))
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .contentShape(Capsule())
+    }
+}
+
 /// Compact, full-width capsule button used on the workout pages.
 struct CapsuleButtonStyle: ButtonStyle {
     var fill: Color
@@ -100,6 +159,8 @@ enum Haptics {
     static func notify() { play(.notification) }
     static func start() { play(.start) }
     static func stop() { play(.stop) }
+    /// Something didn't happen (e.g. the iPhone never started the workout).
+    static func failure() { play(.failure) }
 
     private static func play(_ type: WKHapticType) {
         WKInterfaceDevice.current().play(type)

@@ -108,6 +108,19 @@ public struct PaceTracker: Equatable, Sendable {
         startedAt = nil
     }
 
+    /// A pause: moves the reference times forward so the paused time counts neither as rest nor as work.
+    public mutating func shift(by seconds: Double) {
+        guard seconds > 0 else { return }
+        lastSetAt = lastSetAt?.addingTimeInterval(seconds)
+        startedAt = startedAt?.addingTimeInterval(seconds)
+    }
+
+    /// After a relaunch: where the workout stood (end of the last done set, start of the set in progress).
+    public mutating func seed(lastSetAt: Date?, startedAt: Date?) {
+        self.lastSetAt = lastSetAt
+        self.startedAt = startedAt
+    }
+
     /// Seconds since the last set ended (0 before the first).
     public func idleSeconds(at date: Date) -> Double {
         lastSetAt.map { max(0, date.timeIntervalSince($0)) } ?? 0
@@ -230,7 +243,40 @@ public struct ProgressionSuggestion: Equatable, Sendable {
 /// Double progression with reps in reserve (RIR = 10 − RPE): add weight when the top of the rep range
 /// was reached or 3+ reps were left, add a rep when 1–2 were left, keep it when it was all-out, and go
 /// a step lighter when reps were missed at all-out effort.
+///
+/// The day matters too: on a low-energy day or with a high muscular load, "go up" becomes "hold",
+/// and with overtraining-level load the advice is to go lighter.
 public enum ProgressionAdvisor {
+    public static func suggest(lastSets: [WorkoutSet]?, mode: ExerciseMode, plan: WorkoutSet?, incrementKg: Double,
+                               intensity: CoachIntensity, loadStatus: LoadStatus?) -> ProgressionSuggestion? {
+        guard let base = suggest(lastSets: lastSets, mode: mode, plan: plan, incrementKg: incrementKg) else { return nil }
+        return adjust(base, lastSets: lastSets ?? [], incrementKg: incrementKg, intensity: intensity, loadStatus: loadStatus)
+    }
+
+    /// Tones a suggestion down for the day.
+    public static func adjust(_ suggestion: ProgressionSuggestion, lastSets: [WorkoutSet], incrementKg: Double,
+                              intensity: CoachIntensity, loadStatus: LoadStatus?) -> ProgressionSuggestion {
+        let working = lastSets.filter { $0.isDone && $0.kind != .warmup }
+        let top = working.max { ($0.effectiveWeight ?? 0, $0.effectiveReps ?? 0) < ($1.effectiveWeight ?? 0, $1.effectiveReps ?? 0) }
+        let lastWeight = top?.effectiveWeight
+        let lastReps = top?.effectiveReps
+        if loadStatus == .overtraining {
+            if let w = lastWeight, w > 0 {
+                return ProgressionSuggestion(kind: .lighten, weightKg: max(0, w - incrementKg), reps: lastReps,
+                                             reason: "Your muscular load is far above usual – go a step lighter today")
+            }
+            return ProgressionSuggestion(kind: .keep, weightKg: nil, reps: lastReps.map { max(1, $0 - 1) },
+                                         reason: "Your muscular load is far above usual – ease off today")
+        }
+        guard suggestion.kind == .addWeight || suggestion.kind == .addReps else { return suggestion }
+        let reason: String?
+        if intensity == .calm { reason = "Low-energy day – hold last time's numbers" }
+        else if loadStatus == .fatigued { reason = "Load is high this week – hold last time's numbers" }
+        else { reason = nil }
+        guard let reason else { return suggestion }
+        return ProgressionSuggestion(kind: .keep, weightKg: lastWeight.flatMap { $0 > 0 ? $0 : nil }, reps: lastReps, reason: reason)
+    }
+
     public static func suggest(lastSets: [WorkoutSet]?, mode: ExerciseMode, plan: WorkoutSet?, incrementKg: Double) -> ProgressionSuggestion? {
         guard mode == .reps, let lastSets else { return nil }
         let working = lastSets.filter { $0.isDone && $0.kind != .warmup }

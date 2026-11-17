@@ -39,7 +39,8 @@ packages:
   GeorgeCore:
     path: Packages/GeorgeCore
 
-# One source tree (App/Sources + Shared) for iPhone/iPad and Mac. The watch app shares Shared/.
+# One source tree (App/Sources + Shared) for iPhone/iPad and Mac. The watch app shares Shared/,
+# the widget extension only the files it lists (snapshot bridge, Live Activity, shared intents).
 targets:
   George:
     type: application
@@ -59,6 +60,7 @@ targets:
       - package: BinisoftKit
         product: BinisoftKit
       - target: GeorgeWatch
+      - target: GeorgeWidgets
     settings:
       base:
         PRODUCT_NAME: George
@@ -117,6 +119,7 @@ targets:
       - path: Shared
     dependencies:
       - package: GeorgeCore
+      - target: GeorgeWatchWidgets
     settings:
       base:
         PRODUCT_NAME: GeorgeWatch
@@ -129,3 +132,47 @@ targets:
         SKIP_INSTALL: YES
     scheme:
       testTargets: []
+
+  # Home and Lock Screen widgets, the running workout's Live Activity (Lock Screen, Dynamic Island)
+  # and the "Start Workout" control. Widgets read a small snapshot from the shared App Group; the
+  # Live Activity and control buttons run their intents in the app (Shared/WorkoutIntents.swift).
+  GeorgeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets/Sources
+      - path: Widgets/Resources
+      - path: Shared/WidgetBridge.swift
+      - path: Shared/WorkoutActivity.swift
+      - path: Shared/WorkoutIntents.swift
+    dependencies:
+      - package: BinisoftKit
+        product: BinisoftKitCore
+    settings:
+      base:
+        PRODUCT_NAME: GeorgeWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(WIDGETS_BUNDLE_ID)
+        INFOPLIST_FILE: Config/Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/Widgets/GeorgeWidgets.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+
+  # Watch-face complication / Smart Stack card, embedded in the watch app. Reads the small file
+  # the watch app writes to the shared App Group (Watch/Sources/ComplicationBridge.swift).
+  GeorgeWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: WatchWidgets/Sources
+      - path: Watch/Sources/ComplicationBridge.swift
+    dependencies:
+      - package: GeorgeCore
+    settings:
+      base:
+        PRODUCT_NAME: GeorgeWatchWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(WATCH_BUNDLE_ID).widgets
+        INFOPLIST_FILE: Config/WatchWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/WatchWidgets/GeorgeWatchWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES

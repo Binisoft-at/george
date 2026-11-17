@@ -99,12 +99,73 @@ public struct WatchSet: Codable, Hashable, Identifiable, Sendable {
     public var index: String
     public var label: String
     public var isDone: Bool
+    /// Reps logged (done) or planned (open); nil for timed/distance sets. Optional: older phones don't send it.
+    public var reps: Int?
+    /// Planned reps (for the picker's starting point).
+    public var targetReps: Int?
+    /// Weight in kg (logged or planned), nil for bodyweight.
+    public var weightKg: Double?
+    /// Hold/interval seconds for timed sets.
+    public var seconds: Int?
+    /// A timed set (hold) rather than reps.
+    public var isTimed: Bool?
 
-    public init(id: UUID, index: String, label: String, isDone: Bool) {
+    public init(id: UUID, index: String, label: String, isDone: Bool, reps: Int? = nil, targetReps: Int? = nil,
+                weightKg: Double? = nil, seconds: Int? = nil, isTimed: Bool? = nil) {
         self.id = id
         self.index = index
         self.label = label
         self.isDone = isDone
+        self.reps = reps
+        self.targetReps = targetReps
+        self.weightKg = weightKg
+        self.seconds = seconds
+        self.isTimed = isTimed
+    }
+}
+
+/// A question the phone's coach asks after an exercise (also answerable on the watch).
+public struct WatchQuestion: Codable, Hashable, Sendable {
+    public var setID: UUID
+    public var exerciseName: String
+    public var muscles: String
+    public var asksReps: Bool
+    public var asksFatigue: Bool
+
+    public init(setID: UUID, exerciseName: String, muscles: String, asksReps: Bool, asksFatigue: Bool) {
+        self.setID = setID
+        self.exerciseName = exerciseName
+        self.muscles = muscles
+        self.asksReps = asksReps
+        self.asksFatigue = asksFatigue
+    }
+}
+
+/// What the watch shows after a workout was saved.
+public struct WatchFinishSummary: Codable, Hashable, Sendable {
+    public var sessionID: UUID
+    public var title: String
+    public var finishedAt: Date
+    public var durationSeconds: Double
+    public var completedSets: Int
+    public var totalSets: Int
+    public var energyKcal: Double?
+    public var averageHeartRate: Double?
+    public var records: Int
+    public var streakHeadline: String?
+
+    public init(sessionID: UUID, title: String, finishedAt: Date, durationSeconds: Double, completedSets: Int, totalSets: Int,
+                energyKcal: Double? = nil, averageHeartRate: Double? = nil, records: Int = 0, streakHeadline: String? = nil) {
+        self.sessionID = sessionID
+        self.title = title
+        self.finishedAt = finishedAt
+        self.durationSeconds = durationSeconds
+        self.completedSets = completedSets
+        self.totalSets = totalSets
+        self.energyKcal = energyKcal
+        self.averageHeartRate = averageHeartRate
+        self.records = records
+        self.streakHeadline = streakHeadline
     }
 }
 
@@ -158,9 +219,20 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
     public var behindSeconds: Double?
     /// The last break against the plan (positive = longer than planned).
     public var lastDeltaSeconds: Double?
+    /// False when the user turned the Start button off (one tap per set). Nil from older phones = on.
+    public var usesStartButton: Bool?
+    /// The coach's open question (fatigue / reps left), answerable on the watch.
+    public var question: WatchQuestion?
+    /// True until the first set: the watch may offer the energy check-in.
+    public var asksEnergy: Bool?
+    /// The voice coach is muted for this workout.
+    public var voiceMuted: Bool?
+    /// The exercise the user is looking at on the phone when it differs from the plan's current one.
+    public var viewingExerciseID: UUID?
 
     public init(sessionID: UUID, title: String, kind: WorkoutKind, startedAt: Date, accumulatedSeconds: Double, resumedAt: Date?, isPaused: Bool, restEndsAt: Date?, restTotalSeconds: Int?, currentSetID: UUID?, exercises: [WatchExercise], completedSets: Int, totalSets: Int,
-                setStartedAt: Date? = nil, lastSetEndedAt: Date? = nil, plannedRestSeconds: Int? = nil, timedSetSeconds: Int? = nil, behindSeconds: Double? = nil, lastDeltaSeconds: Double? = nil) {
+                setStartedAt: Date? = nil, lastSetEndedAt: Date? = nil, plannedRestSeconds: Int? = nil, timedSetSeconds: Int? = nil, behindSeconds: Double? = nil, lastDeltaSeconds: Double? = nil,
+                usesStartButton: Bool? = nil, question: WatchQuestion? = nil, asksEnergy: Bool? = nil, voiceMuted: Bool? = nil, viewingExerciseID: UUID? = nil) {
         self.sessionID = sessionID
         self.title = title
         self.kind = kind
@@ -180,6 +252,22 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
         self.timedSetSeconds = timedSetSeconds
         self.behindSeconds = behindSeconds
         self.lastDeltaSeconds = lastDeltaSeconds
+        self.usesStartButton = usesStartButton
+        self.question = question
+        self.asksEnergy = asksEnergy
+        self.voiceMuted = voiceMuted
+        self.viewingExerciseID = viewingExerciseID
+    }
+
+    /// The exercise and set the plan says are due.
+    public var current: (exercise: WatchExercise, set: WatchSet, number: Int, of: Int)? {
+        guard let currentSetID else { return nil }
+        for exercise in exercises {
+            if let index = exercise.sets.firstIndex(where: { $0.id == currentSetID }) {
+                return (exercise, exercise.sets[index], index + 1, exercise.sets.count)
+            }
+        }
+        return nil
     }
 
     /// While waiting for the current set: seconds over (positive) or under the planned rest.
@@ -206,7 +294,12 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
             }
             for item in block.items {
                 let sets = item.sets.map { set in
-                    WatchSet(id: set.id, index: item.displayIndex(of: set), label: set.label(mode: item.mode, unit: unit), isDone: set.isDone)
+                    WatchSet(id: set.id, index: item.displayIndex(of: set), label: set.label(mode: item.mode, unit: unit), isDone: set.isDone,
+                             reps: item.mode == .reps ? set.effectiveReps : nil,
+                             targetReps: item.mode == .reps ? set.targetRepsValue : nil,
+                             weightKg: set.effectiveWeight,
+                             seconds: item.mode == .time ? set.effectiveSeconds : nil,
+                             isTimed: item.mode == .time)
                 }
                 result.append(WatchExercise(
                     id: item.id, name: item.name, detail: item.prescription(unit: unit), groupLabel: label,
@@ -227,8 +320,10 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
     public var unit: WeightUnit
     /// The last George session the phone discarded — the watch throws its Health recording away instead of saving it.
     public var discardedSessionID: UUID?
+    /// The workout that was just saved (shown as a summary on the watch).
+    public var lastFinished: WatchFinishSummary?
 
-    public init(generatedAt: Date = Date(), templates: [WatchTemplate], upcoming: [WatchSessionSummary], streak: WatchStreak?, live: WatchLiveState?, unit: WeightUnit, discardedSessionID: UUID? = nil) {
+    public init(generatedAt: Date = Date(), templates: [WatchTemplate], upcoming: [WatchSessionSummary], streak: WatchStreak?, live: WatchLiveState?, unit: WeightUnit, discardedSessionID: UUID? = nil, lastFinished: WatchFinishSummary? = nil) {
         self.generatedAt = generatedAt
         self.templates = templates
         self.upcoming = upcoming
@@ -236,6 +331,7 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
         self.live = live
         self.unit = unit
         self.discardedSessionID = discardedSessionID
+        self.lastFinished = lastFinished
     }
 }
 
@@ -255,6 +351,52 @@ public enum WatchCommand: Codable, Hashable, Sendable {
     case startTemplate(UUID)
     case startSession(UUID)
     case requestSnapshot
+    /// Logs a set with what was really done (reps / weight in kg; nil keeps the planned value).
+    case completeSet(id: UUID, reps: Int?, weightKg: Double?)
+    /// "Can't finish": the set counts with `repsDone`, a lighter drop set follows.
+    case dropWeight(setID: UUID, repsDone: Int, newWeightKg: Double)
+    /// Make this (open) set the current one – "do this now" instead of the plan's next.
+    case makeCurrent(setID: UUID)
+    /// Skip to the next (+1) or back to the previous (−1) exercise of the plan.
+    case moveThread(Int)
+    case toggleVoiceMute
+    /// Answers the coach's question (reps left 0…3, fatigue 0…1).
+    case answerFeedback(setID: UUID, repsInReserve: Int?, fatigue: Double?)
+    /// Energy check-in 1…5.
+    case recordEnergy(Int)
+}
+
+/// A command with when and for which workout it was sent. The phone drops stale starts (older
+/// than two minutes) and commands meant for another workout, e.g. ones queued while out of range.
+public struct WatchCommandEnvelope: Codable, Hashable, Sendable {
+    public var command: WatchCommand
+    public var sentAt: Date
+    /// The live workout the watch saw when it sent the command (nil on the home screen).
+    public var sessionID: UUID?
+
+    public init(command: WatchCommand, sentAt: Date = Date(), sessionID: UUID?) {
+        self.command = command
+        self.sentAt = sentAt
+        self.sessionID = sessionID
+    }
+
+    /// Commands that start something new.
+    public var isStart: Bool {
+        switch command {
+        case .startTemplate, .startSession: return true
+        default: return false
+        }
+    }
+
+    /// Whether the phone should act on it, given the running workout and the time now.
+    public func isFresh(activeSessionID: UUID?, now: Date = Date()) -> Bool {
+        if case .requestSnapshot = command { return true }
+        if isStart { return activeSessionID == nil && now.timeIntervalSince(sentAt) <= 120 }
+        guard let activeSessionID else { return false }
+        if let sessionID, sessionID != activeSessionID { return false }
+        // Live commands that are very old are no longer meaningful (the set has moved on).
+        return now.timeIntervalSince(sentAt) <= 15 * 60
+    }
 }
 
 /// Live metrics the watch measures during its HealthKit workout session.

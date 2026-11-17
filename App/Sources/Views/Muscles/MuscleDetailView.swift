@@ -30,9 +30,10 @@ struct MuscleDetailView: View {
                         Text("\(freshness.percent) %")
                             .font(.system(.largeTitle, design: .rounded).weight(.bold))
                             .monospacedDigit()
-                        Text(freshness.isCalibrating ? "\(freshness.status.displayName) · calibrating" : freshness.status.displayName)
+                        Label(freshness.isCalibrating ? "\(freshness.status.displayName) · calibrating" : freshness.status.displayName,
+                              systemImage: freshness.status.symbol)
                             .font(.headline)
-                            .foregroundStyle(freshness.isCalibrating ? Color.secondary : freshness.status.color)
+                            .foregroundStyle(freshness.isCalibrating ? Color.secondary : freshness.status.textColor)
                         Text(freshness.readyText)
                             .font(.subheadline)
                         if let last = freshness.lastTrained {
@@ -64,13 +65,14 @@ struct MuscleDetailView: View {
                 WeeklySetsChart(weeks: weekly, target: profile.weeklySets)
                     .frame(height: 180)
                     .padding(.vertical, 6)
-                Label(weeklyVerdict(thisWeek, target: profile.weeklySets), systemImage: thisWeek >= Double(profile.weeklySets.lowerBound) ? "checkmark.circle.fill" : "arrow.up.circle")
+                let status = TargetStatus(thisWeek, target: profile.weeklySets)
+                Label(weeklyVerdict(thisWeek, target: profile.weeklySets), systemImage: status == .below ? "arrow.up.circle" : (status == .within ? "checkmark.circle.fill" : "exclamationmark.circle"))
                     .font(.subheadline)
-                    .foregroundStyle(thisWeek >= Double(profile.weeklySets.lowerBound) ? Color.green : Color.primary)
+                    .foregroundStyle(status == .below ? Color.primary : status.textColor)
             } header: {
                 Text("Sets per week")
             } footer: {
-                Text("This week: \(Format.number((thisWeek * 10).rounded() / 10)) sets. Green band: \(profile.weeklySets.lowerBound)–\(profile.weeklySets.upperBound) hard sets per week – your target (\(profile.headline)). Moves that train it secondarily count half.")
+                Text("This week: \(Format.number((thisWeek * 10).rounded() / 10)) sets. Green band: \(profile.weeklySets.lowerBound)–\(profile.weeklySets.upperBound) hard sets per week – your target (\(profile.headline)). Bars: light blue below, green in target, amber above. Moves that train it secondarily count half; stretching, yoga and other sports don't count as sets.")
             }
 
             Section("Muscular load") {
@@ -78,16 +80,22 @@ struct MuscleDetailView: View {
                     MuscularLoadDetailView(group: group)
                 } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("\(Int(load.current.acute.rounded())) this week")
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(load.current.showsRatio ? "\(load.current.percentOfUsual) % of your usual week" : "\(Int(load.current.acute.rounded())) hard sets · last 7 days")
                                 .font(.headline)
                                 .monospacedDigit()
                             Spacer()
                             Text(load.current.status.displayName)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(load.current.status == .calibrating ? Color.secondary : load.current.status.color)
+                                .foregroundStyle(load.current.status.textColor)
                         }
                         LoadGauge(point: load.current, maxValue: load.gaugeMax)
+                        if load.current.showsRatio {
+                            Text("\(Int(load.current.acute.rounded())) hard sets · last 7 days · usual ≈ \(Int(load.current.chronic.rounded()))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -149,9 +157,15 @@ struct MuscleDetailView: View {
         HStack {
             Text(share.exerciseName)
             Spacer()
-            Text("\(Format.number((share.sets * 10).rounded() / 10)) sets")
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            if share.exerciseKey.hasPrefix("sport:") {
+                Label("Apple Health", systemImage: "heart.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("\(Format.number((share.sets * 10).rounded() / 10)) sets")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
     }
 }
@@ -170,14 +184,15 @@ struct RecoveryChart: View {
     }
 
     var body: some View {
-        // Past and forecast share the "now" sample so the two lines meet.
-        let samples = stride(from: -96, through: 72, by: 3).flatMap { hours -> [Sample] in
-            let date = now.addingTimeInterval(Double(hours) * 3600)
-            let percent = engine.freshness(of: group, at: date).freshness * 100
-            if hours == 0 {
-                return [Sample(date: date, percent: percent, isForecast: false), Sample(date: date, percent: percent, isForecast: true)]
+        // One pass over the muscle's events; past and forecast share the "now" sample so the lines meet.
+        let series = engine.freshnessSeries(of: group, from: now.addingTimeInterval(-96 * 3600), to: now.addingTimeInterval(72 * 3600), stepHours: 3)
+        let samples = series.flatMap { point -> [Sample] in
+            let percent = point.freshness * 100
+            let offset = point.date.timeIntervalSince(now)
+            if abs(offset) < 60 {
+                return [Sample(date: point.date, percent: percent, isForecast: false), Sample(date: point.date, percent: percent, isForecast: true)]
             }
-            return [Sample(date: date, percent: percent, isForecast: hours > 0)]
+            return [Sample(date: point.date, percent: percent, isForecast: offset > 0)]
         }
         Chart {
             RectangleMark(
@@ -243,8 +258,9 @@ struct WeeklySetsChart: View {
             }
             ForEach(rows) { row in
                 BarMark(x: .value("Week", row.weekStart, unit: .weekOfYear), y: .value("Sets", row.sets))
-                    .foregroundStyle(MusclePalette.heat(min(1, row.sets / high)))
+                    .foregroundStyle(TargetStatus.fill(row.sets, target: target))
                     .cornerRadius(4)
+                    .accessibilityValue("\(Format.number((row.sets * 10).rounded() / 10)) sets, \(TargetStatus(row.sets, target: target).title.lowercased())")
             }
         }
         .chartYScale(domain: 0...top)
@@ -292,13 +308,18 @@ struct MuscleFreshnessCard: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12, alignment: .leading)], alignment: .leading, spacing: 10) {
                         ForEach(shown) { item in
                             VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.group.displayName).font(.caption.weight(.semibold))
-                                    Spacer()
-                                    Text("\(item.percent) %").font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                                }
+                                Text(item.group.displayName)
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                Text(item.status == .recovered ? "Recovered" : item.readyText)
+                                    .font(.caption)
+                                    .foregroundStyle(item.status == .recovered ? Color.secondary : item.status.textColor)
+                                    .monospacedDigit()
+                                    .lineLimit(1)
                                 DotBar(value: item.freshness, color: item.status.color)
                             }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(item.group.displayName): \(item.status.displayName), \(item.percent) %, \(item.readyText)")
                         }
                     }
                 }
@@ -315,14 +336,15 @@ struct MuscleFreshnessCard: View {
 struct DotBar: View {
     let value: Double
     let color: Color
+    @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 7
 
     var body: some View {
         let filled = Int((value * 10).rounded())
-        HStack(spacing: 3) {
+        HStack(spacing: dot * 0.43) {
             ForEach(0..<10, id: \.self) { index in
                 Circle()
                     .fill(index < filled ? color : Color.secondary.opacity(0.2))
-                    .frame(width: 7, height: 7)
+                    .frame(width: dot, height: dot)
             }
         }
         .accessibilityHidden(true)

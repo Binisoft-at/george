@@ -56,10 +56,20 @@ struct SessionRow: View {
 
     private var detailLine: String {
         if !session.subtitle.isEmpty && session.status == .planned { return session.subtitle }
+        if session.status == .completed { return completedLine }
         if session.status.isPerformed || session.status == .active { return session.summaryLine }
         if !session.subtitle.isEmpty { return session.subtitle }
         if !session.notes.isEmpty { return session.notes.components(separatedBy: .newlines).first ?? "" }
         return session.summaryLine
+    }
+
+    /// A completed workout has every set done – the line shows what's more useful: time and energy.
+    private var completedLine: String {
+        var parts: [String] = []
+        if session.durationSeconds > 0 { parts.append(Format.minutes(session.durationSeconds)) }
+        if session.energyKcal > 0 { parts.append("\(Int(session.energyKcal)) kcal") }
+        if parts.isEmpty && session.setCount > 0 { parts.append("\(session.setCount) sets") }
+        return parts.isEmpty ? session.kind.displayName : parts.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -67,9 +77,10 @@ struct SessionRow: View {
         let tint = Color(hex: session.displayColorHex)
         switch session.status {
         case .completed:
+            // Done is the accent colour everywhere (live, lists, recap) – the kind keeps its colour on the badge.
             ZStack {
-                Circle().fill(tint.opacity(0.18))
-                Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(tint)
+                Circle().fill(Tone.accent.opacity(0.18))
+                Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(Tone.accent)
             }
             .frame(width: 30, height: 30)
         case .partial, .active:
@@ -154,6 +165,8 @@ struct TemplateRow: View {
 /// Context-menu items shared by every place a session appears.
 struct SessionMenuItems: View {
     let session: WorkoutSession
+    /// "Mark As → Completed" on a workout that wasn't done: opens the log sheet (date, minutes) instead.
+    var onLogPast: ((WorkoutSession) -> Void)? = nil
     @Environment(GeorgeStore.self) private var store
     @Environment(LiveWorkoutController.self) private var live
     @Environment(Router.self) private var router
@@ -163,7 +176,7 @@ struct SessionMenuItems: View {
     var body: some View {
         if session.status != .completed {
             Button {
-                live.start(session)
+                live.requestStart(.session(session))
             } label: {
                 Label(session.status == .active ? "Continue" : "Start", systemImage: "play.fill")
             }
@@ -188,7 +201,11 @@ struct SessionMenuItems: View {
         Menu {
             ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
                 Button {
-                    store.setStatus(status, for: [session])
+                    if status == .completed && !session.status.isPerformed, let onLogPast {
+                        onLogPast(session)
+                    } else {
+                        store.setStatus(status, for: [session])
+                    }
                 } label: {
                     Label(status.displayName, systemImage: status.symbol)
                 }
@@ -260,7 +277,7 @@ struct TemplateMenuItems: View {
 
     var body: some View {
         Button {
-            if let practice { practice.startTapped = true } else { live.start(template: template) }
+            if let practice { practice.startTapped = true } else { store.requestStart(template, live: live, toasts: toasts) }
         } label: {
             Label("Start Now", systemImage: "play.fill")
         }
@@ -326,44 +343,83 @@ struct TemplateMenuItems: View {
     }
 }
 
-/// Sheet to log a workout done without the app.
+/// Sheet to log a workout done without the app: from a template (a new session), or for a planned
+/// session that was done but not tracked ("Mark As → Completed").
 struct LogPastWorkoutSheet: View {
-    let template: WorkoutTemplate
+    let template: WorkoutTemplate?
+    let session: WorkoutSession?
     /// Called instead of dismissing when shown inside another flow (e.g. the create sheet).
     var onDone: (() -> Void)? = nil
     @Environment(GeorgeStore.self) private var store
+    @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
     @Environment(\.dismiss) private var dismiss
-    @State private var date = Date()
-    @State private var minutes = 40
+    @State private var date: Date
+    @State private var minutes: Int
+
+    init(template: WorkoutTemplate, onDone: (() -> Void)? = nil) {
+        self.template = template
+        self.session = nil
+        self.onDone = onDone
+        let estimated = template.estimatedMinutes
+        _date = State(initialValue: Date())
+        _minutes = State(initialValue: estimated > 0 ? max(5, Int((Double(estimated) / 5).rounded()) * 5) : 40)
+    }
+
+    /// Prefilled with the planned day and the session's planned length.
+    init(session: WorkoutSession, onDone: (() -> Void)? = nil) {
+        self.template = nil
+        self.session = session
+        self.onDone = onDone
+        let planned = session.plannedDate ?? session.date
+        _date = State(initialValue: min(planned, Date()))
+        _minutes = State(initialValue: max(5, min(240, GeorgeStore.defaultMinutes(for: session))))
+    }
+
+    private var name: String {
+        template?.name ?? session.map { $0.templateName.isEmpty ? $0.title : $0.templateName } ?? "Workout"
+    }
 
     var body: some View {
         Form {
             Section {
                 DatePicker("When", selection: $date, in: ...Date())
-                Stepper("Duration: \(minutes) min", value: $minutes, in: 5...240, step: 5)
+                Stepper("Duration: \(Format.minutes(Double(minutes * 60)))", value: $minutes, in: 5...240, step: 5)
             } footer: {
-                Text("All sets of “\(template.name)” are marked as done. You can edit them afterwards.")
+                Text("All sets of “\(name)” are marked as done with their planned numbers. You can edit them afterwards.")
             }
         }
-        .navigationTitle("Log Past Workout")
+        .formStyle(.grouped)
+        .navigationTitle(session == nil ? "Log Past Workout" : "Mark as Done")
         .inlineTitle()
         .toolbar {
             if onDone == nil {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Log") {
-                    let session = store.logPastSession(from: template, date: date, minutes: minutes)
-                    if let onDone {
-                        onDone()
-                        router.afterDismiss { router.open(.session(session.id)) }
-                    } else {
-                        router.open(.session(session.id))
-                        dismiss()
-                    }
-                }
+                Button(session == nil ? "Log" : "Done") { log() }
+                    .fontWeight(.semibold)
             }
+        }
+    }
+
+    private func log() {
+        let logged: WorkoutSession
+        if let session {
+            store.markPerformed(session, date: date, minutes: minutes, bodyMassKg: health.latestBodyMassKg)
+            logged = session
+        } else if let template {
+            logged = store.logPastSession(from: template, date: date, minutes: minutes, bodyMassKg: health.latestBodyMassKg)
+        } else {
+            return
+        }
+        Haptics.success()
+        if let onDone {
+            onDone()
+            router.afterDismiss { router.open(.session(logged.id)) }
+        } else {
+            if session == nil { router.open(.session(logged.id)) }
+            dismiss()
         }
     }
 }

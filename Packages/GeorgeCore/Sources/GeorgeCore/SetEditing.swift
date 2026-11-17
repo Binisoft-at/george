@@ -190,9 +190,17 @@ public extension WorkoutContent {
         }
         if old.done.isEmpty {
             blocks[loc.block].items[loc.item] = new
-        } else {
+        } else if blocks[loc.block].style.isGrouped && blocks[loc.block].items.count > 1 {
+            // In a superset the replacement takes over in the round the old exercise stopped at.
             blocks[loc.block].items[loc.item].sets = old.done
+            new.roundOffset = (old.roundOffset ?? 0) + old.done.filter { $0.kind != .drop }.count
             blocks[loc.block].items.insert(new, at: loc.item + 1)
+        } else {
+            // Straight sets: the replacement becomes its own block right after – never a fake superset.
+            blocks[loc.block].items[loc.item].sets = old.done
+            var block = WorkoutBlock(style: .single, items: [new])
+            block.section = blocks[loc.block].section
+            blocks.insert(block, at: loc.block + 1)
         }
         return new.id
     }
@@ -203,32 +211,46 @@ private extension WorkoutItem {
 }
 
 public extension ExerciseCatalog {
-    /// Exercises that train the same muscles – for "this one isn't available". Ranked by shared
-    /// primary muscles, then the same kind of movement (push/pull, compound/isolation); a different
-    /// piece of equipment counts as a plus (the point is usually that the machine is taken).
+    /// Equipment found in most gyms – ranked above rare gear (chains, medicine balls, …).
+    static let commonEquipment: Set<String> = ["barbell", "dumbbell", "cable", "machine", "body only", "e-z curl bar", "bands", "band", "kettlebells"]
+    /// Words that name the equipment or the side, not the movement.
+    static let equipmentWords: Set<String> = ["barbell", "dumbbell", "dumbbells", "cable", "machine", "smith", "kettlebell", "kettlebells",
+                                              "band", "banded", "lever", "one", "arm", "single", "alternating", "with", "the", "on", "a", "and"]
+
+    /// Exercises that train the same muscles – for "this one isn't available". Ranked by the same
+    /// movement first (shared name words like "bench" and "press", the same push/pull and
+    /// compound/isolation), then shared primary muscles; common gym equipment ranks above rare
+    /// gear, and a different piece of equipment counts as a small plus (the machine is usually taken).
     func alternatives(for item: WorkoutItem, limit: Int = 8) -> [LibraryExercise] {
         let source = match(for: item)
         let primary = Set(item.muscles.isEmpty ? (source?.primary ?? []) : item.muscles)
         guard !primary.isEmpty else { return [] }
         let secondary = Set(source?.secondary ?? [])
         let name = item.name.lowercased()
+        let movement = ExerciseCatalog.tokens(item.name).subtracting(ExerciseCatalog.equipmentWords)
         var scored: [(Double, LibraryExercise)] = []
         for exercise in exercises {
             guard exercise.id != source?.id, exercise.name.lowercased() != name, exercise.mode == item.mode || item.mode == .reps && exercise.mode == .reps else { continue }
             let sharedPrimary = primary.intersection(exercise.primary).count
             guard sharedPrimary > 0 else { continue }
-            var score = Double(sharedPrimary) * 3 - Double(Set(exercise.primary).subtracting(primary).count)
+            var score = Double(sharedPrimary) * 3 - Double(Set(exercise.primary).subtracting(primary).count) * 1.5
             score += Double(secondary.intersection(exercise.secondary).count) * 0.5
+            let words = ExerciseCatalog.tokens(exercise.name).subtracting(ExerciseCatalog.equipmentWords)
+            score += Double(movement.intersection(words).count) * 2.5
             if let source {
-                if exercise.force != nil, exercise.force == source.force { score += 1 }
-                if exercise.mechanic != nil, exercise.mechanic == source.mechanic { score += 1 }
+                if exercise.force != nil, exercise.force == source.force { score += 1.5 }
+                if exercise.mechanic != nil, exercise.mechanic == source.mechanic { score += 1.5 }
                 if exercise.kind == source.kind { score += 0.5 }
                 if exercise.equipment != source.equipment { score += 0.5 }
             }
+            if let equipment = exercise.equipment?.lowercased() {
+                score += ExerciseCatalog.commonEquipment.contains(equipment) ? 1 : -1.5
+            }
+            if exercise.level == "expert" { score -= 1 }
+            if exercise.name.contains("(") { score -= 1 }
             if !exercise.images.isEmpty { score += 0.3 }
             scored.append((score, exercise))
         }
         return scored.sorted { $0.0 != $1.0 ? $0.0 > $1.0 : $0.1.name < $1.1.name }.prefix(limit).map(\.1)
     }
 }
-
