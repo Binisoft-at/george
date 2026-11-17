@@ -77,7 +77,8 @@ struct WorkoutRecap: Identifiable, Equatable {
             .map { item, _ in
                 let top = item.sets.filter(\.isDone).max { ($0.effectiveWeight ?? 0, $0.effectiveReps ?? 0) < ($1.effectiveWeight ?? 0, $1.effectiveReps ?? 0) }
                 let best = top.map { $0.label(mode: item.mode, unit: store.unit) } ?? ""
-                return Highlight(name: item.name, detail: "\(item.completedSets) × · best \(best)")
+                let sets = item.completedSets == 1 ? "1 set" : "\(item.completedSets) sets"
+                return Highlight(name: item.name, detail: best.isEmpty ? sets : "\(sets) · best \(best)")
             }
         let heartRate = averageHeartRate ?? metrics?.averageHeartRate
         let measuredEnergy = metrics?.activeEnergyKcal ?? 0
@@ -434,6 +435,7 @@ struct ShareRecapButton: View {
         } label: {
             Label("Share", systemImage: "square.and.arrow.up")
                 .font(.headline)
+                .foregroundStyle(.white)
                 .frame(maxWidth: prominent ? .infinity : nil, minHeight: prominent ? 44 : nil)
         }
         .buttonStyle(.glassProminent)

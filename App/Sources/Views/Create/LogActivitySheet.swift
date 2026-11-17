@@ -90,8 +90,10 @@ struct LogActivitySheet: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .foregroundStyle(preset == option ? Color.white : option.kind.color)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(preset == option ? option.kind.color : option.kind.color.opacity(0.12)))
+                            .frame(minHeight: 52)
+                            // Selected: the accent colour (readable white on it); the others neutral.
+                            .foregroundStyle(preset == option ? Color.white : Color.primary)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(preset == option ? Color.accentColor : Color.secondary.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(preset == option ? .isSelected : [])

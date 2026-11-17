@@ -82,7 +82,7 @@ struct LiveWorkoutView: View {
         }
         .sheet(item: $dropRequest) { request in
             DropWeightSheet(request: request)
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.fraction(0.8), .large])
         }
         .sheet(item: $swapItem) { wrapper in
             LiveSwapSheet(itemID: wrapper.id)
@@ -226,7 +226,9 @@ struct LiveWorkoutView: View {
 
                 menu
             }
-            MomentumHeader(motivation: motivation) { showFinish = true }
+            if !live.content.isEmpty {
+                MomentumHeader(motivation: motivation) { showFinish = true }
+            }
             #if os(iOS)
             ExerciseStrip()
             #endif
@@ -912,9 +914,18 @@ struct CheckButton: View {
             if !isDone { burstTrigger += 1 }
             action()
         } label: {
-            Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
+            Group {
+                if isDone {
+                    // White check on the accent disc in light and dark mode alike.
+                    Image(systemName: "checkmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, Color.accentColor)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary.opacity(0.5))
+                }
+            }
                 .font(.system(size: isCurrent ? currentSize : openSize))
-                .foregroundStyle(isDone ? Color.accentColor : (isCurrent ? Color.accentColor : Color.secondary.opacity(0.5)))
                 .contentTransition(.symbolEffect(.replace))
                 .frame(minWidth: 52, minHeight: 52)
                 .contentShape(Rectangle())

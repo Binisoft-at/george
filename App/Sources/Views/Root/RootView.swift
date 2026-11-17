@@ -624,7 +624,7 @@ struct RootPresentation: ViewModifier {
                 case .planWeek:
                     PlanWeekSheet()
                 case .logActivity:
-                    LogActivitySheet()
+                    NavigationStack { LogActivitySheet() }
                 }
             }
             .sheet(isPresented: $router.showImport) {

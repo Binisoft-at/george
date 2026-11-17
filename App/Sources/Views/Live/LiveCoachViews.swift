@@ -125,7 +125,6 @@ struct CoachBar: View {
                 buttonLabel("play.fill", "Resume")
             }
             .buttonStyle(.glassProminent)
-            .tint(.gray)
             .accessibilityLabel("Resume the workout")
         } else if live.primaryIsStart {
             Button {
@@ -535,7 +534,6 @@ struct LivePanelSheet: View {
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(.gray)
             } else if live.currentSet != nil {
                 Button {
                     live.primaryAction()
@@ -808,21 +806,22 @@ struct OffPlanCard: View {
                     } label: {
                         Text("Stay on plan")
                             .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.glass)
                 }
+                // Short label (the exercise is named in the title above), accent for contrast.
                 Button {
                     live.continueOffPlan()
                 } label: {
-                    Text("Continue with \(notice.itemName)")
+                    Text("Continue here")
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(.orange)
+                .accessibilityLabel("Continue with \(notice.itemName)")
             }
         }
         .padding(14)

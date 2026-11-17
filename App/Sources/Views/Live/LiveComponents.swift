@@ -23,7 +23,7 @@ struct MomentumHeader: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Text("\(done) of \(live.content.totalSets) sets")
+                    Text("\(done) of \(live.content.totalSets) \(live.isFlow ? "holds" : "sets")")
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
