@@ -63,6 +63,8 @@ struct GeorgeApp: App {
     var body: some Scene {
         WindowGroup(id: "main") {
             RootView()
+                // Inside the environment below (it reads the store): reschedules training reminders.
+                .reminderScheduling()
                 .environment(store)
                 .environment(library)
                 .environment(health)
@@ -72,7 +74,6 @@ struct GeorgeApp: App {
                 .environment(sync)
                 .environment(toasts)
                 .environment(router)
-                .reminderScheduling()
                 .appearanceFromSettings()
                 #if os(iOS)
                 .toasts(toasts, bottomPadding: 120)
