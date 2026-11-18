@@ -1,0 +1,1 @@
+ok: George.app has every entitlement from Config/macOS/George.entitlements
