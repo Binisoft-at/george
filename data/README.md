@@ -16,12 +16,27 @@ The generated file holds 1,172 exercises (876 + 296). Per kind: gym 617, stretch
 - A curated entry can borrow pictures from free-exercise-db through `imageFrom` (a free-exercise-db id), but only when that entry shows a visually equivalent movement. Otherwise `imageFrom` is `null` and `images` is empty.
 - Curated names must not duplicate any free-exercise-db name. The check ignores case and punctuation. If a movement already exists there under the same name, it is left out of the curated file.
 
+## Checked how-to guidance (`howto.json`)
+
+Stretching, yoga and mobility entries (both sources) get checked guidance from `howto.json`, keyed by
+exercise id:
+
+- `steps`: 3 to 5 coaching cues written for George (starting position, how to get into it, where
+  you feel it, breathing and hold, one common mistake or easier option). They replace the source's
+  steps. They are our own words: the reference pages were used to check the movement, nothing is
+  copied from them.
+- `references`: one or two pages that show the movement with photos or video (Yoga Journal, Yoga
+  Basics, Ekhart Yoga, ACE, NASM, Cleveland Clinic, NHS, Healthline …). Every URL was found through a
+  web search for that exact movement; the app opens them in the in-app browser ("How-to with photos").
+- `perSide`: set when the source had it wrong (a one-sided stretch marked as two-sided or the other way).
+- `confidence` / `note`: research notes, not used by the app.
+
 ## Regenerating
 
 From the repository root (Python 3, standard library only):
 
 ```sh
-python3 -I scripts/build_exercise_db.py data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json
+python3 -I scripts/build_exercise_db.py data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json data/howto.json
 ```
 
 The script:

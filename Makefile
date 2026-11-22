@@ -38,7 +38,7 @@ build-mac: generate
 		CODE_SIGNING_ALLOWED=NO build 2>&1 | tee mac-build.log | $(XCBEAUTIFY)
 
 library:        ## Rebuild the bundled exercise library
-	python3 scripts/build_exercise_db.py data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json
+	python3 scripts/build_exercise_db.py data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json data/howto.json
 
 clean:
 	rm -rf $(DERIVED) $(APP).xcodeproj Packages/$(APP)Core/.build ci-logs *.log

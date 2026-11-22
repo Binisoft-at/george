@@ -9,6 +9,37 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         public var restSec: Int?
     }
 
+    /// A page that shows how it's done, with photos or video (Yoga Journal, ACE, NHS …).
+    public struct Reference: Codable, Hashable, Sendable {
+        public var site: String
+        public var title: String
+        public var url: String
+
+        public init(site: String, title: String, url: String) {
+            self.site = site
+            self.title = title
+            self.url = url
+        }
+    }
+
+    /// Who made the preview picture and under which licence (Wikimedia Commons).
+    public struct ImageCredit: Codable, Hashable, Sendable {
+        public var author: String
+        public var license: String
+        public var licenseUrl: String?
+        public var filePage: String?
+
+        public init(author: String, license: String, licenseUrl: String? = nil, filePage: String? = nil) {
+            self.author = author
+            self.license = license
+            self.licenseUrl = licenseUrl
+            self.filePage = filePage
+        }
+
+        /// "Photo: Jane Doe · CC BY-SA 4.0"
+        public var line: String { "Picture: \(author) · \(license)" }
+    }
+
     public var id: String
     public var name: String
     public var kind: WorkoutKind
@@ -27,16 +58,21 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
     public var perSide: Bool
     public var images: [String]
     public var symbol: String?
+    /// How-to pages with photos or video (checked sources).
+    public var references: [Reference]
+    /// Licence information for a preview picture from Wikimedia Commons.
+    public var credit: ImageCredit?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, kind, category, equipment, level, force, mechanic, primary, secondary, steps, aliases, tags, mode, defaults, perSide, images, symbol
+        case id, name, kind, category, equipment, level, force, mechanic, primary, secondary, steps, aliases, tags, mode, defaults, perSide, images, symbol, references, credit
     }
 
     public init(
         id: String, name: String, kind: WorkoutKind, category: String = "strength", equipment: String? = nil,
         level: String? = nil, force: String? = nil, mechanic: String? = nil, primary: [String] = [],
         secondary: [String] = [], steps: [String] = [], aliases: [String] = [], tags: [String] = [],
-        mode: ExerciseMode = .reps, defaults: Defaults? = nil, perSide: Bool = false, images: [String] = [], symbol: String? = nil
+        mode: ExerciseMode = .reps, defaults: Defaults? = nil, perSide: Bool = false, images: [String] = [], symbol: String? = nil,
+        references: [Reference] = [], credit: ImageCredit? = nil
     ) {
         self.id = id
         self.name = name
@@ -56,6 +92,8 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         self.perSide = perSide
         self.images = images
         self.symbol = symbol
+        self.references = references
+        self.credit = credit
     }
 
     public init(from decoder: Decoder) throws {
@@ -78,7 +116,12 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         perSide = try c.decodeIfPresent(Bool.self, forKey: .perSide) ?? false
         images = try c.decodeIfPresent([String].self, forKey: .images) ?? []
         symbol = try c.decodeIfPresent(String.self, forKey: .symbol)
+        references = (try? c.decodeIfPresent([Reference].self, forKey: .references)) ?? []
+        credit = try? c.decodeIfPresent(ImageCredit.self, forKey: .credit)
     }
+
+    /// Stretching, yoga and mobility: positions people need to see described, not just named.
+    public var needsGuidance: Bool { ["stretch", "yoga", "mobility"].contains(kind.rawValue) }
 
     public var source: String { id.split(separator: ":").first.map(String.init) ?? "custom" }
 

@@ -7,7 +7,10 @@ writes a compact JSON file for the app bundle.
 
 Usage:
     python3 scripts/build_exercise_db.py \
-        data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json
+        data/free-exercise-db.json data/curated_exercises.json App/Resources/exercises.json [data/howto.json]
+
+The optional howto file holds checked how-to guidance keyed by exercise id: steps written for
+George (replacing the source's), references (pages with photos or video) and perSide fixes.
 
 Python 3 standard library only. Exits non-zero if validation fails.
 """
@@ -41,7 +44,8 @@ KEYS = (
     "primary", "secondary", "steps", "aliases", "tags", "mode", "defaults",
     "perSide", "imageFrom", "symbol",
 )
-OUTPUT_KEYS = KEYS + ("images",)
+OUTPUT_KEYS = KEYS + ("images", "references")
+REFERENCE_KEYS = ("site", "title", "url")
 DEFAULT_KEYS = ("sets", "reps", "holdSec", "restSec")
 
 KINDS = {"band", "gym", "bodyweight", "stretch", "yoga", "mobility", "cardio", "core", "hiit"}
@@ -393,11 +397,42 @@ def validate(exercises, errors, warnings):
 # main
 # --------------------------------------------------------------------------
 
+def apply_howto(exercises, howto, errors):
+    """Merges checked guidance (steps, references, perSide) into the converted entries."""
+    by_id = {e["id"]: e for e in exercises}
+    for ex_id, h in howto.items():
+        where = "howto " + ex_id
+        e = by_id.get(ex_id)
+        if e is None:
+            errors.append(where + ": no exercise with this id")
+            continue
+        steps = h.get("steps")
+        if steps is not None:
+            if not is_str_list(steps) or not 2 <= len(steps) <= 6 or any(not s.strip() for s in steps):
+                errors.append(where + ": steps must be 2 to 6 non-empty strings")
+            else:
+                e["steps"] = [s.strip() for s in steps]
+        refs = h.get("references") or []
+        clean = []
+        for r in refs:
+            if not isinstance(r, dict) or any(not isinstance(r.get(k), str) or not r.get(k).strip() for k in REFERENCE_KEYS):
+                errors.append(where + ": reference needs site, title and url")
+                continue
+            if not r["url"].startswith("https://"):
+                errors.append(where + ": reference url must be https: " + r["url"])
+                continue
+            clean.append({k: r[k].strip() for k in REFERENCE_KEYS})
+        e["references"] = clean
+        if isinstance(h.get("perSide"), bool):
+            e["perSide"] = h["perSide"]
+
+
 def main(argv):
-    if len(argv) != 4:
+    if len(argv) not in (4, 5):
         print(__doc__.strip(), file=sys.stderr)
         return 2
-    fedb_path, curated_path, out_path = argv[1:]
+    fedb_path, curated_path, out_path = argv[1:4]
+    howto_path = argv[4] if len(argv) == 5 else None
 
     fedb_raw = load_json(fedb_path)
     curated_raw = load_json(curated_path)
@@ -419,6 +454,14 @@ def main(argv):
         converted = convert_curated(c, fedb_by_id, errors)
         if converted is not None:
             exercises.append(converted)
+
+    for e in exercises:
+        e.setdefault("references", [])
+    if howto_path:
+        howto = load_json(howto_path)
+        if not isinstance(howto, dict):
+            fail(howto_path + ": expected a JSON object keyed by exercise id")
+        apply_howto(exercises, howto, errors)
 
     validate(exercises, errors, warnings)
 

@@ -73,11 +73,31 @@ struct RoutineDetailView: View {
             }
             Section("Moves") {
                 ForEach(content.allItems) { item in
-                    HStack(spacing: 12) {
-                        ExerciseThumb(urls: library.imageURLs(for: item), symbol: (item.kind ?? routine.kind).symbol, tint: routine.kind.color, size: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name).font(.subheadline.weight(.semibold))
-                            Text(item.prescription(unit: store.unit)).font(.caption).foregroundStyle(.secondary)
+                    // Each move unfolds to its steps – learn the routine before starting it.
+                    DisclosureGroup {
+                        if let exercise = library.exercise(for: item) {
+                            ForEach(Array(exercise.steps.enumerated()), id: \.offset) { index, step in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text("\(index + 1)").font(.caption.weight(.bold)).foregroundStyle(routine.kind.color)
+                                    Text(step).font(.callout)
+                                }
+                            }
+                            ForEach(exercise.references, id: \.url) { reference in
+                                if let url = URL(string: reference.url) {
+                                    Link(destination: url) {
+                                        Label("How-to with photos · \(reference.site)", systemImage: "photo.on.rectangle.angled")
+                                            .font(.subheadline)
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            ExerciseThumb(urls: library.imageURLs(for: item), symbol: (item.kind ?? routine.kind).symbol, tint: routine.kind.color, size: 40)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name).font(.subheadline.weight(.semibold))
+                                Text(item.prescription(unit: store.unit)).font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

@@ -168,6 +168,30 @@ struct ExerciseDetailView: View {
                 }
             }
             Section {
+                // Checked how-to pages with photos or video (Yoga Journal, ACE, NHS …).
+                ForEach(exercise.references, id: \.url) { reference in
+                    Button {
+                        playing = URL(string: reference.url)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .foregroundStyle(Color.accentColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("How-to with photos · \(reference.site)")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text(reference.title)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.right.square")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
                 Button {
                     playing = TutorialLinks.youtubeSearch(for: exercise.name, kind: exercise.kind)
                 } label: {

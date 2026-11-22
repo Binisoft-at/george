@@ -534,9 +534,10 @@ struct LiveExerciseCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ExerciseAnimation(urls: library.imageURLs(for: item), symbol: (item.kind ?? .gym).symbol, tint: .accentColor)
-                // Smaller once you know the movement – the sets matter more then.
-                .frame(height: item.completedSets > 0 ? 96 : 150)
+            let pictures = library.imageURLs(for: item)
+            ExerciseAnimation(urls: pictures, symbol: library.exercise(for: item)?.displaySymbol ?? (item.kind ?? .gym).symbol, tint: .accentColor)
+                // Smaller once you know the movement – the sets matter more then; just a symbol stays small.
+                .frame(height: pictures.isEmpty ? 72 : (item.completedSets > 0 ? 96 : 150))
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .onTapGesture(count: 2) {
@@ -584,6 +585,10 @@ struct LiveExerciseCard: View {
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Your setup: \(setup)")
                 }
+            }
+
+            if let exercise = library.exercise(for: item), exercise.needsGuidance {
+                HowToCard(exercise: exercise, item: item)
             }
 
             StationChips(item: item)
@@ -642,7 +647,8 @@ struct TutorialRow: View {
             }
             .buttonStyle(.glass)
             .tint(.red)
-            if let exercise = library.exercise(for: item), !exercise.steps.isEmpty {
+            // Stretches, yoga and mobility show their steps above (HowToCard).
+            if let exercise = library.exercise(for: item), !exercise.steps.isEmpty, !exercise.needsGuidance {
                 DisclosureGroup("How to") {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(exercise.steps.enumerated()), id: \.offset) { index, step in
@@ -1344,6 +1350,75 @@ struct ExerciseStrip: View {
                 withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
             }
         }
+    }
+}
+
+/// Stretches, yoga and mobility: how to get into the position, visible right away (not folded
+/// away), with a checked how-to page with photos or video and a video search.
+struct HowToCard: View {
+    let exercise: LibraryExercise
+    let item: WorkoutItem
+    @Environment(\.liveActions) private var actions
+    @Environment(LiveWorkoutController.self) private var live
+    @AppStorage("live.howToCollapsed") private var collapsed = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.snappy) { collapsed.toggle() }
+            } label: {
+                HStack {
+                    Label("How to", systemImage: "figure.mind.and.body")
+                        .font(.subheadline.weight(.bold))
+                    Spacer()
+                    Image(systemName: collapsed ? "chevron.down" : "chevron.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(collapsed ? "Shows the steps" : "Hides the steps")
+            if !collapsed {
+                ForEach(Array(exercise.steps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(index + 1)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(minWidth: 18)
+                        Text(step)
+                            .font(.callout)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(exercise.references, id: \.url) { reference in
+                            Button {
+                                if let url = URL(string: reference.url) { actions.tutorial(url) }
+                            } label: {
+                                Label("Photos · \(reference.site)", systemImage: "photo.on.rectangle.angled")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .buttonStyle(.glass)
+                        }
+                        Button {
+                            if let link = item.links.first.flatMap(URL.init(string:)) ?? TutorialLinks.youtubeSearch(for: exercise.name, kind: exercise.kind) {
+                                actions.tutorial(link)
+                            }
+                        } label: {
+                            Label("Video", systemImage: "play.rectangle.fill")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.glass)
+                    }
+                }
+                .scrollClipDisabled()
+            }
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 }
 
