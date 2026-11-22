@@ -6,7 +6,13 @@
    "Hold for 20–30 seconds while breathing slowly, then bend the knee and switch legs.",
    "Keep the other leg and your lower back flat on the floor; you don't need to fully straighten the knee."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Tight Hamstring: Treatment, Causes, Prevention, and More",
+    "url": "https://www.healthline.com/health/tight-hamstring"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Old steps described 10–20 reps; rewritten as a hold to match mode 'time' (it can also be done as slow extend-and-bend reps). One leg at a time, so perSide should be true."
@@ -54,7 +60,13 @@
    "Hold for 20–30 seconds while breathing slowly, then switch sides.",
    "Brace your core so your lower back doesn't sag; if you can't reach the foot, loop a towel or strap around it."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "One Handed Tiger Pose (Eka Hasta Vyaghrasana) Instructions & Photos",
+    "url": "https://www.yogabasics.com/asana/one-handed-tiger/"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. One leg at a time, so perSide should be true."
@@ -67,7 +79,18 @@
    "Breathe normally and circle for about 15–20 seconds in each direction, then switch feet.",
    "Keep the knee and shin still; sit on a chair instead if balancing is hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Ankle Stretches: Strengthening, Flexibility, and More",
+    "url": "https://www.healthline.com/health/fitness-exercise/ankle-stretches"
+   },
+   {
+    "site": "healthline.com",
+    "title": "12 Exercises to Improve Ankle Mobility",
+    "url": "https://www.healthline.com/health/ankle-mobility"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. One foot at a time, so perSide should be true."
@@ -80,7 +103,18 @@
    "Keep your head and shoulders relaxed on the floor and hold for 20–30 seconds while breathing slowly, then switch sides.",
    "If you can't reach the thigh comfortably, keep the bottom foot on the floor or use a strap."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "Stretches and Exercises to Strengthen Hips, From a PT",
+    "url": "https://www.hss.edu/health-library/move-better/hip-strengthening-exercises"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "7 Best Stretches & Exercises for Piriformis Syndrome",
+    "url": "https://health.clevelandclinic.org/piriformis-syndrome-stretches-exercises"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. This is the lying figure-four stretch; one side at a time, so perSide should be true."
@@ -93,7 +127,18 @@
    "Pause on any tender spot for 20–30 seconds while breathing slowly, then switch legs.",
    "Keep off the bony front edge of the shin and ease the pressure if it feels sharp."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Get Rid of Shin Splints: Stretches, Prevention Tips",
+    "url": "https://www.healthline.com/health/how-to-get-rid-of-shin-splints"
+   },
+   {
+    "site": "healthline.com",
+    "title": "14 Ways to Give a Leg Massage — and When Not To",
+    "url": "https://www.healthline.com/health/leg-massage"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Tibialis anterior sits at the front of the shin, but the entry's primary muscle is 'calves'. One leg at a time, so perSide should be true."
@@ -106,7 +151,13 @@
    "Breathe normally and circle forward for 10–15 seconds, then reverse for the same time.",
    "Keep your arms straight and core braced; if your arms tire, lower them briefly and restart."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "8 Bodyweight Arm Exercises You Can Do Without Weights",
+    "url": "https://www.healthline.com/health/fitness-exercise/arm-exercises-no-weights"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -118,7 +169,13 @@
    "Relax and breathe out as your partner gently eases your elbows back, then hold for 20–30 seconds; feel it across your chest and front shoulders.",
    "Don't pull on your head or neck, and tell your partner straight away when the stretch is enough."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "5 Chest Stretch Variations to Improve Flexibility",
+    "url": "https://www.acefitness.org/resources/everyone/blog/5657/5-chest-stretch-variations/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Partner-assisted contract-relax (PNF) stretch; it needs a partner. Fixed the typo 'behind your hand' in the old steps."
  },
@@ -155,7 +212,18 @@
    "Hold for 20–30 seconds while breathing slowly, then switch legs.",
    "Don't let the back heel lift or the foot turn out; bend the back knee slightly to stretch the lower calf."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "kentcht.nhs.uk",
+    "title": "Calf stretching exercises (Kent Community Health NHS leaflet)",
+    "url": "https://www.kentcht.nhs.uk/leaflet/calf-stretching-exercises/"
+   },
+   {
+    "site": "mayoclinic.org",
+    "title": "Calf stretch exercise - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/diseases-conditions/achilles-tendon-rupture/multimedia/calf-stretch-exercise/img-20008632"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Staggered stance stretches one calf at a time, so perSide should be true."
@@ -192,7 +260,18 @@
    "Hold for 15–30 seconds while breathing slowly, then return to a flat back.",
    "Pad your knees if they're sensitive, and let your head hang rather than forcing your chin into your chest."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Cat Pose: How to Practice Marjaryasana",
+    "url": "https://www.yogajournal.com/poses/cat-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Cat Tilt Pose - Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/cat-tilt-pose/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. This is the yoga Cat pose (Marjaryasana)."
  },
@@ -217,7 +296,13 @@
    "Hold for 10–30 seconds while breathing into your side ribs, then come back up and switch sides.",
    "Keep both sitting bones on the seat and bend straight to the side rather than leaning forward."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "Best Seated Chair Exercises for Seniors",
+    "url": "https://health.clevelandclinic.org/chair-exercises-for-seniors"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. This is really a seated side bend (lats and side of the lower back). One side at a time, so perSide should be true."
@@ -230,7 +315,18 @@
    "Hold for 20–30 seconds while breathing slowly.",
    "Keep your shoulders down away from your ears and ease off if you feel pinching at the front of the shoulder."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Six Stretches to Do at Work",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/six-stretches-to-do-at-work/"
+   },
+   {
+    "site": "torbayandsouthdevon.nhs.uk",
+    "title": "Chair based home exercise programme (Torbay and South Devon NHS)",
+    "url": "https://www.torbayandsouthdevon.nhs.uk/uploads/chair-based-home-exercise-programme.pdf"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Old steps were vague about hand position; this assumes hands behind you on the chair back, which matches the listed muscles."
  },
@@ -242,7 +338,18 @@
    "Hold for 15–30 seconds while breathing slowly, then bring the stick back over to the front.",
    "Widen your grip if you have to bend your elbows or arch your lower back to get the stick back."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Shoulder Mobility Exercises and Stretches with Pictures",
+    "url": "https://www.healthline.com/health/shoulder-mobility-exercises"
+   },
+   {
+    "site": "healthline.com",
+    "title": "The Daily Exercise Routine for Wheelchair Users",
+    "url": "https://www.healthline.com/health/fitness-exercise/wheelchair-users"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Old steps had no hold or finish; added."
  },
@@ -267,7 +374,18 @@
    "Breathe slowly into your back and hold for 30–60 seconds.",
    "Put a cushion under your hips or a block under your forehead if they don't reach, and skip the pose if it hurts your knees."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Child's Pose: How to Practice Balasana",
+    "url": "https://www.yogajournal.com/poses/child-s-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Child's pose (Balasana): Instructions, Tips & Benefits",
+    "url": "https://www.yogabasics.com/asana/child/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. This is Balasana; current steps were correct apart from missing the knee setup."
  },
@@ -279,7 +397,18 @@
    "Hold for 20–30 seconds while breathing slowly.",
    "Don't pull hard on your head; let your arms rest, and stop if you feel tingling or pain down your arms."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "physio-pedia.com",
+    "title": "Longissimus Capitis - Physiopedia",
+    "url": "https://www.physio-pedia.com/Longissimus_Capitis"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Neck Flexion Exercises: Rotation, Extension, and Lateral Bending",
+    "url": "https://www.healthline.com/health/neck-flexion"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out."
  },
@@ -291,7 +420,13 @@
    "Turn back to centre, step up to standing and repeat on the other side, alternating steadily for 30–45 seconds and breathing out on each twist.",
    "Turn from your upper body and keep the front knee pointing straight over your toes; take a shorter step if you lose balance."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Exercise Library: Reverse Lunge with Rotation",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/360/reverse-lunge-with-rotation/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. The name is ambiguous: the old steps say to rotate 'across the front leg', read here as twisting toward the front-leg side. It is a dynamic alternating move filed under mode 'time'."
  },
@@ -303,7 +438,18 @@
    "Breathe in to sit tall, then breathe out and turn to the right, feeling the stretch in your lower back and outer right hip; hold 20–30 seconds, then switch sides.",
    "Keep both sitting bones down and your spine long rather than slumped; sit on a folded towel if your back rounds."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "This Seated Twist Stretches Your Spine, Engages Your Core, and Enhances Your Awareness",
+    "url": "https://www.yogajournal.com/practice/seated-twist-marichyasana-iii/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "7 Lower Back Stretches to Reduce Pain and Improve Mobility",
+    "url": "https://www.healthline.com/health/lower-back-stretches"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. This is a seated spinal twist (like a simple Half Lord of the Fishes). It works one side at a time, so perSide should be true."
@@ -316,7 +462,13 @@
    "Breathe in as your arms rise and out as they drop, keeping a steady rhythm for the set time (about 10-15 swings).",
    "Avoid arching your lower back or shrugging as the arms go up; keep your ribs down and the swing controlled rather than flung."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Shoulder Mobility Exercises and Stretches with Pictures",
+    "url": "https://www.healthline.com/health/shoulder-mobility-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -328,7 +480,18 @@
    "Breathe in as you open and out as you close, starting slowly and building speed and range for the set time (about 10-15 swings).",
    "Don't arch your lower back or fling your arms past a comfortable range; a slight bend in the elbows eases strain on the shoulders."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "The 8 Best Biceps Stretches to Support Long-Term Arm Thickness and Strength",
+    "url": "https://barbend.com/biceps-stretches/"
+   },
+   {
+    "site": "stack.com",
+    "title": "Flexibility: More Than Just Stretching",
+    "url": "https://www.stack.com/a/increasing-flexibility-involves-more-than-just-stretching/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -340,7 +503,13 @@
    "Breathe out as you start each circle and in as you finish it, continuing smoothly for the set time, about 10 circles each way.",
    "Keep your neck relaxed and avoid shrugging; make the circles smaller if you feel pinching at the front of the shoulder."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yorkhospitals.nhs.uk",
+    "title": "General Shoulder Mobility Exercises (York Hospitals NHS)",
+    "url": "https://www.yorkhospitals.nhs.uk/seecmsfile/?id=7635"
+   }
+  ],
   "confidence": "medium",
   "note": "No preferred-site page found; only fitness-app pages describe this exact drill."
  },
@@ -412,7 +581,18 @@
    "Breathe steadily and swing for the set time (about 10-15 swings), then turn around and switch legs.",
    "Keep your torso upright and avoid rounding your back or kicking hard; only swing as high as you can control."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "Static and Dynamic Stretching: Tips for Athletes",
+    "url": "https://www.hss.edu/health-library/move-better/static-dynamic-stretching"
+   },
+   {
+    "site": "barbend.com",
+    "title": "The Best 8 Stretches to Do Before a Run, According to a CPT",
+    "url": "https://barbend.com/stretches-to-do-before-a-run/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Standing front-to-back leg swings; done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -425,7 +605,18 @@
    "Breathe out as you curl down, pause briefly, then breathe in as you sit back up tall; repeat smoothly for the set time (about 10-20 reps).",
    "Don't pull on your neck with your hands; if your hips are tight, slide your feet farther away or hold your ankles instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Seated Butterfly Stretch (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/216/seated-butterfly-stretch/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "A Better Butterfly Stretch for Tight Hips",
+    "url": "https://www.healthline.com/health/butterfly-stretch"
+   }
+  ],
   "confidence": "medium",
   "note": "Seated butterfly with a forward curl; source describes 10-20 reps, so mode 'reps' may fit better. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -437,7 +628,18 @@
    "Breathe out as your feet come in and keep a steady rhythm for the set time (about 10-20 reps).",
    "Don't let your hips sag or pike in the plank; for an easier version, step one foot at a time up beside the same-side hand, alternating."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "4 Highly Effective Drills to Increase Speed",
+    "url": "https://www.stack.com/a/highly-effective-speed-drills/"
+   },
+   {
+    "site": "barbend.com",
+    "title": "Dynamic Warm Up - Why (and How) Fitness, Strength, and Power Athletes Should Do Them",
+    "url": "https://barbend.com/news/dynamic-warm-up/"
+   }
+  ],
   "confidence": "low",
   "note": "Ambiguous name: 'groiner' also commonly means an alternating step of one foot outside the hand (spider-man lunge). Steps follow the source's two-foot jump, with feet landing wide. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -473,7 +675,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), relaxing a little deeper as you breathe out, then switch legs.",
    "Keep your hips and the resting leg on the floor and don't yank the strap; bend the resting knee, foot flat, if your lower back strains."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "5 Super Stretches to Loosen Your Lower Back, from a PT",
+    "url": "https://www.hss.edu/health-library/move-better/stretches-to-loosen-lower-back"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Hamstring Stretches for Bikers",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/the-ticket-for-taut-hamstrings/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Supine strap hamstring stretch done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -486,7 +699,18 @@
    "Breathe steadily, make several slow circles one way and then reverse for the set time, then switch legs.",
    "Keep your hips and shoulders level and don't let your lower back sag or twist; make the circles smaller if you lose control."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "Kick Your Own Ass With the 10 Best Bodyweight Glute Exercises",
+    "url": "https://barbend.com/bodyweight-glute-exercises/"
+   },
+   {
+    "site": "stack.com",
+    "title": "Strong and Mobile Hips, Part 2: Hip Flexibility",
+    "url": "https://www.stack.com/a/strong-and-mobile-hips-part-2-hip-flexibility/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Quadruped hip circles done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -511,7 +735,18 @@
    "Breathe slowly and hold for the set time, letting your lower back relax a little more each time you breathe out.",
    "Hold under the knees rather than over the shins to spare your knees, and bring one knee in at a time if both feels like too much."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "Back exercises in 15 minutes a day - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/adult-health/in-depth/back-pain/art-20546859"
+   },
+   {
+    "site": "physio-pedia.com",
+    "title": "Williams Flexion Exercise - Physiopedia",
+    "url": "https://www.physio-pedia.com/Williams_Flexion_Exercise"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -523,7 +758,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then bring the leg back to center and switch sides.",
    "Keep the opposite shoulder on the floor and only cross as far as your hips stay comfortable; soften the knee if the back of the thigh pulls too much."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Supine IT Band Stretch (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/232/supine-it-band-stretch/"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "IT Band Stretches for Tight Muscles",
+    "url": "https://health.clevelandclinic.org/it-band-stretches"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -560,7 +806,18 @@
    "Breathe steadily and repeat the walk-out and walk-in for the set time (about 5-8 reps).",
    "Brace your core so your hips don't sag in the plank, and bend your knees as much as needed to reach the floor."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Exercise Library: Inchworms",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/254/inchworms/"
+   },
+   {
+    "site": "barbend.com",
+    "title": "How To Do the Inchworm Exercise Correctly (+ Guides and Tips)",
+    "url": "https://barbend.com/inchworm-exercise/"
+   }
+  ],
   "confidence": "medium",
   "note": "Dynamic drill; mode 'reps' may fit better than 'time'. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -572,7 +829,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then bring the leg back to center and switch sides.",
    "Keep the opposite hip pressed to the floor so your pelvis doesn't roll, and rest the outer thigh on a cushion if it's too intense."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Reclining Hand-to-Big-Toe Pose I (Supta Padangusthasana I)",
+    "url": "https://www.yogajournal.com/poses/anatomy/hips/reclining-big-toe-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "This Overlooked Yoga Pose Brings You a Different Kind of Challenge",
+    "url": "https://www.yogajournal.com/practice/supta-padangusthasana-reclining-hand-to-big-toe-pose/?scope=anon"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Done one leg at a time, so perSide should be true. Primary muscle listed as hamstrings; the main target is the adductors (groin). No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -585,7 +853,13 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then lower the leg and switch sides.",
    "Keep both hips pressed into the floor and avoid arching your lower back; just bending the knee without lifting the thigh is an easier option."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "8 Satisfying Quad Stretches to Relieve Tight Muscles",
+    "url": "https://www.yogajournal.com/practice/quad-stretches-for-muscle-tension/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -598,7 +872,18 @@
    "Return to the start with control and repeat with the other leg, breathing out as you reach, alternating for the set time (about 10 per side).",
    "Keep both shoulders and your chest on the floor, reach only as far as is comfortable, and move smoothly instead of flinging the leg."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "Scorpion Stretch (STACK exercise library)",
+    "url": "https://www.stack.com/exercise/6178/scorpion-stretch"
+   },
+   {
+    "site": "barbend.com",
+    "title": "4 Warm Up Exercises You're Not Doing (But Should Be)",
+    "url": "https://barbend.com/underrated-warm-up-exercises/"
+   }
+  ],
   "confidence": "medium",
   "note": "Also commonly called the scorpion stretch; alternates legs. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -610,7 +895,13 @@
    "Breathe slowly and hold for the set time, letting the knee sink a little more as you breathe out, then switch sides.",
    "The knee doesn't need to reach the floor; rest it on a cushion if you're tight, and keep the opposite shoulder from lifting."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Supine Spinal Twist: Steps, Benefits & Modifications",
+    "url": "https://www.yogabasics.com/asana/knee-down-twist/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Supine knee-across twist; the source says to switch sides, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -647,7 +938,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then switch legs.",
    "Don't arch your lower back to get deeper, and put a folded towel or pad under the back knee for comfort."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "Four Hip Flexor Stretches to Relieve Tightness, from a PT",
+    "url": "https://www.hss.edu/health-library/move-better/hip-flexor-stretch"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Hip Flexor Exercises to Strengthen and Stretch",
+    "url": "https://www.healthline.com/health/fitness-exercise/hip-flexor-exercises"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Half-kneeling hip flexor stretch; the source says to repeat on the other side, so perSide should be true. Secondary muscle duplicates primary (quadriceps). No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -679,7 +981,18 @@
    "Breathe slowly and hold for the set time, then switch legs.",
    "It's fine if the knee stays slightly bent; don't pull on the knee joint itself or lift your hips and head off the floor."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Tight Hamstring: Treatment, Causes, Prevention, and More",
+    "url": "https://www.healthline.com/health/tight-hamstring"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Reclining Hand-to-Big-Toe Pose I (Supta Padangusthasana I)",
+    "url": "https://www.yogajournal.com/poses/reclining-big-toe-pose/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Done one leg at a time, so perSide should be true. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
@@ -692,7 +1005,18 @@
    "Feel the stretch along the fronts of your thighs and hips, your abs and chest, and breathe steadily as you hold for the set time.",
    "Keep your hips over your knees and don't crunch your neck; keep your hands on your lower back or tuck your toes to make it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Camel Pose: How to Practice Ustrasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/camel-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Camel Pose (Ustrasana) • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/camel/"
+   }
+  ],
   "confidence": "medium",
   "note": "Essentially Camel Pose (Ustrasana). No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -704,7 +1028,13 @@
    "Breathe slowly and pause on tight spots for 10 to 30 seconds, then shift to the other side for the rest of the set time.",
    "Keep the pressure light and stop if you feel sharp or nerve pain; rolling your glutes and mid-back is a safer option."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Foam Roller for Back: 6 Exercises to Relieve Tightness and Pain",
+    "url": "https://www.healthline.com/health/roller-foam-for-back"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "Several coaching sources (e.g. ACE) advise against rolling directly on the lumbar spine; steps keep it gentle and off the spine. Consider replacing with a ball beside the spine or removing. Done one side at a time, so perSide true. Web search limit was reached."
@@ -717,7 +1047,13 @@
    "Breathe in as you lift, pause briefly, then breathe out as you lower; repeat smoothly for the set time (about 10-20 reps).",
    "Lift only as high as is comfortable without pinching in your lower back; keep your arms by your sides for an easier version."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Do Back Extension Exercises",
+    "url": "https://www.healthline.com/health/back-extension-exercise"
+   }
+  ],
   "confidence": "medium",
   "note": "Prone back extension; primary muscle should be lower back (erector spinae), not abdominals. Source describes reps, so mode 'reps' may fit better. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -729,7 +1065,13 @@
    "Hold the new position for the set time, breathing slowly, and repeat the squeeze-and-relax cycle 2-3 times.",
    "Tell your partner clearly when the stretch is enough; without a partner, just let gravity open your knees or press them gently with your own hands."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Passive Stretching: Benefits, Examples, and More",
+    "url": "https://www.healthline.com/health/exercise-fitness/passive-stretching"
+   }
+  ],
   "confidence": "medium",
   "note": "Partner-assisted (PNF contract-relax) butterfly stretch. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -862,7 +1204,13 @@
    "To reach the hip flexor too, lift that hip slightly toward the ceiling; breathe, hold 20–30 seconds, then switch sides.",
    "Don't let your lower back arch off the bench; loop a towel around the foot if you can't reach it."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "Four Hip Flexor Stretches to Relieve Tightness, from a PT",
+    "url": "https://www.hss.edu/health-library/move-better/hip-flexor-stretch"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "No reference found/verified (shared web-search budget ran out). One leg at a time, so perSide should be true."
@@ -904,7 +1252,18 @@
    "Feel the stretch across the front of the right thigh and hip, chest and shoulder; breathe steadily, hold 15–30 seconds, then switch sides.",
    "Keep your neck long and lift only as high as your lower back allows; loop a strap around the foot if you can't reach it."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Half Bow Pose (Ardha Dhanurasana) Instructions & Photos",
+    "url": "https://www.yogabasics.com/asana/half-bow/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "3 Ways to Use Props in Ardha Dhanurasana (Half Bow)",
+    "url": "https://yogainternational.com/article/view/use-props-in-ardha-dhanurasana/"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "No reference verified (shared web-search budget ran out). The movement is essentially Half Bow (Ardha Dhanurasana); holding both feet is full Bow. One side at a time, so perSide should be true."
@@ -917,7 +1276,13 @@
    "Breathe slowly, hold 10–20 seconds, then switch hands.",
    "Always keep some weight on your feet so the shoulder isn't jerked, and take more weight back onto your legs if the shoulder hurts."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Dead Hang: Benefits, How to, for Pullup, Variations, and More",
+    "url": "https://www.healthline.com/health/fitness-exercise/dead-hang"
+   }
+  ],
   "confidence": "low",
   "note": "No reference verified (shared web-search budget ran out). Feet-supported one-arm hang used as a lat stretch."
  },
@@ -965,7 +1330,18 @@
    "Breathe deeply, reaching a little taller on each exhale, and hold for 15–30 seconds.",
    "Don't lean back or arch your lower back; if your shoulders are tight, let your hands stay slightly in front of your head."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Stretching: Myths, Facts, and Beginner's Stretches",
+    "url": "https://www.healthline.com/health/fitness-exercise-stretching"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Desk Yoga: 5 Simple Poses for a Full-Body Stretch",
+    "url": "https://www.yogajournal.com/practice/desk-yoga/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out); standard standing reach."
  },
@@ -1032,7 +1408,18 @@
    "Breathe slowly, hold 15–30 seconds, then switch legs.",
    "Move gently and stop short of any ankle pain; bend the knee slightly if tight hamstrings make sitting upright hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Peroneal Tendonitis Stretches: For Healing and Pain Relief",
+    "url": "https://www.healthline.com/health/fitness-exercise/peroneal-tendonitis-stretches"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Ankle Stretches: Strengthening, Flexibility, and More",
+    "url": "https://www.healthline.com/health/fitness-exercise/ankle-stretches"
+   }
+  ],
   "perSide": true,
   "confidence": "low",
   "note": "No reference verified (shared web-search budget ran out). One leg at a time, so perSide should be true."
@@ -1164,7 +1551,13 @@
    "Breathe steadily and hold at your highest comfortable point for the set time, then lower slowly.",
    "Don't bend forward or force the arms higher when it gets hard; a wider grip makes it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Bicep Stretch: 6 Stretches for Upper Arm Strength",
+    "url": "https://www.healthline.com/health/bicep-stretch"
+   }
+  ],
   "confidence": "low",
   "note": "Name suggests a full over-the-head pass-through, but the original steps/images describe raising a stick behind the back; the old 'behind your head' wording was corrected. No reference verified (shared web-search budget ran out)."
  },
@@ -1176,7 +1569,18 @@
    "Breathe slowly, moving gently between the two positions for the set time, then switch legs.",
    "Keep your back long rather than rounding it, and put your hands on blocks or a step if they don't reach the floor."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Best Hamstring Stretches for Runners (and Boston Marathoners)",
+    "url": "https://www.yogajournal.com/practice/yoga-for-athletes/hamstring-stretches-for-runners/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "How to Do the Splits: Training Tips, Instructions, and Precautions",
+    "url": "https://www.healthline.com/health/how-to-do-the-splits"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out). One leg at a time, so perSide should be true."
@@ -1189,7 +1593,13 @@
    "Breathe steadily and keep alternating for the set time, feeling the work in your lower abs.",
    "Stop if your lower back lifts off the floor; keep your legs higher or the movement smaller to make it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Scissor Kicks: Steps, Variations, and Tips",
+    "url": "https://www.healthline.com/health/scissor-kicks"
+   }
+  ],
   "confidence": "medium",
   "note": "This is a core exercise rather than a stretch. Some sources call a side-to-side leg-crossing move 'scissor kick'; this entry is the up-and-down version. No reference verified (shared web-search budget ran out)."
  },
@@ -1201,7 +1611,13 @@
    "Hold 15–30 seconds and repeat 2–3 rounds, keeping your chest tall.",
    "Tell your partner to stop at mild tension, especially if you feel pinching at the front of the shoulders."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Seated Bent-Knee Biceps Stretch (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/208/seated-bent-knee-biceps-stretch/"
+   }
+  ],
   "confidence": "low",
   "note": "Partner-assisted PNF stretch; no reference verified (shared web-search budget ran out)."
  },
@@ -1837,7 +2253,13 @@
    "You should feel the hip flexors and calves working; breathe steadily and keep a crisp, rhythmic tempo for the set reps per leg.",
    "Avoid leaning back or reaching the foot out in front of you; stay tall and keep the knee lift controlled."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "High Knee March (STACK exercise library)",
+    "url": "https://www.stack.com/exercise/3952/high-knee-march"
+   }
+  ],
   "confidence": "medium",
   "note": "No reputable page found that describes the A-march step by step (Stack only lists it in warm-ups, not cited); steps follow standard sprint-drill coaching. Web search limit was also reached."
  },
@@ -1914,7 +2336,13 @@
    "Hold for 20–30 seconds while breathing deeply into your side ribs, then switch arms.",
    "Keep your ribs down instead of arching your lower back; turn your chest slightly away from the arm to deepen the stretch."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "Fight Collapsing Elbows With These 6 Lat Mobility Drills",
+    "url": "https://barbend.com/lat-mobility-drills/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -1979,7 +2407,13 @@
    "Feel the stretch in the front of the bottom thigh and through your upper back and chest; breathe out to sink deeper and hold 30–60 seconds, then switch sides.",
    "If you can't reach the foot, loop a strap around it, and rest the top knee on a cushion if it won't reach the floor."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "4 Ways to Increase Lacrosse Shot Rotational Power",
+    "url": "https://www.stack.com/a/increase-lacrosse-shot-power/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -2049,7 +2483,13 @@
    "Hold for 20–30 seconds while breathing slowly.",
    "Place your hands on your thighs and roll up slowly so you don't feel light-headed."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Chair Yoga for Seniors: Seated Poses",
+    "url": "https://www.healthline.com/health/fitness-exercise/chair-yoga-for-seniors"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -2085,7 +2525,18 @@
    "Breathe into your side ribs and hold for 20–30 seconds, then walk your hands through the middle to the left side.",
    "Keep both hips sinking back; if they lift or shift, walk your hands less far to the side."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "ekhartyoga.com",
+    "title": "Child's Pose - YogaEasy",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/balasana-childs-pose"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Side-Body Stretch: 10-Minute Yoga You Didn't Know You Needed",
+    "url": "https://www.yogajournal.com/practice/side-body-stretches/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -2190,7 +2641,13 @@
    "Hold for 30–60 seconds while breathing slowly, then switch sides.",
    "If it's too intense, keep your hands on the floor or move the back knee further from the wall, and ease off if your knee hurts."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Couch Stretch: How to Do, Variations, Muscles Targeted, Precautions",
+    "url": "https://www.healthline.com/health/couch-stretch"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out. Current steps were already correct."
  },
@@ -2214,7 +2671,18 @@
    "Exhale as you reach and pause for a breath at the top, then lower your hips with control and alternate sides for the set reps.",
    "Keep your neck relaxed and the supporting elbow straight but not locked; make the reach smaller if your shoulder or wrist pinches."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "Try These 11 Best Shoulder Warm-Up Exercises to Raise the Roof on Overhead Lifts",
+    "url": "https://barbend.com/best-shoulder-warm-up-exercises/"
+   },
+   {
+    "site": "barbend.com",
+    "title": "5 Dynamic Bodyweight Exercises to Improve Overall Fitness",
+    "url": "https://barbend.com/dynamic-bodyweight-exercises/"
+   }
+  ],
   "confidence": "low",
   "note": "No reputable page found for 'crab reach' (only crab walk/crab hold). Steps follow the common crab reach-over drill. Web search limit was reached."
  },
@@ -2748,7 +3216,18 @@
    "Breathe slowly and hold for the set time, easing a little deeper as you breathe out, then switch legs.",
    "Keep the straight knee facing forward rather than rolling in and don't round your back; shift back less or soften the knee to make it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "5 Mobility Moves to Do in Your 40s and Beyond",
+    "url": "https://www.healthline.com/health/improving-mobility-in-old-age"
+   },
+   {
+    "site": "barbend.com",
+    "title": "How To Do the Frog Pose for Better Hip Flexibility and Posture",
+    "url": "https://barbend.com/frog-pose/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -2909,7 +3388,13 @@
    "Hold the open position for the set time, breathing slowly and easing the elbows slightly further back as you breathe out.",
    "Keep your chin level and avoid pulling your head forward with your hands or arching your lower back."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "5 Chest Stretch Variations to Improve Flexibility",
+    "url": "https://www.acefitness.org/resources/everyone/blog/5657/5-chest-stretch-variations/"
+   }
+  ],
   "confidence": "medium",
   "note": "A Mayo Clinic search summary described this exact stretch, but the specific page could not be pinned down. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3004,7 +3489,13 @@
    "Breathe steadily and move slowly through the set reps, then switch legs.",
    "Turn from the hip rather than twisting your lower back; use more hand support or a smaller range if you wobble."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "4 Great IT Band Exercises for Improving Hip Stability (Ft Jordan Shallow)",
+    "url": "https://barbend.com/it-band-exercises/"
+   }
+  ],
   "confidence": "medium",
   "note": "Common rehab/mobility drill; web search limit was reached before a source could be verified."
  },
@@ -3046,7 +3537,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then lower the leg and switch sides.",
    "Keep your hips and shoulders flat and pull only to a comfortable stretch; ease off if you feel pinching at the front of the hip."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "7 Best Stretches & Exercises for Piriformis Syndrome",
+    "url": "https://health.clevelandclinic.org/piriformis-syndrome-stretches-exercises"
+   },
+   {
+    "site": "healthline.com",
+    "title": "9 Sciatica Stretches to Ease Nerve Pain",
+    "url": "https://www.healthline.com/health/back-pain/sciatic-stretches"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3058,7 +3560,13 @@
    "Breathe normally; when touching the wall is easy, move your foot back a little, then switch legs after the set.",
    "Do not let your heel lift, your arch collapse or your knee cave inward."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "physio-pedia.com",
+    "title": "Knee to Wall Test - Physiopedia",
+    "url": "https://www.physio-pedia.com/Knee_to_Wall_Test"
+   }
+  ],
   "confidence": "medium",
   "note": "Well-known drill (based on the knee-to-wall test); web search limit was reached before a source could be verified."
  },
@@ -3093,7 +3601,13 @@
    "Breathe slowly and hold for the set time.",
    "Put a folded towel under your ankles or sit on a block if it's too intense, and skip the knee lift if your knees complain."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Get Rid of Shin Splints: Stretches, Prevention Tips",
+    "url": "https://www.healthline.com/health/how-to-get-rid-of-shin-splints"
+   }
+  ],
   "confidence": "medium",
   "note": "ACE has an exercise-library entry 'Kneeling TA Stretch' (https://www.acefitness.org/resources/everyone/exercise-library/195/kneeling-ta-stretch/) that may be this stretch, but its content could not be confirmed, so it is not listed. No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3105,7 +3619,18 @@
    "Breathe slowly and start with short holds, building up to the set time as your feet get used to it.",
    "Lean forward onto your hands to lighten it, and make sure all your toes, including the little ones, are tucked under rather than rolled out."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "ekhartyoga.com",
+    "title": "Toe Stretch - YogaEasy",
+    "url": "https://www.ekhartyoga.com/resources/yin-poses/toe-stretch"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Difference Among Thunderbolt Pose, Hero Pose, and Toe Squat",
+    "url": "https://www.yogajournal.com/practice/thunderbolt-pose-hero-pose-toe-squat/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3117,7 +3642,18 @@
    "Breathe slowly and hold for the set time, then shake out your hands.",
    "Keep the backs of your hands flat; move them closer to your knees or do one hand at a time to make it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "5-Minute Wrist Strengthening Exercises Every Screen-User Needs",
+    "url": "https://www.yogajournal.com/practice/wrist-strengthening-exercises/"
+   },
+   {
+    "site": "barbend.com",
+    "title": "Strength Athletes: Don't Overlook Your Wrists",
+    "url": "https://barbend.com/wrist-mobility-strength-athletes/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3168,7 +3704,18 @@
    "Breathe slowly and hold for the set time (about 20-30 seconds), then switch sides.",
    "Keep the anchored shoulder down and never yank your head; you can skip the hand and let the weight of your head do the work."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Passive Range of Motion Explained and Exercises to Try",
+    "url": "https://www.healthline.com/health/passive-range-of-motion"
+   },
+   {
+    "site": "healthline.com",
+    "title": "19 Exercises for Upper Back Pain, Neck Pain, Tight Shoulders",
+    "url": "https://www.healthline.com/health/fitness-exercise/upper-back-pain-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference: the shared web-search budget ran out before this entry could be searched; steps written from general knowledge."
  },
@@ -3216,7 +3763,18 @@
    "Exhale as the knees lower and inhale as they return; each side counts as one rep.",
    "Do not let the opposite shoulder lift or force the knees to the floor; move only in a pain-free range."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "Back exercises in 15 minutes a day - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/adult-health/in-depth/back-pain/art-20546859"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "These Lower Back Stretches and Exercises Can Help Relieve Pain",
+    "url": "https://health.clevelandclinic.org/exercises-and-stretches-for-low-back-pain"
+   }
+  ],
   "confidence": "medium",
   "note": "Standard low-back mobility exercise; web search limit was reached before a source could be verified."
  },
@@ -3302,7 +3860,18 @@
    "Breathe slowly and keep the movement smooth; each shoulder-to-shoulder pass counts as one rep.",
    "Keep the arc in front of you rather than rolling your head far back, and stop if you feel dizzy or have pain."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "physio-pedia.com",
+    "title": "Exercise Video - Neck Semi-Circles",
+    "url": "https://exercises.physio-pedia.com/video-exercise/neck-semi-circles"
+   },
+   {
+    "site": "healthline.com",
+    "title": "5 Mobility Exercises to Improve Your Flexibility and Performance",
+    "url": "https://www.healthline.com/health/fitness-exercise/joint-mobility-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3314,7 +3883,18 @@
    "Breathe slowly, hold 15–30 seconds, return to centre and repeat to the other side.",
    "Keep your chin level rather than tipping it up or down, and stop if you feel dizziness, tingling or sharp pain."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nhs.uk",
+    "title": "Flexibility exercises - NHS",
+    "url": "https://www.nhs.uk/live-well/exercise/flexibility-exercises/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "How to Stretch Your Neck: Techniques and More",
+    "url": "https://www.healthline.com/health/how-to-stretch-neck"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out); standard movement, steps written from general knowledge."
  },
@@ -3360,7 +3940,18 @@
    "Breathe and hold 15–30 seconds, then switch feet.",
    "Pull gently rather than forcing it; this works well first thing in the morning, before your first steps of the day."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "orthoinfo.aaos.org",
+    "title": "Plantar Fasciitis and Bone Spurs - OrthoInfo - AAOS",
+    "url": "https://orthoinfo.aaos.org/en/diseases--conditions/plantar-fasciitis-and-bone-spurs"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "5 Plantar Fasciitis Stretches and Exercises",
+    "url": "https://health.clevelandclinic.org/plantar-fasciitis-stretches-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out); standard plantar fascia stretch."
  },
@@ -3383,7 +3974,18 @@
    "Hold 15–30 seconds with relaxed breathing, then turn the backs of your hands together, fingers pointing down, and slowly lift them for the reverse stretch.",
    "Keep your shoulders relaxed and the heels of your hands together, and ease off if you feel tingling or wrist pain."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "10 Stretches to Help Your Wrists and Hands",
+    "url": "https://www.healthline.com/health/chronic-pain/wrist-and-hand-stretches"
+   },
+   {
+    "site": "healthline.com",
+    "title": "How to Strengthen Wrists: Stretches, Exercises, and Tips",
+    "url": "https://www.healthline.com/health/how-to-strengthen-wrists"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out); standard wrist stretch."
  },
@@ -3407,7 +4009,13 @@
    "Breathe slowly, hold 20–30 seconds, then roll back and switch sides.",
    "Roll only as far as is comfortable with your neck relaxed, and bend the outstretched elbow to 90 degrees if the shoulder pinches."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "5 Chest Stretch Variations to Improve Flexibility",
+    "url": "https://www.acefitness.org/resources/everyone/blog/5657/5-chest-stretch-variations/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out)."
  },
@@ -3419,7 +4027,13 @@
    "Breathe steadily and move slowly for the set reps, keeping your hands off the floor and your neck long.",
    "Shorten the range or let your hands touch down if your shoulders pinch or cramp."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Bodyweight Back Exercises: What They Are and How to Do Them",
+    "url": "https://www.healthline.com/nutrition/bodyweight-back-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3455,7 +4069,18 @@
    "Exhale as you turn up and follow the elbow with your eyes; do the set reps, then switch sides.",
    "Do not twist from your lower back or shift your hips; a smaller rotation done well is better."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "T-Spine Mobility: Why You Need It, How to Test it and How to Improve It",
+    "url": "https://www.stack.com/a/hows-your-t-spine-mobility-why-you-need-it-how-to-test-it-and-how-to-improve-it/"
+   },
+   {
+    "site": "barbend.com",
+    "title": "8 Thoracic Spine Mobility Exercises for Better Overhead Lifts",
+    "url": "https://barbend.com/thoracic-spine-mobility-exercises/"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3467,7 +4092,13 @@
    "Breathe steadily and do the set reps in each hand position.",
    "Keep the pressure light and move only in a comfortable range; shift your hips back to take weight off your hands."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "Strength Athletes: Don't Overlook Your Wrists",
+    "url": "https://barbend.com/wrist-mobility-strength-athletes/"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3479,7 +4110,18 @@
    "Breathe steadily and move slowly for the set reps, then switch arms.",
    "Grip higher up toward the racket head to make it easier, or hold nearer the end of the handle to add load."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "newcastle-hospitals.nhs.uk",
+    "title": "Tennis elbow - Newcastle Hospitals NHS Foundation Trust",
+    "url": "https://www.newcastle-hospitals.nhs.uk/services/newcastle-occupational-health-service/information-for-staff/physiotherapy/self-help-leaflets/tennis-elbow/"
+   },
+   {
+    "site": "sfh-tr.nhs.uk",
+    "title": "Tennis elbow (Sherwood Forest Hospitals patient leaflet)",
+    "url": "https://www.sfh-tr.nhs.uk/patients-and-visiting/patient-information-leaflets/musculoskeletal-msk/tennis-elbow/"
+   }
+  ],
   "confidence": "medium",
   "note": "Standard pronation/supination drill, usually shown with a hammer or light dumbbell; web search limit was reached before a source could be verified."
  },
@@ -3725,7 +4367,18 @@
    "Breathe slowly, hold 15–30 seconds, bring your head back to centre and switch sides.",
    "Keep the movement small and slow, and stop if you feel tingling, numbness or dizziness."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "physio-pedia.com",
+    "title": "Mid Scalene (Physiopedia exercise video)",
+    "url": "https://exercises.physio-pedia.com/neck/mid-scalene"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Exercises for Thoracic Outlet Syndrome",
+    "url": "https://www.healthline.com/health/thoracic-outlet-syndrome-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out). Changed 'turn chin up and away' to 'lift chin toward the ceiling', the common cue for the front scalene."
  },
@@ -3737,7 +4390,13 @@
    "Return your forearms to the wall and slide back down slowly, exhaling on the way up; repeat for the set reps.",
    "Do not let your shoulders creep toward your ears or your lower back arch; stop the slide where you start to shrug."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "7 Serratus Exercises for Chiseled Abs and Shoulder Stability",
+    "url": "https://barbend.com/serratus-exercises/"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3749,7 +4408,18 @@
    "Keep a slow, steady rhythm through the full range and breathe normally; up and down together count as one rep.",
    "Move only at the ankles without bending your knees, and work one foot at a time if that is easier to control."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "cuh.nhs.uk",
+    "title": "Exercises for patients following an acute ankle injury or operation",
+    "url": "https://www.cuh.nhs.uk/patient-information/exercises-for-patients-following-an-acute-ankle-injury-or-operation/"
+   },
+   {
+    "site": "nth.nhs.uk",
+    "title": "Ankle Fracture - North Tees and Hartlepool NHS Foundation Trust",
+    "url": "https://www.nth.nhs.uk/resources/ankle-fracture/"
+   }
+  ],
   "confidence": "medium",
   "note": "Web search limit was reached before a source could be verified."
  },
@@ -3779,7 +4449,18 @@
    "Breathe slowly, hold 20–30 seconds, then switch legs.",
    "Don't round your back to reach lower; a small lean with a long spine is enough."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "shropscommunityhealth.nhs.uk",
+    "title": "Seated Hamstring Stretch (Shropshire Community Health NHS leaflet)",
+    "url": "https://www.shropscommunityhealth.nhs.uk/content/doclib/13864.pdf"
+   },
+   {
+    "site": "mayoclinic.org",
+    "title": "Video: Seated stretches for the workplace - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/adult-health/multimedia/lower-back-stretches/vid-20084700"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out)."
  },
@@ -3854,7 +4535,18 @@
    "Inhale to sit tall, return to the centre and alternate sides for the set reps.",
    "Do not let your hips shift or lift; bend your knees slightly or sit on a cushion if your lower back rounds."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Pilates for Menopause: 5 Moves to Try",
+    "url": "https://www.healthline.com/health/pilates-moves-for-menopause"
+   },
+   {
+    "site": "pilatesanytime.com",
+    "title": "Saw with Mychele Sims - Exercise 5598",
+    "url": "https://www.pilatesanytime.com/exercise-view/5598/video/Pilates-Saw-by-Mychele-Sims"
+   }
+  ],
   "confidence": "medium",
   "note": "Classic Pilates Saw; web search limit was reached before a source could be verified."
  },
@@ -4241,7 +4933,13 @@
    "Roll back up slowly from the base of your spine, stacking each vertebra with your head coming up last; do 5–8 reps.",
    "Bend your knees more if your lower back or hamstrings strain, and come up slowly if you feel light-headed."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "pilatesanytime.com",
+    "title": "Standing Roll Down with Diane Severino - Tutorial 2531",
+    "url": "https://www.pilatesanytime.com/workshop-view/2531/video/Pilates-Standing-Roll-Down-by-Diane-Severino"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: the shared web-search budget ran out (only a seated Pilates roll-down page was found). Steps follow standard Pilates instruction."
  },
@@ -4473,7 +5171,18 @@
    "Pause for a breath, bring the arm back over slowly, and do 8–10 reps before switching sides.",
    "If your top knee lifts, the twist is coming from your lower back; hold the knee down with your bottom hand or a cushion."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "hss.edu",
+    "title": "Back Exercises to Strengthen and Stretch, from a PT",
+    "url": "https://www.hss.edu/health-library/move-better/best-back-exercises"
+   },
+   {
+    "site": "physio-pedia.com",
+    "title": "Thoracic Manual Techniques and Exercises - Physiopedia",
+    "url": "https://www.physio-pedia.com/Thoracic_Manual_Techniques_and_Exercises"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry. Current steps were already correct."
  },
@@ -4544,7 +5253,18 @@
    "Lower the leg, step through and repeat with the other leg; breathe steadily and do 8–10 kicks per leg.",
    "Kick only as high as you can while keeping the leg straight and your back upright; don't round over to reach the foot."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Dynamic Flexibility: 12 Exercises, Benefits, and More",
+    "url": "https://www.healthline.com/health/exercise-fitness/dynamic-flexibility"
+   },
+   {
+    "site": "stack.com",
+    "title": "4 Keys to a Dynamic Mobility Warm-Up",
+    "url": "https://www.stack.com/a/keys-to-a-dynamic-mobility-warm-up/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry."
  },
@@ -4634,7 +5354,13 @@
    "Release, step forward and repeat with the other leg, doing 8–10 hugs per leg as you walk.",
    "Keep your chest tall instead of rounding down to the knee, and skip the toe raise if your balance is shaky."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "Walking Knee Hugs (STACK exercise library)",
+    "url": "https://www.stack.com/exercise/3265/walking-knee-hugs"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry."
  },
@@ -4646,7 +5372,13 @@
    "Lower the leg, step through and repeat on the other side; breathe steadily and do 6–10 per leg.",
    "Stay upright instead of hunching over the leg, and pull the shin up rather than twisting the knee if it feels strained."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "Leg Cradle (STACK exercise library)",
+    "url": "https://www.stack.com/exercise/1592/leg-cradle"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry."
  },
@@ -4658,7 +5390,13 @@
    "Release, step forward and repeat with the other leg; breathe steadily and do 8–10 per leg.",
    "Keep your knees close together and your torso upright rather than leaning forward or letting the bent knee drift out."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "Flexibility Routine with Maryland Soccer",
+    "url": "https://www.stack.com/a/flexibility-routine-with-maryland-soccer/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry."
  },
@@ -4670,7 +5408,18 @@
    "Breathe out as you slide up and in as you slide down; do 8–12 slow reps.",
    "Stop before your lower back arches off the wall or your wrists lift away; a smaller range is fine."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Wall Angels: Benefits, Muscles Worked, and How-To",
+    "url": "https://www.healthline.com/health/fitness/wall-angels"
+   },
+   {
+    "site": "hss.edu",
+    "title": "Want to Stop Slouching? This Is the Move Your Exercise Routine Is Missing",
+    "url": "https://news.hss.edu/want-to-stop-slouching-this-is-the-move-your-exercise-routine-is-missing/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry. Current steps were already correct."
  },
@@ -4822,7 +5571,13 @@
    "Return to standing and alternate sides in a smooth rhythm, breathing out as you reach down; do 8–10 per side.",
    "Bend your knees or reach to your shin instead of rounding hard to touch the foot."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "6 Ab Exercises You Can Do Standing",
+    "url": "https://health.clevelandclinic.org/standing-ab-workout"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry."
  },
@@ -4834,7 +5589,13 @@
    "Do 3–5 slow circles, reverse the direction, then switch hands.",
    "Don't rush or let the forearm twist to make the circle look bigger."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "Strength Athletes: Don't Overlook Your Wrists",
+    "url": "https://barbend.com/wrist-mobility-strength-athletes/"
+   }
+  ],
   "confidence": "low",
   "note": "Not source-verified: shared web-search budget ran out before this entry. Current steps were already correct."
  }
