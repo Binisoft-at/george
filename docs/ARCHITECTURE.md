@@ -13,7 +13,7 @@ handbook workflows are synced from it – change them there, never here.
 | `GeorgeWatch` | Gets the running workout from the iPhone (WatchConnectivity), records it with HealthKit, shows sets and rest, logs reps/weight and steers the plan through `WatchCommandEnvelope`s (time + workout id; stale ones are dropped). No store of its own. |
 | `GeorgeWidgets` (iOS extension) | Live Activity / Dynamic Island (`Shared/WorkoutActivity.swift`, buttons are `LiveActivityIntent`s from `Shared/WorkoutIntents.swift`), Home/Lock Screen widgets reading `Shared/WidgetBridge.swift`'s JSON in the App Group, a Control Center control. App side: `LiveActivityBridge`, `App/Sources/Intents/GeorgeIntents.swift` (App Intents, App Shortcuts). |
 | `GeorgeWatchWidgets` (watchOS extension) | The complication (rest countdown or next workout), data from `Watch/Sources/ComplicationBridge.swift`. |
-| `Packages/GeorgeCore` | All logic without Apple UI frameworks: workout model and editing, CSV import/export, naming, streaks, stats, muscle analytics, body map, the tour catalog. Tested on Linux in CI. |
+| `Packages/GeorgeCore` | All logic without Apple UI frameworks: workout model and editing, CSV import/export, naming, streaks, stats, muscle analytics, body map, the tour catalog, the Binisoft exchange for Thalia. Tested on Linux in CI. |
 
 ## Data
 
@@ -25,6 +25,10 @@ handbook workflows are synced from it – change them there, never here.
 - The workout itself (`WorkoutContent`: blocks, exercises, sets) is a Codable value from GeorgeCore,
   stored as `contentData` on templates and sessions.
 - CloudKit schema: [`cloudkit/schema.ckdb`](../cloudkit/schema.ckdb).
+- Thalia exchange ([THALIA.md](THALIA.md)): `ThaliaSync` (App/Sources/Services/ThaliaExchange.swift)
+  rebuilds the last 62 days of finished workouts from the synced store and writes changed day files
+  into `<App Group>/George/exchange/` (format and writer in GeorgeCore `ExchangeFormat.swift` /
+  `ThaliaExport.swift`). Not on the Watch, not for `-Demo` or in-memory stores.
 
 ## Coach, energy, profile
 

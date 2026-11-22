@@ -19,7 +19,7 @@ let package = Package(
             name: "GeorgeCore",
             dependencies: [.product(name: "BinisoftKitCore", package: "BinisoftKit")]
         ),
-        .testTarget(name: "GeorgeCoreTests", dependencies: ["GeorgeCore"]),
+        .testTarget(name: "GeorgeCoreTests", dependencies: ["GeorgeCore"], exclude: ["Fixtures"]),
     ],
     swiftLanguageModes: [.v5]
 )

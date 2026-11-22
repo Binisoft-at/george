@@ -150,6 +150,8 @@ struct SettingsView: View {
                 DataLocationView(sections: GeorgeDataFacts.sections, monitor: sync)
             }
 
+            ThaliaSettingsSection()
+
             Section {
                 Button {
                     router.showImport = true
@@ -435,6 +437,7 @@ enum GeorgeDataFacts {
         sections.insert(DataSection("Apple Health, Watch and exercises", [
             DataFact("heart.fill", "Apple Health", "Heart rate and measured calories are read from Apple Health and stay on the device – George never puts them in iCloud. Finished workouts go into Health, where Fitness and Bevel can see them."),
             DataFact("applewatch", "Apple Watch", "The Watch gets the running workout straight from your iPhone and records heart rate into Health."),
+            DataFact("arrow.left.arrow.right", "Thalia", "If you use Thalia, George leaves a small note in the shared folder on this device for each finished workout (when, which template, its name). Thalia reads it there; nothing from Apple Health is in it. Settings → Thalia turns it off."),
             DataFact("photo", "Exercise pictures", "The exercise library is built into the app. Its pictures load from the open-source library online and are cached; tutorial links open YouTube or the site you added."),
         ]), at: 1)
         return sections

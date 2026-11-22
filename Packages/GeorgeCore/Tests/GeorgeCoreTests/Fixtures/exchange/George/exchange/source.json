@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "source": "george",
+  "app": "George",
+  "appVersion": "1.6.2",
+  "generatedAt": "2026-11-22T19:30:00+01:00",
+  "refs": [
+    { "id": "tpl-1", "title": "Push", "kind": "workout" },
+    { "id": "tpl-2", "title": "Pull", "kind": "workout" }
+  ]
+}

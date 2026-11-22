@@ -18,6 +18,8 @@ struct GeorgeApp: App {
     @State private var sync: SyncMonitor
     /// Bumps the store revision after iCloud imports so analytics refresh.
     @State private var importRefresher: CloudImportRefresher
+    /// Finished workouts for Thalia (shared App Group, this device; docs/THALIA.md).
+    @State private var thalia: ThaliaSync
     @State private var toasts = ToastCenter()
     @State private var router = Router()
 
@@ -57,6 +59,10 @@ struct GeorgeApp: App {
         _muscles = State(initialValue: MuscleAnalytics(store: store, library: library, health: health))
         _importRefresher = State(initialValue: CloudImportRefresher(store: store))
         _sync = State(initialValue: SyncMonitor(mode: opened.mode, appName: AppInfo.name))
+        // Writes nothing for -Demo, previews or an in-memory store; the first sync runs a few seconds after launch.
+        let thalia = ThaliaSync(store: store, mode: opened.mode, launch: LaunchOptions.current)
+        _thalia = State(initialValue: thalia)
+        thalia.start()
         AppLog.info("Launch \(AppVersion.main.display), storage: \(opened.mode.title)", category: "app")
     }
 
@@ -72,6 +78,7 @@ struct GeorgeApp: App {
                 .environment(live)
                 .environment(muscles)
                 .environment(sync)
+                .environment(thalia)
                 .environment(toasts)
                 .environment(router)
                 .appearanceFromSettings()
@@ -129,6 +136,7 @@ struct GeorgeApp: App {
             .environment(live)
             .environment(muscles)
             .environment(sync)
+            .environment(thalia)
             .environment(toasts)
             .environment(router)
             .modelContainer(container)

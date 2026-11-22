@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "source": "george",
+  "day": "2026-11-22",
+  "generatedAt": "2026-11-22T19:30:00+01:00",
+  "facts": [
+    { "id": "wo-5A10", "kind": "workout.done", "ref": "tpl-1", "refTitle": "Push", "title": "Push",
+      "at": "2026-11-22T07:40:00+01:00", "origin": "app" },
+    { "id": "wo-5A11", "kind": "workout.done", "ref": "tpl-2", "refTitle": "Pull", "title": "Pull",
+      "at": "2026-11-22T17:10:00+01:00", "origin": "app" },
+    { "id": "wo-HK01", "kind": "workout.done", "ref": "tpl-1", "refTitle": "Push", "title": "Laufen aus Apple Health",
+      "at": "2026-11-22T12:00:00+01:00", "origin": "health" }
+  ]
+}

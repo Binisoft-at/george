@@ -66,6 +66,10 @@ enum Prefs {
     static let plateSet = "plateSet"
     /// The running workout started on this device (only this device attaches to it on launch).
     static let liveSessionID = "george.liveSessionID"
+    /// Settings → Thalia: write finished workouts for Thalia on this device (default on).
+    static let thaliaDeliver = "thaliaDeliver"
+    /// When George last wrote a Thalia exchange file on this device.
+    static let thaliaLastWritten = "thaliaLastWritten"
 }
 
 /// Where the voice coach may speak.

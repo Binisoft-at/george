@@ -48,6 +48,12 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
   shows the sync status and explains where the data lives.
 - **Design** — native SwiftUI on iOS/macOS 26 with Liquid Glass controls, light/dark/system themes.
 
+### New in 1.1
+
+- **Thalia**: George tells Thalia (Binisoft's planner) which workouts you finished – a small file per
+  day in the shared App Group on each iPhone, iPad and Mac, never anything from Apple Health.
+  Settings → Thalia; details in [docs/THALIA.md](docs/THALIA.md).
+
 ### New in v6
 
 - **Hands-free**: Live Activity on the Lock Screen and in the Dynamic Island (what's due, the rest

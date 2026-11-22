@@ -30,6 +30,7 @@ private struct TemplateDocument: View {
     @Environment(PracticeSession.self) private var practice: PracticeSession?
     @Environment(Router.self) private var router
     @Environment(ToastCenter.self) private var toasts
+    @Environment(ThaliaSync.self) private var thalia: ThaliaSync?
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @Query private var allSessions: [WorkoutSession]
     @State private var content = WorkoutContent()
@@ -57,6 +58,7 @@ private struct TemplateDocument: View {
                     .lineLimit(3...12)
             }
             historySection
+            thaliaSection
         }
         .groupedList()
         .safeAreaInset(edge: .bottom) { actionBar }
@@ -261,6 +263,25 @@ private struct TemplateDocument: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
             .frame(maxWidth: 560)
+        }
+    }
+
+    /// The Thalia measures that count this template (from Thalia's catalog on this device).
+    @ViewBuilder
+    private var thaliaSection: some View {
+        if practice == nil, let thalia, thalia.isEnabled {
+            let measures = thalia.measures(countingTemplate: template.id)
+            if !measures.isEmpty {
+                Section {
+                    ForEach(measures, id: \.code) { measure in
+                        Label(measure.title, systemImage: "arrow.left.arrow.right")
+                    }
+                } header: {
+                    Text("Thalia")
+                } footer: {
+                    Text("Thalia counts this template's workouts here.")
+                }
+            }
         }
     }
 
