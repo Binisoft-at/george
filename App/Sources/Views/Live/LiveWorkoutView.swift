@@ -588,7 +588,7 @@ struct LiveExerciseCard: View {
             }
 
             if let exercise = library.exercise(for: item), exercise.needsGuidance {
-                HowToCard(exercise: exercise, item: item)
+                HowToCard(exercise: exercise, item: item, userLinks: userEntry?.links ?? [])
             }
 
             StationChips(item: item)
@@ -613,7 +613,10 @@ struct LiveExerciseCard: View {
                 .buttonStyle(.glass)
             }
 
-            TutorialRow(item: item, userLinks: userEntry?.links ?? [])
+            // Guided moves have their photos and video in the How-to card above.
+            if library.exercise(for: item)?.needsGuidance != true {
+                TutorialRow(item: item, userLinks: userEntry?.links ?? [])
+            }
         }
         .padding(.top, 10)
     }
@@ -974,7 +977,10 @@ struct ValueTiles: View {
     private var fields: [SetField] {
         switch item.mode {
         case .reps: return [.reps, .weight]
-        case .time: return [.seconds, .weight]
+        case .time:
+            // A stretch or yoga hold without weight: just the time (no empty "– kg" tile).
+            let calm = (item.kind ?? live.session?.kind)?.isFlow == true
+            return calm && (set.effectiveWeight ?? 0) == 0 ? [.seconds] : [.seconds, .weight]
         case .distance: return [.meters, .seconds]
         }
     }
@@ -1358,6 +1364,8 @@ struct ExerciseStrip: View {
 struct HowToCard: View {
     let exercise: LibraryExercise
     let item: WorkoutItem
+    /// The user's own video links for this exercise (Exercise Library).
+    var userLinks: [String] = []
     @Environment(\.liveActions) private var actions
     @Environment(LiveWorkoutController.self) private var live
     @AppStorage("live.howToCollapsed") private var collapsed = false
@@ -1409,7 +1417,8 @@ struct HowToCard: View {
                             .buttonStyle(.glass)
                         }
                         Button {
-                            if let link = item.links.first.flatMap(URL.init(string:)) ?? TutorialLinks.youtubeSearch(for: exercise.name, kind: exercise.kind) {
+                            let own = (item.links.first ?? userLinks.first).flatMap(URL.init(string:))
+                            if let link = own ?? TutorialLinks.youtubeSearch(for: exercise.name, kind: exercise.kind) {
                                 actions.tutorial(link)
                             }
                         } label: {
