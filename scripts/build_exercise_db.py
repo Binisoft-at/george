@@ -44,7 +44,7 @@ KEYS = (
     "primary", "secondary", "steps", "aliases", "tags", "mode", "defaults",
     "perSide", "imageFrom", "symbol",
 )
-OUTPUT_KEYS = KEYS + ("images", "references")
+OUTPUT_KEYS = KEYS + ("images", "references", "caution")
 REFERENCE_KEYS = ("site", "title", "url")
 DEFAULT_KEYS = ("sets", "reps", "holdSec", "restSec")
 
@@ -423,6 +423,12 @@ def apply_howto(exercises, howto, errors):
                 continue
             clean.append({k: r[k].strip() for k in REFERENCE_KEYS})
         e["references"] = clean
+        caution = h.get("caution")
+        if caution is not None:
+            if not isinstance(caution, str) or not caution.strip() or len(caution) > 240:
+                errors.append(where + ": caution must be one short sentence")
+            else:
+                e["caution"] = caution.strip()
         if isinstance(h.get("perSide"), bool):
             e["perSide"] = h["perSide"]
 
@@ -457,6 +463,7 @@ def main(argv):
 
     for e in exercises:
         e.setdefault("references", [])
+        e.setdefault("caution", None)
     if howto_path:
         howto = load_json(howto_path)
         if not isinstance(howto, dict):

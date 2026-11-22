@@ -62,9 +62,11 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
     public var references: [Reference]
     /// Licence information for a preview picture from Wikimedia Commons.
     public var credit: ImageCredit?
+    /// When to be careful or skip it ("Avoid with neck problems; never turn the head").
+    public var caution: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, kind, category, equipment, level, force, mechanic, primary, secondary, steps, aliases, tags, mode, defaults, perSide, images, symbol, references, credit
+        case id, name, kind, category, equipment, level, force, mechanic, primary, secondary, steps, aliases, tags, mode, defaults, perSide, images, symbol, references, credit, caution
     }
 
     public init(
@@ -72,7 +74,7 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         level: String? = nil, force: String? = nil, mechanic: String? = nil, primary: [String] = [],
         secondary: [String] = [], steps: [String] = [], aliases: [String] = [], tags: [String] = [],
         mode: ExerciseMode = .reps, defaults: Defaults? = nil, perSide: Bool = false, images: [String] = [], symbol: String? = nil,
-        references: [Reference] = [], credit: ImageCredit? = nil
+        references: [Reference] = [], credit: ImageCredit? = nil, caution: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -94,6 +96,7 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         self.symbol = symbol
         self.references = references
         self.credit = credit
+        self.caution = caution
     }
 
     public init(from decoder: Decoder) throws {
@@ -118,6 +121,7 @@ public struct LibraryExercise: Codable, Identifiable, Hashable, Sendable {
         symbol = try c.decodeIfPresent(String.self, forKey: .symbol)
         references = (try? c.decodeIfPresent([Reference].self, forKey: .references)) ?? []
         credit = try? c.decodeIfPresent(ImageCredit.self, forKey: .credit)
+        caution = try c.decodeIfPresent(String.self, forKey: .caution)
     }
 
     /// Stretching, yoga and mobility: positions people need to see described, not just named.

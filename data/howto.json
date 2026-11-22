@@ -1642,7 +1642,18 @@
    "Breathe slowly, hold 15–30 seconds, then switch legs.",
    "Lead with your chest rather than rounding your back to reach your toes; loop a strap around the foot if you're tight."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "The 6 Best Hamstring Stretches to Add to Your Routine (seated hamstring stretch, one-leg variation)",
+    "url": "https://barbend.com/best-hamstring-stretches/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Tight Hamstring: Treatment, Causes, Prevention, and More (seated hamstring stretch)",
+    "url": "https://www.healthline.com/health/tight-hamstring"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out). One leg at a time, so perSide should be true."
@@ -1655,7 +1666,18 @@
    "Relax and breathe out as your partner gently draws your arms further back; feel the stretch across the front of your shoulders and chest for 15–30 seconds.",
    "Keep your elbows straight and chest tall, and tell your partner to stop at mild tension."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "Why You Should Try Assisted Stretching (partner chest stretch)",
+    "url": "https://health.clevelandclinic.org/assisted-stretching"
+   },
+   {
+    "site": "acefitness.org",
+    "title": "5 Chest Stretch Variations to Improve Flexibility (partner-assist / anterior deltoid variation)",
+    "url": "https://www.acefitness.org/resources/everyone/blog/5657/5-chest-stretch-variations/"
+   }
+  ],
   "confidence": "low",
   "note": "Partner-assisted PNF stretch; no reference verified (shared web-search budget ran out)."
  },
@@ -1686,7 +1708,13 @@
    "Relax and breathe out as your partner slowly eases you further forward; feel the stretch along the backs of your thighs and calves for 15–30 seconds.",
    "Reach forward with a long spine rather than rounding, and tell your partner the moment it feels strong."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "The 6 Best Hamstring Stretches to Add to Your Routine (seated hamstring stretch, both legs out)",
+    "url": "https://barbend.com/best-hamstring-stretches/"
+   }
+  ],
   "confidence": "low",
   "note": "Partner-assisted PNF stretch; no reference verified (shared web-search budget ran out)."
  },
@@ -1698,7 +1726,18 @@
    "Breathe slowly, hold 15–30 seconds, then switch legs.",
    "Keep the knee straight but not locked and don't round your back; bend the other knee if sitting upright is hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nasm.org",
+    "title": "Static Seated Calf Stretch (NASM Exercise Library)",
+    "url": "https://www.nasm.org/resource-center/exercise-library/static-seated-calf-stretch"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "5 Plantar Fasciitis Stretches and Exercises (seated towel calf stretch)",
+    "url": "https://health.clevelandclinic.org/plantar-fasciitis-stretches-exercises"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out). One leg at a time, so perSide should be true."
@@ -1770,7 +1809,18 @@
    "Breathe normally and hold for 15–30 seconds, then switch arms.",
    "Keep the stretched shoulder down and your chest facing forward; don't press on the elbow joint itself or twist your body to fake range."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "A guide to basic stretches - Mayo Clinic (shoulder stretch)",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/fitness/in-depth/stretching/art-20546848"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Top 10 Exercises to Relieve Shoulder Pain and Increase Flexibility (cross-arm stretch)",
+    "url": "https://www.healthline.com/health/shoulder-pain-exercises"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "Standard cross-body shoulder stretch; current steps were incomplete (no pulling hand, no hold, no switch). Done one arm at a time, so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -1795,7 +1845,18 @@
    "Start small and widen the swing gradually, feeling your inner and outer hip loosen; breathe easily, keep going for the set time, then switch legs.",
    "Keep your torso upright and hips facing forward instead of leaning sideways to get the leg higher."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Stretch Your Inner Thighs (side-to-side leg swings)",
+    "url": "https://www.healthline.com/health/exercise-fitness/how-to-stretch-inner-thigh"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Dynamic Stretching: Benefits, When to Use, Examples, and More (leg swings)",
+    "url": "https://www.healthline.com/health/exercise-fitness/dynamic-stretching"
+   }
+  ],
   "confidence": "medium",
   "note": "Despite the name, this entry describes a dynamic lateral (side-to-side) leg swing, not a side-lying leg raise; consider renaming to 'Lateral Leg Swings'. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1807,7 +1868,13 @@
    "Breathe slowly and hold for 20–30 seconds; to go deeper, straighten the left leg toward the ceiling, then roll over and switch sides.",
    "Keep your hips stacked rather than rolling onto your back, and loop a strap around the foot if you can't reach it."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Side-Reclining Leg Lift (Anantasana)",
+    "url": "https://www.yogajournal.com/poses/side-reclining-leg-lift/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1848,7 +1915,18 @@
    "Breathe in on the way down and out on the way up, keeping a steady rhythm (roughly 5–10 reps) for the set time.",
    "Keep your knees tracking over your toes instead of caving in, and go less deep if your heels lift."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Bodyweight Squat (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/135/bodyweight-squat/"
+   },
+   {
+    "site": "mayoclinic.org",
+    "title": "Video: Squat exercise - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/fitness/multimedia/squat/vid-20084663"
+   }
+  ],
   "confidence": "medium",
   "note": "Dynamic warm-up done for reps (partial bodyweight squats), not a held stretch, although the entry's mode is time. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1873,7 +1951,18 @@
    "Breathe in a steady rhythm and keep alternating for the set time, about 5–10 times per leg.",
    "Keep your front knee over your ankle and torso upright; for an easier version, skip the jump and step between alternating split squats."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Cycled Split Squat Jump (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/234/cycled-split-squat-jump/"
+   },
+   {
+    "site": "stack.com",
+    "title": "Split Squat Jumps (STACK exercise library)",
+    "url": "https://www.stack.com/exercise/2648/split-squat-jumps"
+   }
+  ],
   "confidence": "medium",
   "note": "As described this is a jumping split squat (split jump) warm-up drill, not a static split squat; the name and primary muscle (hamstrings; quads/glutes do most work) don't fit well. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1885,7 +1974,18 @@
    "Breathe evenly and hold for 15–30 seconds, then lower your arms slowly.",
    "Stay upright instead of bending forward and keep your shoulders down; hold a towel between your hands if they won't meet."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Bicep Stretch: 6 Stretches for Upper Arm Strength (standing bicep stretch)",
+    "url": "https://www.healthline.com/health/bicep-stretch"
+   },
+   {
+    "site": "barbend.com",
+    "title": "The 8 Best Biceps Stretches to Support Long-Term Arm Thickness and Strength",
+    "url": "https://barbend.com/biceps-stretches/"
+   }
+  ],
   "confidence": "medium",
   "note": "Equipment is listed as 'other' but this needs nothing (body only, optional towel). No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1897,7 +1997,13 @@
    "Breathe slowly and hold for 20–30 seconds, then switch legs.",
    "Keep the standing knee behind your toes and your torso upright; use a lower step or hold a wall if balance is hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "stack.com",
+    "title": "Rear Foot Elevated Hip Flexor Stretches",
+    "url": "https://www.stack.com/a/fix-hip-flexibility-problems-with-this-simple-exercise/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "One leg at a time (steps say switch sides), so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -1910,7 +2016,13 @@
    "Breathe slowly and hold for 20–30 seconds, then switch legs.",
    "Don't round your back to reach; loop a towel around the foot if you can't reach your toes."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Ankle Stretches: Strengthening, Flexibility, and More (standing calf stretch, toes up)",
+    "url": "https://www.healthline.com/health/fitness-exercise/ankle-stretches"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "One leg at a time, so perSide should be true (original steps never said to switch). No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -1923,10 +2035,17 @@
    "Feel the stretch along the back of the front thigh and calf; breathe slowly and hold for 20–30 seconds, then switch feet.",
    "Keep your back flat rather than rounding down toward the knee, and lean less if the stretch feels sharp."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "The 6 Best Hamstring Stretches to Add to Your Routine (standing hamstring stretch, heel down toes up)",
+    "url": "https://barbend.com/best-hamstring-stretches/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
-  "note": "One leg at a time (steps say repeat with the other foot), so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "One leg at a time (steps say repeat with the other foot), so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "Hands on hips helps avoid rounding."
  },
  "fedb:Standing_Hip_Circles": {
   "steps": [
@@ -1936,7 +2055,13 @@
    "Feel your hip, inner and outer thigh loosen; breathe steadily and circle for the set time, reversing direction halfway, then switch legs.",
    "Keep your standing knee soft and your torso upright; don't lean away from the support to make the circle bigger."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Standing Gate Openers (Frankensteins) (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/201/standing-gate-openers-frankensteins/"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "One leg at a time (steps say repeat on the other side), so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -1949,7 +2074,13 @@
    "Breathe slowly and hold for 20–30 seconds, then switch legs.",
    "Keep your torso upright and avoid arching your lower back; for a deeper stretch, try a half-kneeling version instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nhs.uk",
+    "title": "Hip stretches in pregnancy (Leicester's Hospitals) – standing hip flexor stretch with tailbone tuck",
+    "url": "https://yourhealth.leicestershospitals.nhs.uk/library/csi/therapies/women-s-health/406-hip-stretches/file"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "One leg at a time, so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -1962,10 +2093,22 @@
    "Breathe into the stretched side and hold for 15–30 seconds, then switch sides.",
    "Keep your weight even on both feet and your chest facing forward; don't push your hips out sideways or tip forward."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "5 Stretches to “Un-desk” Your Body (Lateral Lean Lat Stretch)",
+    "url": "https://www.acefitness.org/resources/everyone/blog/6554/5-stretches-to-un-desk-your-body/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Lateral Flexion: What Is It and How to Improve It (standing side bend)",
+    "url": "https://www.healthline.com/health/lateral-flexion"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
-  "note": "Done one side then the other, so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "Done one side then the other, so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "Don't strain the neck."
  },
  "fedb:Standing_Pelvic_Tilt": {
   "steps": [
@@ -1975,7 +2118,18 @@
    "Feel your lower back lengthen and flatten slightly; breathe normally and hold for 10–20 seconds, then relax.",
    "Move only your pelvis, keeping your shoulders and ribs still, and don't lock your knees."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "Pregnancy stretches - Mayo Clinic (standing pelvic tilt)",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/in-depth/pregnancy/art-20546838"
+   },
+   {
+    "site": "physio-pedia.com",
+    "title": "Pelvic Tilt - Physiopedia",
+    "url": "https://www.physio-pedia.com/Pelvic_Tilt"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -1987,7 +2141,13 @@
    "Breathe slowly and hold for 20–30 seconds, then switch legs.",
    "Keep the back foot pointing forward and the heel down; if you feel it high in the calf, bend the back knee more."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nhs.uk",
+    "title": "Stretches for tight soleus muscles (Torbay and South Devon NHS)",
+    "url": "https://www.torbayandsouthdevon.nhs.uk/uploads/25299.pdf?last-updated=20230809"
+   }
+  ],
   "perSide": true,
   "confidence": "medium",
   "note": "One leg at a time (steps say switch sides), so perSide should be true. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
@@ -2000,7 +2160,18 @@
    "Breathe slowly and hold for 15–30 seconds, then bend your knees slightly and roll up gradually.",
    "Don't bounce to reach farther; bend your knees or rest your hands on your shins if your hamstrings are tight."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "barbend.com",
+    "title": "The 10 Best Leg Stretches to Bolster Your Lower Body Training (standing toe touch)",
+    "url": "https://barbend.com/leg-stretches/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "How to Touch Your Toes",
+    "url": "https://www.healthline.com/nutrition/how-to-touch-your-toes"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -2012,7 +2183,18 @@
    "Hold for about 20 seconds, then relax and breathe normally; build up toward 40–60 seconds over time.",
    "Don't hold your breath or hunch your shoulders; it's easier to learn on all fours or lying on your back."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "The Stomach Vacuum Exercise: How To Do It Right",
+    "url": "https://www.healthline.com/health/fitness/stomach-vacuum"
+   },
+   {
+    "site": "barbend.com",
+    "title": "The Stomach Vacuum: What It Is, Benefits, & More From Bodybuilding Experts",
+    "url": "https://barbend.com/stomach-vacuum/"
+   }
+  ],
   "confidence": "medium",
   "note": "Isometric deep-core (transverse abdominis) exercise rather than a stretch. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -2024,9 +2206,21 @@
    "Lower slowly as you breathe in and repeat steadily for the set time.",
    "Keep your neck long by looking at the floor, not forward; for an easier version, lift only your arms or only your legs."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Do the Superman Exercise: Benefits & Muscles Worked",
+    "url": "https://www.healthline.com/health/fitness/superman-exercise"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "Got Back Pain? How the Superman Exercise Can Help",
+    "url": "https://health.clevelandclinic.org/got-back-pain-how-the-superman-exercise-can-help"
+   }
+  ],
   "confidence": "medium",
-  "note": "Back-strengthening exercise rather than a stretch. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "Back-strengthening exercise rather than a stretch. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "Lift only a few inches at first and avoid over-arching the lower back."
  },
  "fedb:The_Straddle": {
   "steps": [
@@ -2053,9 +2247,21 @@
    "Lower slowly as you breathe in and repeat smoothly for the set time, feeling your upper abs work.",
    "Lead with your chest rather than your chin and don't swing your legs; bend your knees more if your hamstrings are tight."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Washboard Abs: 6 Key Exercises for a Six-Pack (toe touches)",
+    "url": "https://www.healthline.com/health/washboard-abs"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Crunches Exercise for Beginners (toe reach)",
+    "url": "https://www.healthline.com/health/crunches-exercise-for-beginners"
+   }
+  ],
   "confidence": "medium",
-  "note": "Abdominal crunch variation done for reps, not a stretch, although mode is time. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "Abdominal crunch variation done for reps, not a stretch, although mode is time. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "Avoid jutting the neck forward; can strain the neck and back."
  },
  "fedb:Torso_Rotation": {
   "steps": [
@@ -2065,7 +2271,13 @@
    "Breathe out as you turn and in as you come back, moving smoothly for the set time.",
    "Don't swing for momentum; shorten the range or hold the ball closer to your chest if your lower back feels strained."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Standing Trunk Rotation (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/106/standing-trunk-rotation/"
+   }
+  ],
   "confidence": "medium",
   "note": "Dynamic rotation done for reps (original says 10–20), although mode is time. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -2154,9 +2366,16 @@
    "Breathe slowly and hold for 15–30 seconds.",
    "Keep your ribs down and lower back neutral instead of leaning back; if pressing the palms together is too hard, interlace your fingers and turn the palms up."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Upward Salute (Urdhva Hastasana)",
+    "url": "https://www.yogajournal.com/poses/upward-salute/"
+   }
+  ],
   "confidence": "low",
-  "note": "A generic free-exercise-db entry that is close to a standing overhead reach or Upward Salute. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "A generic free-exercise-db entry that is close to a standing overhead reach or Upward Salute. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Keep the ribs in to avoid arching the lower back."
  },
  "fedb:Windmills": {
   "steps": [
@@ -2197,7 +2416,18 @@
    "Breathe normally and circle for 15–30 seconds, then reverse direction for the same time.",
    "Make the circles as big as you can without moving your elbows; if your shoulders tire, do it with elbows bent at your sides."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "Video: Wrist and forearm stretches for the workplace - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/adult-health/multimedia/forearm-stretches/vid-20084698"
+   },
+   {
+    "site": "physio-pedia.com",
+    "title": "Hand Exercises - Physiopedia (wrist circles)",
+    "url": "https://www.physio-pedia.com/Hand_exercises"
+   }
+  ],
   "confidence": "low",
   "note": "Both wrists move at the same time. Steps say to reverse direction, which the old steps left out. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2306,9 +2536,16 @@
    "Relax and breathe into the stretched side ribs for 1–3 minutes, then walk back to centre and repeat on the other side.",
    "Keep both hips heavy instead of letting one buttock lift, and ease the curve back if your lower back feels pinched."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "3 Minutes in This Yin Yoga Pose is the Ultimate Side Body Stretch (Bananasana)",
+    "url": "https://www.yogajournal.com/practice/yin-yoga-poses-banana/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Come out if you feel sharp, pinching or radiating sensations; modify with shoulder pain, SI-joint irritation or pregnancy."
  },
  "george:band-shoulder-pass-through": {
   "steps": [
@@ -2354,7 +2591,18 @@
    "Feel the twist through your middle back and side ribs; breathe for 5–10 breaths, growing taller as you inhale and turning slightly more as you exhale.",
    "Start the twist from your belly rather than cranking your neck, then unwind and repeat with your feet to the right, turning left."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Bharadvaja's Twist: How to Practice Bharadvajasana I",
+    "url": "https://www.yogajournal.com/poses/bharadvaja-s-twist/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Bharadvaja's Twist (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/bharadvajas-twist"
+   }
+  ],
   "confidence": "medium",
   "note": "Old steps were vague about direction. You turn your chest away from the side your feet are on. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2366,9 +2614,21 @@
    "Feel your abs and hip flexors working; breathe steadily and hold for 15–30 seconds, then lower your feet with control.",
    "Don't round your lower back or hold your breath; keep your hands behind your thighs for an easier version."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Boat Pose: How to Practice Paripurna Navasana",
+    "url": "https://www.yogajournal.com/poses/full-boat-pose-2/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Connecting to Your Core: 4 Ways to Practice Boat Pose",
+    "url": "https://yogainternational.com/article/view/connecting-to-your-core-4-ways-to-practice-boat-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Take care with pregnancy, heart problems, low blood pressure or a neck injury; keep the knees bent with low-back problems."
  },
  "george:bound-angle-pose": {
   "steps": [
@@ -2395,9 +2655,21 @@
    "Breathe steadily for 3–5 breaths (about 15–30 seconds), then exhale, lower slowly and rest with your cheek on the mat.",
    "Keep your knees no wider than your hips and your neck long; loop a strap around your ankles if you can't reach them."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Bow Pose: How to Practice Dhanurasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/bow-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Bow Pose (Dhanurasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/bow/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Back off if the lower back pinches."
  },
  "george:bretzel-stretch": {
   "steps": [
@@ -2425,7 +2697,18 @@
    "Breathe steadily and hold for 30–60 seconds, then roll down slowly from the upper back to the tailbone.",
    "Keep your knees pointing forward instead of falling apart and don't turn your head while lifted; rest a block under your sacrum for a supported version."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Bridge Pose: How to Practice Setu Bandha Sarvangasana",
+    "url": "https://www.yogajournal.com/poses/bridge-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Bridge Pose (Setu Bandhasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/bridge/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2437,9 +2720,21 @@
    "Feel the stretch across the fronts of your hips, thighs, belly and chest, and breathe steadily for 3–5 breaths.",
    "Don't drop your head back or crunch your lower back; come up slowly, leading with your chest, with your chin slightly tucked."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Camel Pose: How to Practice Ustrasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/camel-pose/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Ustrasana: Camel Pose",
+    "url": "https://yogainternational.com/article/view/ustrasana-camel-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Check with a teacher or clinician first with back, neck or knee injuries; release the head only partway if the neck strains."
  },
  "george:cat-cow": {
   "steps": [
@@ -2513,7 +2808,18 @@
    "Hold for 5–10 slow breaths (about 30 seconds), then inhale and press through your feet to stand.",
    "Keep your weight in your heels and your ribs drawn in instead of arching your lower back; bring your hands to your hips if your shoulders tire."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Chair Pose: How to Practice Utkatasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/chair-pose-2/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Chair Squat Pose (Utkatasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/chair/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2570,7 +2876,18 @@
    "Inhale and step your right foot forward between your hands into a low lunge, exhale to bring the left foot forward and fold, then inhale up to standing.",
    "Move with one breath per movement and lead with the left leg on the next round; drop your knees in plank for an easier version."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Sun Salutation Sequences A, B, and C: A Complete Guide",
+    "url": "https://www.healthline.com/health/fitness/sun-salutation-sequence"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Sun Salutations with Mantras (classical 12-position sequence with lunge and cobra)",
+    "url": "https://yogainternational.com/article/view/sun-salutations-with-mantras/"
+   }
+  ],
   "confidence": "medium",
   "note": "The alias 'Surya Namaskar C' is not used the same way everywhere. Some traditions use that name for a different sequence. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2600,7 +2917,18 @@
    "Breathe slowly for 3–5 minutes, feeling your back and hips soften with each exhale.",
    "Put a folded blanket under your head if your chin tips up; to come out, roll onto one side and press up slowly."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "15-Minute Evening Yoga for Some Seriously Restful Sleep (includes Constructive Rest)",
+    "url": "https://www.yogajournal.com/practice/bedtime-yoga-for-sleep/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "A Gentle 15-Minute Sequence You Can Practice Anytime (constructive rest)",
+    "url": "https://yogainternational.com/article/view/a-gentle-15-minute-sequence-you-can-practice-anytime/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2612,9 +2940,21 @@
    "Breathe naturally without controlling the breath and stay for 3–10 minutes.",
    "Place a bolster or rolled blanket under your knees if your lower back feels tight; to finish, roll to one side and press up slowly."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Corpse Pose: How to Properly Rest in Savasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/corpse-pose-2/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Shavasana (Corpse Pose): Instructions, Benefits + Tips",
+    "url": "https://www.yogabasics.com/asana/corpse/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "In later pregnancy, rest on your side instead of your back."
  },
  "george:cossack-squat": {
   "steps": [
@@ -2659,9 +2999,21 @@
    "Feel the stretch in the top arm's triceps and the front of the lower shoulder; breathe slowly and hold for 30–60 seconds, then switch arms.",
    "Don't let your head push forward or your ribs flare out; use a strap instead of forcing your hands to meet."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Cow Face Pose (Gomukhasana)",
+    "url": "https://www.yogajournal.com/poses/cow-face-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Cow Face Pose (Gomukhasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/cow-face-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "This is the arms-only version. Full Gomukhasana also stacks the knees, one on top of the other, while seated. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "This is the arms-only version. Full Gomukhasana also stacks the knees, one on top of the other, while seated. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Requires deep shoulder rotation – don't force it."
  },
  "george:crab-reach": {
   "steps": [
@@ -2694,9 +3046,16 @@
    "Breathe into the stretched side ribs for 3–5 breaths, then inhale back to centre and repeat on the other side.",
    "Keep your chest facing forward instead of rolling it toward the floor, and keep your arms by your ears without squeezing your neck."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Crescent Moon Pose • Yoga Basics (standing side bend)",
+    "url": "https://www.yogabasics.com/asana/crescent-moon/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Some styles use the name 'Crescent Moon' for a lunge (Anjaneyasana). This entry is the standing side bend. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Some styles use the name 'Crescent Moon' for a lunge (Anjaneyasana). This entry is the standing side bend. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid with recent or chronic hip, back or shoulder injury."
  },
  "george:crocodile-pose": {
   "steps": [
@@ -2706,9 +3065,21 @@
    "Stay relaxed for 1–5 minutes, letting your shoulders, lower back and legs soften.",
    "If your neck or lower back feels strained, slide your elbows farther forward or put a folded blanket under your chest; come out through Child's Pose."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogainternational.com",
+    "title": "Makarasana: The Crocodile Pose",
+    "url": "https://yogainternational.com/article/view/makarasana-the-crocodile-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Crocodile Pose (Makarasana): Asana Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/crocodile/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Some traditions prop the chin on the hands with the elbows forward, which makes a mild back bend. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Some traditions prop the chin on the hands with the elbows forward, which makes a mild back bend. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid in pregnancy or when belly pressure is uncomfortable."
  },
  "george:crow-pose": {
   "steps": [
@@ -2718,9 +3089,21 @@
    "Feel your core, arms and wrists working; breathe steadily and hold for 5–20 seconds, then lower your feet with control.",
    "Look slightly ahead instead of straight down and keep a cushion in front of your face while learning; practise lifting one foot at a time first."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Crow Pose or Crane Pose: How to Practice Kakasana or Bakasana",
+    "url": "https://www.yogajournal.com/poses/crane-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "3 Ways to Help You Get into Crow Pose in Yoga",
+    "url": "https://www.yogajournal.com/practice/beginners/how-to/3-ways-get-crow-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Use caution with wrist pain or arthritis, back problems, vertigo or hip pain; pad the floor in front of you."
  },
  "george:dancers-pose": {
   "steps": [
@@ -2730,7 +3113,18 @@
    "Breathe steadily and hold for 5–8 breaths (about 20–30 seconds), then lower slowly and switch sides.",
    "Keep the standing knee soft rather than locked and the lifted knee from swinging out to the side; rest your front hand on a wall for balance."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Dancer Pose: How to Natarajasana or Lord of the Dance Pose",
+    "url": "https://www.yogajournal.com/poses/lord-of-the-dance-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Dancer Pose (Natarajasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/dancer/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2742,7 +3136,18 @@
    "Flow between the shapes with your breath for 5–8 rounds, feeling your legs work and your sides stretch, then switch sides.",
    "Keep your front knee bent over the ankle the whole time instead of letting it fall inward, and shorten your stance if your hips or knees complain."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "5 Ways to Sequence Warrior 2 Pose (\"The Loop\": Warrior II → Reverse Warrior → Extended Side Angle)",
+    "url": "https://www.yogajournal.com/practice/ways-to-sequence-warrior-2/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "A Sequence to Help You Practice Yoga in a Small Space (Reverse Warrior / Extended Side Angle flow)",
+    "url": "https://www.yogajournal.com/practice/yoga-in-a-small-space-2/"
+   }
+  ],
   "confidence": "medium",
   "note": "'Dancing Warrior' is a loose name. Other sequences with this name use different poses. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2789,9 +3194,21 @@
    "Feel your shoulders working and a stretch through your hamstrings, calves and upper back; breathe steadily for 5–10 breaths.",
    "Bend your knees if your back rounds, keep your head off the floor and don't let your elbows slide wider than your shoulders."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Dolphin Pose (Ardha Pincha Mayurasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/dolphin/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Dolphin Pose: How to Practice This Inversion in Yoga",
+    "url": "https://www.yogajournal.com/poses/dolphin-pose-2/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid with arm, shoulder, neck or back injury; caution with uncontrolled high blood pressure or glaucoma."
  },
  "george:doorframe-lat-stretch": {
   "steps": [
@@ -2920,7 +3337,18 @@
    "Sink your hips a little lower and breathe steadily for 5–8 breaths, then unwind and switch sides.",
    "For easier balance, rest the toes of the crossed leg on the floor instead of hooking the calf, and hold opposite shoulders if your palms won't meet."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Eagle Pose: How to Practice Garudasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/eagle-pose/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Eagle pose (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/eagle-pose"
+   }
+  ],
   "confidence": "medium",
   "note": "In the classical pose, the arm on top is on the opposite side to the leg on top. Some teachers cross the same side. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2932,7 +3360,18 @@
    "Breathe slowly and stay for 1–5 minutes, then cross your shins the other way next time.",
    "If your knees sit higher than your hips or your back rounds, sit on a higher blanket or support your knees on blocks."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Easy Pose: How to Practice Sukhasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/easy-pose-3/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Easy Pose (Sukhasana): Asana Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/easy-pose/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2944,9 +3383,16 @@
    "Breathe slowly for 1–2 minutes, then walk your hands back up, cross your legs the other way and repeat.",
    "Keep both sitting bones on the blanket; if your knees or hips feel strained, fold less and rest your head on a block or bolster."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "ekhartyoga.com",
+    "title": "Easy Pose (Ekhart Yoga) – forward-fold variation",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/easy-pose"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid if the knees feel strained."
  },
  "george:extended-childs-pose": {
   "steps": [
@@ -2956,9 +3402,21 @@
    "Breathe slowly into your back for 30 seconds to 2 minutes.",
    "If your hips don't reach your heels, place a folded blanket between them or under your knees."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Child's Pose: How to Practice Balasana (extended-arms variation)",
+    "url": "https://www.yogajournal.com/poses/child-s-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "4 Ways to Practice Child's Pose",
+    "url": "https://www.yogajournal.com/practice/4-ways-to-practice-childs-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "With a knee injury, place a folded blanket behind the knees."
  },
  "george:extended-hand-to-big-toe-pose": {
   "steps": [
@@ -2968,7 +3426,18 @@
    "Breathe steadily and hold for 5–8 breaths (about 20–30 seconds), then release and switch legs.",
    "Keep the knee bent, or hold the knee instead of the toe, if your back starts to round; stand near a wall for balance."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Extended Hand-To-Big-Toe Pose (Utthita Hasta Padangustasana)",
+    "url": "https://www.yogajournal.com/poses/extended-hand-to-big-toe-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Pose of the Month: Utthita Hasta Padangusthasana • Yoga Basics",
+    "url": "https://www.yogabasics.com/connect/pose-of-the-month-utthita-hasta-padangusthasana/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -2980,7 +3449,18 @@
    "Breathe steadily for 5–8 breaths, then inhale back to Warrior II and switch sides.",
    "Don't sink your weight into the front arm or let the front knee drift inward; keep your forearm on your thigh until you can go lower easily."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Extended Side Angle Pose: How to Practice Utthita Parsvakonasana",
+    "url": "https://www.yogajournal.com/poses/extended-side-angle-pose-2/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Extended Side Angle Pose",
+    "url": "https://yogainternational.com/article/view/extended-side-angle-pose/"
+   }
+  ],
   "confidence": "medium",
   "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
  },
@@ -3009,9 +3489,21 @@
    "Feel the stretch in your outer hips and glutes; breathe slowly and hold for 30 seconds to 2 minutes, then switch which shin is on top.",
    "Back off right away if you feel pressure in your knees, and sit cross-legged instead if you can't stack your shins."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Fire Log Pose (Agnistambhasana)",
+    "url": "https://www.yogajournal.com/poses/fire-log-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Firelog Pose (Agnistambhasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/firelog/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid with knee pain or low-back/knee injury."
  },
  "george:fish-pose": {
   "steps": [
@@ -3021,9 +3513,21 @@
    "Breathe steadily for 3–5 breaths (15–30 seconds), then press into your forearms, lift your head and lower your back down.",
    "Don't put much weight on your neck; for a gentler version, lie back over a block or bolster under your upper back with your head on the floor."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Fish Pose: How to Practice Matsyasana",
+    "url": "https://www.yogajournal.com/poses/fish-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Fish Pose (Matsyasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/fish/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Avoid with neck, shoulder, arm or back injury."
  },
  "george:fist-tuck-wrist-stretch": {
   "steps": [
@@ -3113,9 +3617,21 @@
    "Feel your triceps, chest and core working; keep your shoulders level with your elbows and hold for 1–2 breaths before moving on.",
    "Lower your knees to the mat first if you can't keep your hips in line with your shoulders, and don't let your shoulders dip below your elbows."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Chaturanga Dandasana: How to Practice Four-Limbed Staff Pose",
+    "url": "https://www.yogajournal.com/poses/four-limbed-staff-pose/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Four Limbed Staff Pose (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/four-limbed-staff-pose"
+   }
+  ],
   "confidence": "medium",
-  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Modify or avoid with rotator cuff or other shoulder injury, wrist pain or carpal tunnel syndrome."
  },
  "george:frog-pose": {
   "steps": [
@@ -3125,9 +3641,21 @@
    "Breathe slowly and hold for 1–3 minutes, keeping your lower back long instead of letting it sag.",
    "Ease in gradually and stop at a strong but tolerable stretch; to come out, shift forward and walk your knees back together."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Frog Pose Benefits: How to Get the Most from Mandukasana",
+    "url": "https://www.healthline.com/health/fitness/frog-pose-benefits"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Frog pose (Ekhart Yoga yin poses)",
+    "url": "https://www.ekhartyoga.com/resources/yin-poses/frog-pose"
+   }
+  ],
   "confidence": "medium",
-  "note": "This is the Yin-style wide-knee frog. The Sanskrit alias is ambiguous: Mandukasana is a seated pose in some traditions, and Bhekasana is a face-down quad stretch. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source."
+  "note": "This is the Yin-style wide-knee frog. The Sanskrit alias is ambiguous: Mandukasana is a seated pose in some traditions, and Bhekasana is a face-down quad stretch. Search budget ran out before this entry could be checked; steps are written from standard technique and still need a source.",
+  "caution": "Skip if either knee hurts; Pad the knees."
  },
  "george:frog-rocks": {
   "steps": [
@@ -3727,7 +4255,13 @@
    "Feel the stretch in your inner thigh, groin and the front of the back hip; breathe slowly for 5–10 breaths, then switch sides.",
    "Keep the front knee pointing over the toes instead of collapsing inward, and stay on your hands or blocks rather than forcing your forearms down."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "How to Un-Stiff Your Body So You Can (Finally) Come Into a Yoga Squat (includes Lizard Pose)",
+    "url": "https://www.yogajournal.com/practice/squat-in-yoga/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -3739,7 +4273,18 @@
    "Feel your back muscles, glutes and hamstrings working; breathe steadily for 3–5 breaths, then lower with control on an exhale.",
    "For an easier version lift only your chest or only your legs, and avoid jutting your chin forward."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Locust Pose: How to Practice Salabhasana",
+    "url": "https://www.yogajournal.com/poses/locust-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Locust Pose: Instructions, Benefits + Tips (Yoga Basics)",
+    "url": "https://www.yogabasics.com/asana/locust/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -3751,9 +4296,21 @@
    "Breathe steadily and hold for 30 seconds to a minute, then switch sides.",
    "Don't arch your lower back to go deeper, and keep your hands on blocks beside the front foot if balance is hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Low Lunge (Anjaneyasana)",
+    "url": "https://www.yogajournal.com/poses/low-lunge/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Cues for Low Lunge (Anjaneyasana) (video)",
+    "url": "https://www.yogajournal.com/video/low-lunge-cues/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "Pad the back knee; don't push the hips so far forward that the lower back pinches."
  },
  "george:lower-trunk-rotations": {
   "steps": [
@@ -3928,9 +4485,21 @@
    "Feel your core, shoulders and thighs working; breathe steadily and hold for 20–60 seconds.",
    "For an easier version lower your knees to the mat, keeping a straight line from knees to head."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Plank Pose (Phalakasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/plank/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "How to Practice Plank Pose",
+    "url": "https://www.yogajournal.com/poses/plank-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "Avoid with recent or chronic arm, back or shoulder injury."
  },
  "george:plantar-fascia-toe-stretch": {
   "steps": [
@@ -3963,9 +4532,21 @@
    "Feel the stretch in your back, hamstrings and the back of your shoulders; breathe slowly and hold for 30 seconds to a minute.",
    "Rest your feet on a chair if they don't reach the floor, never turn your head while up, and roll down slowly; skip it if you have neck problems."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Plow Pose: How to Practice Halasana",
+    "url": "https://www.yogajournal.com/poses/plow-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Plow Pose (Halasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/plow/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "Avoid with neck or shoulder problems; never turn the head while in the pose."
  },
  "george:prayer-wrist-stretch": {
   "steps": [
@@ -4045,7 +4626,18 @@
    "Feel the stretch in your shoulders, armpits and upper back; breathe into your upper back and hold for 30 seconds to a minute.",
    "Don't sink so far that your lower back pinches; pad your knees or forehead with a blanket, then walk your hands back to come out."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Extended Puppy Pose: How to Practice Uttana Shishosana",
+    "url": "https://www.yogajournal.com/poses/extended-puppy-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "6 Steps to Master Extended Puppy Pose (Uttana Shishosana)",
+    "url": "https://www.yogajournal.com/practice/beginners/how-to/master-uttana-shishosana-extended-puppy-pose/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4057,9 +4649,21 @@
    "Feel a strong stretch along the back of the front leg; breathe steadily for 5–8 breaths, then rise with a long spine and switch sides.",
    "Keep your back flat instead of rounding to reach lower, and shorten your stance or slightly bend the front knee if the hamstring strains."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Pyramid Pose: How to Practice Parsvottanasana",
+    "url": "https://www.yogajournal.com/poses/intense-side-stretch-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Pyramid Pose (Parsvottanasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/pyramid/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "Avoid with recent hip, back or shoulder injury; caution with uncontrolled high blood pressure (head below heart)."
  },
  "george:quadruped-thoracic-rotation": {
   "steps": [
@@ -4133,9 +4737,21 @@
    "Feel a gentle stretch in your inner thighs and groin; breathe slowly and stay for 1–5 minutes.",
    "Don't push your knees down; to come out, use your hands to bring your knees together, then roll onto your side."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Reclining Bound Angle Pose: How to Practice Supta Baddha Konasana",
+    "url": "https://www.yogajournal.com/poses/reclining-bound-angle-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Supine Bound Angle Pose (Supta Baddha Konasana): Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/supine-bound-angle/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "With groin or knee injury, always support the outer thighs."
  },
  "george:reclined-hand-to-big-toe-pose": {
   "steps": [
@@ -4145,9 +4761,21 @@
    "Breathe slowly and hold for 30 seconds to a minute, then switch legs.",
    "Bend the bottom knee with the foot flat if your lower back lifts, and hold the big toe instead only if your head and shoulders stay down."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Reclining Hand-to-Big-Toe Pose I (Supta Padangusthasana I)",
+    "url": "https://www.yogajournal.com/poses/reclining-big-toe-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "3 Ways to Modify Reclining Hand-to-Big Toe Pose",
+    "url": "https://www.yogajournal.com/poses/3-ways-to-modify-supta-padangusthasana/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "Feel it in the hamstring, not the knee – lower the leg or soften the knee if the knee hurts."
  },
  "george:reclined-hero-pose": {
   "steps": [
@@ -4180,9 +4808,16 @@
    "Keep your head, shoulders and tailbone relaxed on the floor and breathe slowly for 30 seconds to a minute, then switch sides.",
    "For a gentler stretch, keep the bottom foot on the floor or rest it against a wall."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "How to (Comfortably) Come Into Pigeon Pose (supine figure-four step)",
+    "url": "https://www.yogajournal.com/practice/beginners/pigeon-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose. The more common Sanskrit name for this figure-four is Sucirandhrasana; 'Supta Kapotasana' is used by some teachers."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose. The more common Sanskrit name for this figure-four is Sucirandhrasana; 'Supta Kapotasana' is used by some teachers.",
+  "caution": "Back off if the knee hurts."
  },
  "george:reverse-lunge-with-overhead-reach": {
   "steps": [
@@ -4204,7 +4839,13 @@
    "Feel the stretch in your wrists, forearms and the front of your shoulders and chest; breathe evenly and hold for about 30 seconds.",
    "If your palms won't meet, press fists together or hold opposite elbows behind your back, and stop if your wrists hurt."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Arm Stretches: For Flexibility (reverse prayer)",
+    "url": "https://www.healthline.com/health/fitness-exercise/arm-stretches"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4216,9 +4857,21 @@
    "Feel your glutes, hamstrings and arms working and a stretch across your chest and shoulders; breathe steadily for about 5 breaths.",
    "Don't let your hips sag or drop your head back if your neck is sensitive; lower gently and shake out your wrists between holds."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Crab Pose / Reverse Tabletop Pose: Steps & Benefits (Yoga Basics)",
+    "url": "https://www.yogabasics.com/asana/crab-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Reverse Plank Is a Highly Underrated Yoga Pose. Here's Why. (bent-knee version)",
+    "url": "https://www.yogajournal.com/practice/reverse-plank-purvottanasana/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "If wrists hurt, turn the fingers another way or make fists."
  },
  "george:reverse-warrior": {
   "steps": [
@@ -4245,7 +4898,18 @@
    "Feel your thighs and glutes working and the twist through your middle back; breathe for 3–5 breaths, return to centre on an inhale and switch sides.",
    "Keep your knees level so one doesn't slide ahead, and twist less with hands on your thighs if hooking the elbow strains your back."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "5 Steps to Master Revolved Chair Pose",
+    "url": "https://www.yogajournal.com/practice/beginners/5-steps-strong-alignment-revolved-chair-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Chair Twist Pose (Parivritta Utkatasana) • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/chair-twist/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4257,7 +4921,18 @@
    "Feel your standing leg and hip working, a stretch in that hamstring and a twist through your middle back; hold for 3–5 steady breaths.",
    "Keep the standing knee soft and look down if balancing is hard, or press the lifted foot into a wall; lower with control and switch sides."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Master Class: Revolved Half Moon Pose (Parivrtta Ardha Chandrasana)",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/to-the-moon/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Revolved Half Moon Pose: Asana Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/revolved-half-moon/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4308,7 +4983,18 @@
    "Feel the twist through your upper and middle back; breathe slowly for about 5 breaths, lengthening on inhales and turning on exhales.",
    "Twist from your upper back without forcing it and keep your gaze down if your neck is sensitive, then return to centre and switch sides."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "A 10-Minute Yoga Sequence For Finding Fulfillment (revolved low lunge)",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/10-minute-sequence-finding-fulfillment/?scope=anon"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "15 Yoga Balance Poses to Improve Your Everyday Movement (revolved low lunge)",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/fall-yoga-15-poses-proven-build-better-balance/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4320,9 +5006,21 @@
    "Feel the twist through your middle back and your front thigh and glutes working; breathe steadily for 3–5 breaths, then switch sides.",
    "Lengthen your spine before twisting deeper, and lower the back knee or use prayer hands with the elbow hooked if reaching the floor is too much."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Revolved Side Angle Pose: How to Do Parivrtta Parsvakonasana",
+    "url": "https://www.yogajournal.com/poses/revolved-side-angle-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Revolved Side Angle Pose: Asana Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/revolved-side-angle/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
+  "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose.",
+  "caution": "With neck problems look ahead or down; skip it with a headache or high or low blood pressure."
  },
  "george:revolved-triangle-pose": {
   "steps": [
@@ -4332,7 +5030,18 @@
    "Feel the stretch in the front leg's hamstring and the twist through your back; breathe steadily for 3–5 breaths, then switch sides.",
    "Keep both legs straight but not locked and your hips level; use a higher block or shorten your stance if your back rounds."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Revolved Triangle Pose: How to Practice Parivrtta Trikonasana",
+    "url": "https://www.yogajournal.com/poses/revolved-triangle-pose-2/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Revolved Triangle Pose (Parivrtta Trikonasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/revolved-triangle/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not verified against a source: the shared web-search limit was reached before this entry, so references are empty; steps follow standard instruction for this pose."
  },
@@ -4489,7 +5198,18 @@
    "Breathe slowly and hold 20–30 seconds.",
    "Ease off if you feel pinching at the front of the shoulder, and keep the elbows straight but not locked."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Seated Bent-Knee Biceps Stretch (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/208/seated-bent-knee-biceps-stretch/"
+   },
+   {
+    "site": "healthline.com",
+    "title": "Bicep Stretch: 6 Stretches for Upper Arm Strength",
+    "url": "https://www.healthline.com/health/bicep-stretch"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out)."
  },
@@ -4523,7 +5243,13 @@
    "Breathe slowly, hold 20–30 seconds, then lower the foot and switch legs.",
    "Don't slump to bring the knee closer; if holding the shin bothers your knee, hold behind the thigh instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "Video: Seated stretches for the workplace - Mayo Clinic",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/adult-health/multimedia/lower-back-stretches/vid-20084700"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified (shared web-search budget ran out)."
  },
@@ -4721,9 +5447,16 @@
    "Breathe slowly and hold for about 30 seconds, then ease the pressure off before resting.",
    "Keep the pressure light and stop if you feel pinching at the front of the shoulder or pain in the joint."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "The Sleeper Stretch for Shoulder Rotation and Pain Relief",
+    "url": "https://www.healthline.com/health/sleeper-stretch"
+   }
+  ],
   "confidence": "medium",
-  "note": "Steps describe the modified sleeper stretch (rolled back 20–30 degrees); the classic version lies straight on the shoulder. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "Steps describe the modified sleeper stretch (rolled back 20–30 degrees); the classic version lies straight on the shoulder. No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "This position can pinch the front of the shoulder – keep the pressure light and switch to the cross-body stretch if it pinches; skip it with an unstable shoulder."
  },
  "george:sphinx-pose": {
   "steps": [
@@ -4772,7 +5505,13 @@
    "Breathe deeply and hold for 20–30 seconds, or gently roll a little forward and back to vary the spot.",
    "To come out, tuck your chin, bring your hands to your thighs and walk your feet back in; keep your arms by your sides if overhead feels too intense."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "How to Stretch Abs: Benefits, Safety, and Examples (chest opener on a stability ball)",
+    "url": "https://www.healthline.com/health/exercise-fitness/how-to-stretch-abs"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4784,7 +5523,18 @@
    "Breathe slowly into the stretched side and hold for 20–30 seconds, then switch sides.",
    "Keep your chest facing forward rather than rolling toward the floor; leave the top hand on your hip for an easier version."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nhs.uk",
+    "title": "Gym Ball Exercises for Ankylosing Spondylitis (Royal Devon NHS) – kneeling side stretch over the ball",
+    "url": "https://www.royaldevon.nhs.uk/media/m1jcfcqg/patient-information-leaflet-gym-ball-exercises-for-ankylosing-spondylitis-rde-21-037-001.pdf"
+   },
+   {
+    "site": "acefitness.org",
+    "title": "ACE Fitness Tools of the Trade: Stability Ball 101 (kneeling side stretch with ball at hip)",
+    "url": "https://www.acefitness.org/about-ace/press-room/press-releases/365/ace-fitness-tools-of-the-trade-stability-ball-101the-ball-is-an-effective-tool-for-stretching-and-mobility-exercises/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4818,7 +5568,18 @@
    "Breathe steadily and hold for 20–30 seconds, then shift across to the other side.",
    "Keep the bent knee tracking over your toes; if balance is tricky, use a narrower stance or hold a chair."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "Essential Stretches for Runners (standing groin stretch)",
+    "url": "https://www.healthline.com/health/fitness-exercise/essential-runner-stretches"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "Stretches for the hip (Cambridge University Hospitals) – inner thigh stretch",
+    "url": "https://www.cuh.nhs.uk/patient-information/stretches-for-the-hip/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4891,7 +5652,18 @@
    "For more stretch, raise the wall-side arm overhead toward the other side; breathe slowly and hold for 20–30 seconds, then turn around to switch.",
    "Keep your chest facing forward rather than twisting, and don't slump your weight into the wall."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "IT Band Stretches for Tight Muscles (standing IT band stretch)",
+    "url": "https://health.clevelandclinic.org/it-band-stretches"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "Stretches for the hip (Cambridge University Hospitals) – standing ITB stretch at a wall",
+    "url": "https://www.cuh.nhs.uk/patient-information/stretches-for-the-hip/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4921,7 +5693,18 @@
    "Breathe slowly and hold for 20–30 seconds, then turn around and switch legs.",
    "Avoid arching your lower back or letting the knee drift out to the side; loop a towel around your ankle if you can't reach it."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "mayoclinic.org",
+    "title": "A guide to basic stretches - Mayo Clinic (quadriceps stretch)",
+    "url": "https://www.mayoclinic.org/healthy-lifestyle/fitness/in-depth/stretching/art-20546848"
+   },
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "Stretching 101: 9 Exercises and 8 Benefits (standing quad stretch)",
+    "url": "https://health.clevelandclinic.org/stretching"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4951,7 +5734,18 @@
    "Breathe slowly and hold for 20–30 seconds, starting with light pressure and building gradually, then switch feet.",
    "Keep most of your weight on the standing leg; if your foot cramps, try it seated with the foot tucked back beside the chair."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "7 Shin Splint Stretches for Recovery and Prevention",
+    "url": "https://www.healthline.com/health/shin-splint-stretches"
+   },
+   {
+    "site": "acefitness.org",
+    "title": "How to Prevent Shin Splints (standing shin stretch)",
+    "url": "https://www.acefitness.org/resources/everyone/blog/5160/how-to-prevent-shin-splints/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4985,7 +5779,18 @@
    "Breathe slowly and hold for 15–30 seconds, then switch arms.",
    "Use gentle pressure only and ease off if you feel tingling or elbow pain; bending the elbow slightly makes it easier."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "Got Tennis Elbow? Try These 8 Exercises (wrist extensor stretch)",
+    "url": "https://health.clevelandclinic.org/tennis-elbow-exercises"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "Wrist extensor stretch - South Tees Hospitals NHS Foundation Trust",
+    "url": "https://www.southtees.nhs.uk/resources/wrist-extensor-stretch/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -4997,7 +5802,18 @@
    "Breathe slowly and hold for 15–30 seconds, then switch arms.",
    "Pull gently rather than cranking the fingers back; bend the elbow slightly for an easier stretch."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "7 Best Exercises for Golfer’s Elbow (wrist flexor stretch)",
+    "url": "https://health.clevelandclinic.org/golfers-elbow-exercises-stretches"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "Golfer’s elbow stretch - South Tees Hospitals NHS Foundation Trust",
+    "url": "https://www.southtees.nhs.uk/resources/golfers-elbow-stretch/"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -5026,7 +5842,13 @@
    "Breathe slowly and hold for 20–30 seconds in each position.",
    "Lower gradually without bouncing, and start with both feet sharing the load before trying one leg at a time."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "health.clevelandclinic.org",
+    "title": "5 Plantar Fasciitis Stretches and Exercises (calf stretch on a step)",
+    "url": "https://health.clevelandclinic.org/plantar-fasciitis-stretches-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -5083,9 +5905,16 @@
    "Breathe slowly and hold at a comfortable edge for 20–30 seconds, then bring the dowel back over your chest.",
    "Keep your lower ribs and lower back gently heavy on the floor instead of arching to find extra range."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "acefitness.org",
+    "title": "Supine Shoulder Flexion (ACE Exercise Library)",
+    "url": "https://www.acefitness.org/resources/everyone/exercise-library/123/supine-shoulder-flexion/"
+   }
+  ],
   "confidence": "medium",
-  "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
+  "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description.",
+  "caution": "After shoulder surgery follow your therapist's range limits."
  },
  "george:supine-external-rotation-stretch": {
   "steps": [
@@ -5095,7 +5924,18 @@
    "Breathe slowly and hold for 20–30 seconds, then switch arms.",
    "Put a small folded towel under the elbow for comfort; to progress, move the elbow slightly away from your side, staying below shoulder height."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "nhs.uk",
+    "title": "Shoulder pain exercises (Sheffield Teaching Hospitals) – stick-assisted external rotation, elbow tucked, lying/sitting/standing",
+    "url": "https://best.barnsleyccg.nhs.uk/media/baklmdj5/shoulder-pain-exercises-nov-23.pdf"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "Rotator cuff repair: exercises (University Hospital Southampton) – stick-assisted external rotation",
+    "url": "https://www.uhs.nhs.uk/departments/trauma-and-orthopaedics/shoulders/patient-information/rotator-cuff-repair/rotator-cuff-repair-exercises"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -5147,9 +5987,21 @@
    "Breathe steadily for 30 seconds to a few minutes, then bend your knees and roll down slowly one vertebra at a time.",
    "Never turn your head while up; if you have neck problems, high blood pressure or are new to inversions, do Legs-Up-the-Wall instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Supported Shoulderstand (Salamba Sarvangasana)",
+    "url": "https://www.yogajournal.com/poses/supported-shoulderstand/"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Salamba Sarvangasana (Shoulderstand) Stage One Tutorial (video class)",
+    "url": "https://yogainternational.com/class/salamba-sarvangasana-shoulderstand-stage-one-tutorial/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "Never turn the head in the pose; Skip with neck problems, high blood pressure or if new to inversions."
  },
  "george:tabletop-pose": {
   "steps": [
@@ -5159,9 +6011,21 @@
    "Breathe steadily for 5-10 breaths, keeping your gaze down at the mat just ahead of your hands.",
    "Don't let your lower back sag or your shoulders sink toward the floor, and put a folded blanket under your knees if they're sensitive."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Table / Tabletop Pose (Bharmanasana): Steps, Benefits & Tips",
+    "url": "https://www.yogabasics.com/asana/table-pose/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "5 Yoga Poses to Build Heat and Find Release (Tabletop cues)",
+    "url": "https://www.yogajournal.com/poses/anatomy/hips/leg-swing-flow-yoga-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "Avoid with recent wrist or knee injury."
  },
  "george:thoracic-open-book": {
   "steps": [
@@ -5194,9 +6058,16 @@
    "Rest your other hand on the floor or reach it overhead, breathe slowly for 30-60 seconds, then press back up and switch sides.",
    "Don't load your neck; if it's uncomfortable, rest your head on a folded blanket or thread the arm less far."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Thread the Needle Pose: Steps & Benefits • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/threading-the-needle/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "Pad the knees."
  },
  "george:three-legged-dog": {
   "steps": [
@@ -5206,7 +6077,18 @@
    "Hold for 3-5 breaths, then lower the leg on an exhale and switch sides.",
    "Don't trade level hips for a higher leg; for a hip opener, bend the lifted knee and let that hip open toward the ceiling."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Three-Legged Downward Dog Dissected",
+    "url": "https://www.yogajournal.com/practice/beginners/how-to/back-basics-three-legged-downward-dog-dissected/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Eka Pada Adho Mukha Svanasana",
+    "url": "https://www.yogajournal.com/practice/beginners/how-to/one-legged-downward-facing-dog/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5218,7 +6100,18 @@
    "Breathe slowly and hold for 20–30 seconds, then bend the front knee slightly to shift the stretch toward the Achilles before switching sides.",
    "Keep the heel down and hips facing the wall; set the toes lower on the wall if it feels too intense."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "healthline.com",
+    "title": "6 Achilles Tendon Stretches and Exercises for Recovery and Strength (toe-to-wall stretch)",
+    "url": "https://www.healthline.com/health/achilles-tendon-stretch"
+   },
+   {
+    "site": "nhs.uk",
+    "title": "A Patient's guide to Inferior Heel Pain (Royal National Orthopaedic Hospital) – forefoot-on-wall stretch",
+    "url": "https://www.rnoh.nhs.uk/patients-and-visitors/patient-information-guides/inferior-heel-pain"
+   }
+  ],
   "confidence": "medium",
   "note": "No reference verified: the shared web-search budget ran out before this entry; steps written from standard practice and the existing description."
  },
@@ -5276,7 +6169,18 @@
    "Bring your palms together at your chest or reach overhead, fix your gaze on a still point and breathe steadily for 30-60 seconds before switching sides.",
    "If you wobble, keep your toes on the floor with the heel against your ankle, or rest one hand on a wall."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Tree Pose: How to Practice Vrksasana - Yoga Journal",
+    "url": "https://www.yogajournal.com/poses/tree-pose-2/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Tree Pose (Vrikshasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/tree/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5306,9 +6210,21 @@
    "Hold for 1-5 breaths, then lower down or lift your hips back into Downward-Facing Dog on an exhale.",
    "Avoid shrugging your shoulders or sinking into your lower back; if it pinches, keep your thighs on the floor and do Cobra instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Upward-Facing Dog Pose: How to Practice Urdhva Mukha Svanasana",
+    "url": "https://www.yogajournal.com/poses/upward-facing-dog-2/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Upward Facing Dog Pose (Urdhva Mukha Svanasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/upward-facing-dog/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "Back off if the lower back strains."
  },
  "george:upward-plank-pose": {
   "steps": [
@@ -5318,9 +6234,21 @@
    "Hold for 3-5 breaths with your neck neutral, or let your head drop back only if comfortable, then lower your hips to sit.",
    "If your shoulders or hamstrings complain, bend your knees with your feet flat and lift into Reverse Tabletop instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Reverse Plank (Purvottanasana)",
+    "url": "https://www.yogajournal.com/poses/upward-plank-pose-2/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Upward Plank Pose (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/upward-plank-pose"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "With a neck injury keep the chin toward the chest."
  },
  "george:upward-salute": {
   "steps": [
@@ -5330,7 +6258,18 @@
    "Hold for a few breaths, lifting your gaze to your thumbs only if your neck is comfortable, then exhale and lower your arms.",
    "Keep your shoulders away from your ears and your lower ribs drawn in so you don't arch your lower back; keep your hands apart if your shoulders are tight."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Upward Salute (Urdhva Hastasana)",
+    "url": "https://www.yogajournal.com/poses/upward-salute/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "3 Ways to Modify Upward Salute (Urdhva Hastasana)",
+    "url": "https://www.yogajournal.com/poses/3-ways-modify-upward-salute-urdhva-hastasana/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5342,9 +6281,21 @@
    "Exhale and lift your hips back into Downward-Facing Dog; you'll feel your chest, triceps and core working, then a stretch through your hamstrings.",
    "Match each movement to one breath, and if your shoulders tire, skip the lowering and move straight from Plank to Downward-Facing Dog."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "ekhartyoga.com",
+    "title": "Vinyasa Flow transitions and how to safely navigate them (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/articles/practice/vinyasa-flow-transitions-and-how-to-safely-navigate-them"
+   },
+   {
+    "site": "yogainternational.com",
+    "title": "Seven Tips for Practicing Vinyasa with Safety and Ease",
+    "url": "https://yogainternational.com/article/view/seven-tips-for-practicing-vinyasa-with-safety-and-ease/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "With shoulder or wrist issues use knees-chest-chin to Cobra, or skip Chaturanga."
  },
  "george:walking-knee-hug": {
   "steps": [
@@ -5465,7 +6416,18 @@
    "Breathe steadily for 5-8 breaths, then step forward and switch sides.",
    "If your back heel lifts or your hips won't face forward, widen your feet side to side or shorten your stance."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Warrior 1 Pose: How to Practice Virabhadrasana I",
+    "url": "https://www.yogajournal.com/poses/warrior-i-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Warrior I Pose (Virabhadrasana I) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/warrior-i/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5477,9 +6439,21 @@
    "Keep your torso upright over your pelvis and breathe steadily for 5-8 breaths, then switch sides.",
    "Don't lean your torso toward the front leg; if your knee drifts past your ankle, step your feet wider apart."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Warrior 2 Pose: How to Practice Virabhadrasana II",
+    "url": "https://www.yogajournal.com/poses/warrior-ii-pose/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Warrior 2 Pose (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/warrior-2-pose"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references.",
+  "caution": "Modify or avoid with hamstring, groin or hip injury."
  },
  "george:warrior-iii": {
   "steps": [
@@ -5489,7 +6463,18 @@
    "Hold for 3-5 breaths with a slightly soft standing knee, then step the back foot down and switch sides.",
    "Keep both hips level instead of letting the lifted hip open, and rest your hands on blocks or a wall if balance is hard."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Warrior 3 Pose: How to Practice Virabhadrasana III",
+    "url": "https://www.yogajournal.com/poses/warrior-iii-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Warrior 3 (Virabhadrasana III): Instructions, Tips & Benefits",
+    "url": "https://www.yogabasics.com/asana/warrior-iii/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5501,7 +6486,18 @@
    "Breathe steadily for 3-5 breaths, then tuck your chin and lower slowly onto your upper back.",
    "Keep knees and feet parallel; if you can't straighten your arms, practise Bridge Pose instead, and warm up with smaller backbends first."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Wheel Pose: How to Practice Urdhva Dhanurasana or Upward-Facing Bow Pose",
+    "url": "https://www.yogajournal.com/poses/upward-bow-or-wheel-pose/"
+   },
+   {
+    "site": "yogabasics.com",
+    "title": "Wheel Pose (Urdhva Dhanurasana) Instructions & Photos • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/upward-bow/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5513,7 +6509,18 @@
    "Breathe slowly for 30 seconds to a few minutes, easing forward on each exhale, then walk your hands back to sit up.",
    "Don't let your knees roll inward or round your back to get lower; bend your knees slightly or bring your legs closer if the stretch is too strong."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Wide-Angled Seated Forward Bend: How to Practice Upavistha Konasana",
+    "url": "https://www.yogajournal.com/poses/wide-angle-seated-forward-bend/"
+   },
+   {
+    "site": "ekhartyoga.com",
+    "title": "Wide-Angle Seated Forward Bend (Ekhart Yoga)",
+    "url": "https://www.ekhartyoga.com/resources/yoga-poses/wide-angle-seated-forward-bend"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5547,7 +6554,18 @@
    "Breathe for 3-5 breaths, then reach the arm back down, flip back to Three-Legged Dog and switch sides.",
    "Keep the supporting shoulder strong and stacked over the wrist; for an easier version keep your hips lower, or practise Side Plank instead."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogajournal.com",
+    "title": "Wild Thing (Camatkarasana)",
+    "url": "https://www.yogajournal.com/poses/wild-thing/"
+   },
+   {
+    "site": "yogajournal.com",
+    "title": "Kathryn Budig Yoga Challenge Pose: Wild Thing (Camatkarasana)",
+    "url": "https://www.yogajournal.com/practice/yoga-sequences/camatkarasana/"
+   }
+  ],
   "confidence": "medium",
   "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references."
  },
@@ -5559,9 +6577,16 @@
    "Breathe slowly into your belly for 30-60 seconds, rocking gently side to side if it feels good, then release your feet to the floor.",
    "Don't lift your head or tense your neck; for a gentler version, hug one knee at a time with the other leg bent or straight."
   ],
-  "references": [],
+  "references": [
+   {
+    "site": "yogabasics.com",
+    "title": "Wind Relieving Pose (Pavana Muktasana) • Yoga Basics",
+    "url": "https://www.yogabasics.com/asana/wind-relieving-pose/"
+   }
+  ],
   "confidence": "medium",
-  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references. Pavanamuktasana is often taught one leg at a time; this entry is the two-knee (Apanasana) version, so perSide false is fine."
+  "note": "Not web-verified: the shared web-search budget ran out before this entry could be searched; steps follow standard teaching of the pose and still need 1-2 references. Pavanamuktasana is often taught one leg at a time; this entry is the two-knee (Apanasana) version, so perSide false is fine.",
+  "caution": "Avoid after recent abdominal surgery or with a hernia."
  },
  "george:windmill-toe-touches": {
   "steps": [

@@ -165,6 +165,11 @@ struct ExerciseDetailView: View {
                             Text(step).font(.callout)
                         }
                     }
+                    if let caution = exercise.caution {
+                        Label(caution, systemImage: "exclamationmark.triangle")
+                            .font(.callout)
+                            .foregroundStyle(Tone.cautionText)
+                    }
                 }
             }
             Section {

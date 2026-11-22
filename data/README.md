@@ -29,6 +29,8 @@ exercise id:
   Basics, Ekhart Yoga, ACE, NASM, Cleveland Clinic, NHS, Healthline …). Every URL was found through a
   web search for that exact movement; the app opens them in the in-app browser ("How-to with photos").
 - `perSide`: set when the source had it wrong (a one-sided stretch marked as two-sided or the other way).
+- `caution`: one short safety line when sources warn about it ("Avoid with neck problems; never
+  turn the head while in the pose"), shown with a warning sign.
 - `confidence` / `note`: research notes, not used by the app.
 
 ## Regenerating

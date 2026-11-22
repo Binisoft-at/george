@@ -130,6 +130,14 @@ Evening Wind-Down, Tennis Warm-Up, Shoulders & Upper Back) – *Start Now* or *A
 (program “Stretch & Yoga”), then edit, start or share like any template. Definitions:
 `GeorgeCore/Routines.swift` (a test checks every move exists in the library).
 
+**How to** (v6.1): every stretch, yoga pose and mobility drill shows its steps in live mode right
+under the name (a "How to" card, foldable): starting position, how to get into it, where you feel it,
+breathing and hold, one common mistake or easier option – plus a safety line where sources warn
+(neck in Plow and Shoulder Stand, knees in Frog, pregnancy in Corpse …). "Photos · Yoga Journal" /
+ACE / NHS … opens a checked how-to page with photos or video in the app; "Video" searches YouTube.
+Routines unfold each move to its steps. The guidance was checked against reputable pages for all 325
+moves and written in George's own words (`data/howto.json`, see `data/README.md`).
+
 ## Sharing routines (v3)
 
 Any template → **Share** (toolbar): a **PDF** for anyone (numbered exercises with sets/holds, muscles

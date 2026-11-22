@@ -1391,6 +1391,12 @@ struct HowToCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                if let caution = exercise.caution {
+                    Label(caution, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(Tone.cautionText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(exercise.references, id: \.url) { reference in

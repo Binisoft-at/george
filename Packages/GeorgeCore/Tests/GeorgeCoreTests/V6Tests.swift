@@ -293,3 +293,27 @@ final class V6TemplateTests: XCTestCase {
         XCTAssertEqual(session.loadChanges(comparedTo: template), ["Deadlift 100 → 105 kg"])
     }
 }
+
+final class HowToTests: XCTestCase {
+    func testStretchYogaAndMobilityHaveGuidance() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("App/Resources/exercises.json")
+        let catalog = try ExerciseCatalog(data: try Data(contentsOf: url))
+        let guided = catalog.exercises.filter(\.needsGuidance)
+        XCTAssertGreaterThan(guided.count, 300)
+        for exercise in guided {
+            XCTAssertGreaterThanOrEqual(exercise.steps.count, 3, exercise.name)
+            for reference in exercise.references {
+                XCTAssertTrue(reference.url.hasPrefix("https://"), reference.url)
+                XCTAssertFalse(reference.site.isEmpty)
+            }
+        }
+        let withPages = guided.filter { !$0.references.isEmpty }.count
+        XCTAssertGreaterThanOrEqual(Double(withPages) / Double(guided.count), 0.9, "how-to pages for most moves")
+        let pigeon = try XCTUnwrap(catalog.exercise(named: "Pigeon Pose"))
+        XCTAssertEqual(pigeon.references.first?.site, "Yoga Journal")
+        XCTAssertNotNil(catalog.exercise(named: "Plow Pose")?.caution)
+    }
+}
