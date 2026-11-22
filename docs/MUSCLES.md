@@ -60,9 +60,17 @@ sport uses – scaled by duration (per hour) and effort (5 = neutral) – but ne
   - < 0.8 Detraining
   - 0.8–1.0 Maintaining, or **Peaking** if the ratio was ≥ 1.1 within the previous two weeks (tapering off a hard block)
   - 1.0–1.3 Productive (up to the profile's upper bound)
-  - up to 0.2 above it: Fatigued
-  - beyond: Overtraining
+  - up to 0.2 above it: **High** (was "Fatigued")
+  - beyond: **Big jump** (was "Overtraining")
   - Ratios of the first two weeks don't count toward "Peaking".
+- **Volume check (v6.2):** High and Big jump are only shown when at least one muscle got more sets
+  in the last 7 days than your profile's weekly upper target (10–16 → 16, …). A normal week after
+  lighter weeks is far above the "usual" average, but that's coming back to training, not overload:
+  it shows as Productive with "More than your recent weeks, but a normal amount per muscle".
+- **Units:** load adds up every muscle a set trains (a bench press set counts for chest 1, triceps
+  ½, shoulders ½), weighted by set type, effort/RPE and the fatigue answer – a 17-set workout gives
+  ~40 load. The card therefore shows real sets next to the %: "52 sets in 7 days · usual ≈ 24 a
+  week" (each set once; cardio, stretching and yoga add no sets).
 - **Calibrating** until there are 14 days since the first logged set and at least 4 sessions
   (whole body) or 3 sessions (one muscle) in the last six weeks.
 

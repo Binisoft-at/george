@@ -81,7 +81,7 @@ struct MuscleDetailView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(load.current.showsRatio ? "\(load.current.percentOfUsual) % of your usual week" : "\(Int(load.current.acute.rounded())) hard sets · last 7 days")
+                            Text(load.current.showsRatio ? "\(load.current.percentOfUsual) % of your usual week" : "\(Int(load.current.acuteSets.rounded())) sets · last 7 days")
                                 .font(.headline)
                                 .monospacedDigit()
                             Spacer()
@@ -91,7 +91,7 @@ struct MuscleDetailView: View {
                         }
                         LoadGauge(point: load.current, maxValue: load.gaugeMax)
                         if load.current.showsRatio {
-                            Text("\(Int(load.current.acute.rounded())) hard sets · last 7 days · usual ≈ \(Int(load.current.chronic.rounded()))")
+                            Text("\(Int(load.current.acuteSets.rounded())) sets · last 7 days · usual ≈ \(Int(load.current.usualSets.rounded())) a week")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()

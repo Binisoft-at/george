@@ -89,8 +89,10 @@ final class MuscleAnalytics {
             // Other sports add load (recovery, muscular load) but never sets.
             events += SportLoad.events(from: health.healthWorkouts)
         }
+        // A jump over the usual week only warns when a muscle got more than the profile's weekly target.
         let engine = MuscleEngine(events: events, calendar: store.calendar, recoveryScale: key.recoveryScale,
-                                  loadBand: key.bandLow...key.bandHigh)
+                                  loadBand: key.bandLow...key.bandHigh,
+                                  setCeiling: Double(store.profile.weeklySets.upperBound))
         cachedEngine = engine
         cachedKey = key
         return engine
@@ -291,21 +293,21 @@ extension LoadPoint {
     /// There is a usual week to compare with (not calibrating).
     var showsRatio: Bool { status != .calibrating && chronic > 0.01 }
 
-    /// "150 %" – or the raw hard sets while there is no usual week yet.
+    /// "150 %" – or the sets while there is no usual week yet.
     var headline: String {
-        showsRatio ? "\(percentOfUsual) %" : "\(Int(acute.rounded()))"
+        showsRatio ? "\(percentOfUsual) %" : "\(Int(acuteSets.rounded()))"
     }
 
     /// What the headline number is.
     var headlineCaption: String {
-        showsRatio ? "of your usual week" : "hard sets in 7 days"
+        showsRatio ? "of your usual week" : "sets in 7 days"
     }
 
-    /// "113 hard sets in 7 days · usual ≈ 75"
+    /// "52 sets in 7 days · usual ≈ 24 a week" – real sets (the % compares effort-weighted load).
     var detailLine: String {
-        let sets = "\(Int(acute.rounded())) hard sets in 7 days"
-        guard chronic > 0.01 else { return sets }
-        return sets + " · usual ≈ \(Int(chronic.rounded()))"
+        let sets = "\(Int(acuteSets.rounded())) sets in 7 days"
+        guard usualSets > 0.01 else { return sets }
+        return sets + " · usual ≈ \(Int(usualSets.rounded())) a week"
     }
 
     /// "80–130 %"

@@ -317,3 +317,54 @@ final class HowToTests: XCTestCase {
         XCTAssertNotNil(catalog.exercise(named: "Plow Pose")?.caution)
     }
 }
+
+final class LoadRealityTests: XCTestCase {
+    let calendar = Calendar.training(timeZone: TimeZone(identifier: "Europe/Vienna")!)
+
+    func workout(_ date: Date, sets: Int, muscles: [String], secondary: [String] = [], kind: WorkoutKind = .gym, rpe: Double? = 9) -> SessionRecord {
+        var item = WorkoutItem(name: "Press", sets: (0..<sets).map { _ in WorkoutSet(targetReps: "10", targetWeight: 40) }, muscles: muscles)
+        item.notes = secondary.joined(separator: ",")
+        for i in item.sets.indices {
+            item.sets[i].isDone = true
+            item.sets[i].doneAt = date
+            item.sets[i].rpe = rpe
+        }
+        return SessionRecord(id: UUID(), date: date, title: "S", kind: kind, durationSeconds: 3600, isCompleted: true, content: WorkoutContent(blocks: [WorkoutBlock(items: [item])]))
+    }
+
+    func contributions(_ item: WorkoutItem) -> [MuscleContribution] {
+        MuscleResolver.contributions(primary: item.muscles, secondary: (item.notes ?? "").split(separator: ",").map(String.init), exerciseName: item.name)
+    }
+
+    /// Two normal strength sessions after lighter weeks: well above the usual week, but no muscle got
+    /// a lot of sets – not "Overtraining". And the sets line counts each set once.
+    func testANormalWeekAfterLighterWeeksIsNotOverload() {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 22, hour: 18))!
+        var sessions: [SessionRecord] = []
+        // Lighter weeks 3–5 weeks ago: one short session each.
+        for weeksAgo in [5, 4, 3] {
+            sessions.append(workout(calendar.addingDays(-7 * weeksAgo, to: now), sets: 8, muscles: ["chest"], secondary: ["triceps", "shoulders"]))
+        }
+        // This week: upper (chest + back) and lower, 14 sets each, plus cardio.
+        sessions.append(workout(calendar.addingDays(-5, to: now), sets: 14, muscles: ["chest", "middle back"], secondary: ["triceps", "biceps", "shoulders"]))
+        sessions.append(workout(calendar.addingDays(-2, to: now), sets: 14, muscles: ["quadriceps", "glutes"], secondary: ["hamstrings", "calves"]))
+        sessions.append(workout(calendar.addingDays(-1, to: now), sets: 2, muscles: ["quadriceps"], kind: .cardio))
+        let engine = MuscleEngine(events: MuscleEngine.events(from: sessions, contributions: contributions), calendar: calendar, setCeiling: 16)
+        let point = engine.loadSummary(days: 7, now: now).current
+        XCTAssertGreaterThan(point.percentOfUsual, 150, "this week really is above the usual one")
+        XCTAssertEqual(point.status, .productive)
+        XCTAssertTrue(point.aboveUsualButNormal)
+        XCTAssertEqual(point.acuteSets, 28, accuracy: 0.01, "cardio adds no sets; each set counted once")
+        XCTAssertGreaterThan(point.acute, point.acuteSets, "load adds every muscle a set trains")
+        XCTAssertTrue(point.explanation.contains("normal amount per muscle"))
+
+        // A real spike – 30 chest sets in a week – still warns.
+        var spike = sessions
+        spike.append(workout(calendar.addingDays(-3, to: now), sets: 16, muscles: ["chest"], secondary: ["triceps"]))
+        let heavy = MuscleEngine(events: MuscleEngine.events(from: spike, contributions: contributions), calendar: calendar, setCeiling: 16)
+        let hot = heavy.loadSummary(days: 7, now: now).current
+        XCTAssertTrue([.fatigued, .overtraining].contains(hot.status), "\(hot.status)")
+        XCTAssertFalse(hot.aboveUsualButNormal)
+        XCTAssertEqual(LoadStatus.overtraining.displayName, "Big jump")
+    }
+}

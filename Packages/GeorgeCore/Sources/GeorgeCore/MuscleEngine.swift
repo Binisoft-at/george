@@ -13,6 +13,9 @@ public struct MuscleEvent: Hashable, Sendable {
     public var volumeKg: Double
     public var exerciseKey: String
     public var exerciseName: String
+    /// True on exactly one event per counted set (its first muscle) – so whole-body numbers can count
+    /// real sets instead of adding every muscle a set touches.
+    public var countsOnce: Bool = false
 }
 
 public enum FreshnessStatus: String, Sendable, CaseIterable {
@@ -67,8 +70,8 @@ public enum LoadStatus: String, Sendable, CaseIterable, Identifiable {
         case .peaking: return "Peaking"
         case .maintaining: return "Maintaining"
         case .productive: return "Productive"
-        case .fatigued: return "Fatigued"
-        case .overtraining: return "Overtraining"
+        case .fatigued: return "High"
+        case .overtraining: return "Big jump"
         }
     }
 
@@ -79,8 +82,8 @@ public enum LoadStatus: String, Sendable, CaseIterable, Identifiable {
         case .peaking: return "Load is easing off after a hard block — a good time to test strength or rest up."
         case .maintaining: return "Enough to keep what you have, not much new stimulus."
         case .productive: return "Challenging enough to drive progress while still recoverable."
-        case .fatigued: return "Clearly above your usual level. Fine short-term — plan an easier week soon."
-        case .overtraining: return "Far above what you're used to. Injury and burnout risk rise — back off."
+        case .fatigued: return "Clearly more than your recent weeks and a lot per muscle. Fine short-term – plan an easier week soon."
+        case .overtraining: return "A big jump over your recent weeks with a lot of sets per muscle. Injury risk rises with sudden jumps – ease off."
         }
     }
 }
@@ -96,15 +99,39 @@ public struct LoadPoint: Hashable, Sendable, Identifiable {
     /// The optimal acute:chronic band used for this point (from the training profile).
     public var lowRatio: Double = MuscleEngine.optimalLowRatio
     public var highRatio: Double = MuscleEngine.optimalHighRatio
+    /// Real sets in the last 7 days (whole body: each set once; one muscle: its fractional sets).
+    public var acuteSets: Double = 0
+    /// The usual week in real sets (same history as `chronic`).
+    public var usualSets: Double = 0
+    /// The most sets one muscle got in the last 7 days, and the weekly ceiling it's compared with.
+    public var maxMuscleSets: Double = 0
+    public var setCeiling: Double = MuscleEngine.defaultSetCeiling
+    /// Above the usual week, but no muscle got more sets than the ceiling: not a warning.
+    public var aboveUsualButNormal = false
 
     public init(day: Date, acute: Double, chronic: Double, status: LoadStatus,
-                lowRatio: Double = MuscleEngine.optimalLowRatio, highRatio: Double = MuscleEngine.optimalHighRatio) {
+                lowRatio: Double = MuscleEngine.optimalLowRatio, highRatio: Double = MuscleEngine.optimalHighRatio,
+                acuteSets: Double = 0, usualSets: Double = 0, maxMuscleSets: Double = 0,
+                setCeiling: Double = MuscleEngine.defaultSetCeiling, aboveUsualButNormal: Bool = false) {
         self.day = day
         self.acute = acute
         self.chronic = chronic
         self.status = status
         self.lowRatio = lowRatio
         self.highRatio = highRatio
+        self.acuteSets = acuteSets
+        self.usualSets = usualSets
+        self.maxMuscleSets = maxMuscleSets
+        self.setCeiling = setCeiling
+        self.aboveUsualButNormal = aboveUsualButNormal
+    }
+
+    /// What it means – with the reason when a jump over the usual week is still a normal amount.
+    public var explanation: String {
+        if aboveUsualButNormal {
+            return "More than your recent weeks, but a normal amount per muscle (at most \(Int(maxMuscleSets.rounded())) sets in 7 days; a lot starts above \(Int(setCeiling))). Nothing to worry about – keep building up gradually."
+        }
+        return status.explanation
     }
 
     public var optimalLow: Double { chronic * lowRatio }
@@ -169,6 +196,8 @@ public struct MuscleEngine: Sendable {
     public static let optimalLowRatio = 0.8
     public static let optimalHighRatio = 1.3
     public static let defaultCapacity = 10.0
+    /// Weekly hard sets per muscle above which a jump over the usual week counts as a warning.
+    public static let defaultSetCeiling = 20.0
 
     public var calendar: Calendar
     public let events: [MuscleEvent]
@@ -176,16 +205,20 @@ public struct MuscleEngine: Sendable {
     public let recoveryScale: Double
     /// The optimal acute:chronic band (default 0.8…1.3; beginners get a narrower one).
     public let loadBand: ClosedRange<Double>
+    /// Weekly hard sets per muscle that count as a lot (the profile's upper target).
+    public let setCeiling: Double
     /// Events per muscle (oldest first) – freshness and capacity only look at one muscle.
     private let eventsByGroup: [MuscleGroup: [MuscleEvent]]
 
     public init(events: [MuscleEvent], calendar: Calendar = .training(), recoveryScale: Double = 1,
-                loadBand: ClosedRange<Double> = MuscleEngine.optimalLowRatio...MuscleEngine.optimalHighRatio) {
+                loadBand: ClosedRange<Double> = MuscleEngine.optimalLowRatio...MuscleEngine.optimalHighRatio,
+                setCeiling: Double = MuscleEngine.defaultSetCeiling) {
         let sorted = events.sorted { $0.date < $1.date }
         self.events = sorted
         self.calendar = calendar
         self.recoveryScale = max(0.5, recoveryScale)
         self.loadBand = loadBand
+        self.setCeiling = max(4, setCeiling)
         self.eventsByGroup = Dictionary(grouping: sorted, by: \.group)
     }
 
@@ -254,7 +287,7 @@ public struct MuscleEngine: Sendable {
                     let sides: Double = item.perSide ? 2 : 1
                     let volume = Double(set.effectiveReps ?? 0) * (set.effectiveWeight ?? 0) * sides
                     let countsAsSet = set.kind != .warmup && countsAsHardSets(workoutKind)
-                    for muscle in muscles {
+                    for (index, muscle) in muscles.enumerated() {
                         result.append(MuscleEvent(
                             date: set.doneAt ?? session.date,
                             sessionID: session.id,
@@ -263,7 +296,8 @@ public struct MuscleEngine: Sendable {
                             sets: countsAsSet ? muscle.weight : 0,
                             volumeKg: volume * muscle.weight,
                             exerciseKey: item.exerciseKey,
-                            exerciseName: item.name
+                            exerciseName: item.name,
+                            countsOnce: countsAsSet && index == 0
                         ))
                     }
                 }
@@ -428,6 +462,19 @@ public struct MuscleEngine: Sendable {
             let lower = max(0, upper - window)
             return prefix[upper] - prefix[lower]
         }
+        // Real sets per day (whole body: each set once; one muscle: its fractional sets) and, per
+        // muscle, sets per day – for the volume check.
+        let dayIndex = Dictionary(uniqueKeysWithValues: series.enumerated().map { ($1.day, $0) })
+        var setsPerDay = [Double](repeating: 0, count: series.count)
+        var muscleSetsPerDay: [MuscleGroup: [Double]] = [:]
+        for event in list where event.sets > 0 {
+            guard let i = dayIndex[calendar.startOfDay(for: event.date)] else { continue }
+            if group != nil || event.countsOnce { setsPerDay[i] += group == nil ? 1 : event.sets }
+            muscleSetsPerDay[event.group, default: [Double](repeating: 0, count: series.count)][i] += event.sets
+        }
+        func rolling(_ values: [Double], endingAt index: Int, days window: Int) -> Double {
+            values[max(0, index - window + 1)...index].reduce(0, +)
+        }
         // Sessions that meaningfully trained the muscle(s), for the calibration rule (sliding 42-day window).
         let qualifying = list.filter { $0.load >= 0.5 }
         var windowCounts: [UUID: Int] = [:]
@@ -467,16 +514,27 @@ public struct MuscleEngine: Sendable {
                 tail += 1
             }
 
-            let status: LoadStatus
+            var status: LoadStatus
             if let firstEvent, calendar.daysBetween(firstEvent, entry.day) >= 14, windowCounts.count >= minimumSessions {
                 status = MuscleEngine.classify(ratio: ratio, recentRatios: recentRatios, band: loadBand)
             } else {
                 status = .calibrating
             }
-            if index >= series.count - days {
-                points.append(LoadPoint(day: entry.day, acute: weeklyAcute, chronic: weeklyChronic, status: status,
-                                        lowRatio: loadBand.lowerBound, highRatio: loadBand.upperBound))
+            guard index >= series.count - days else { continue }
+            // Volume check: a jump over the usual week is only a warning when a muscle really got a lot
+            // of sets – coming back to normal training after lighter weeks is not overload.
+            let maxMuscle = muscleSetsPerDay.values.map { rolling($0, endingAt: index, days: 7) }.max() ?? 0
+            var normal = false
+            if (status == .fatigued || status == .overtraining) && maxMuscle <= setCeiling {
+                status = .productive
+                normal = true
             }
+            let acuteSets = rolling(setsPerDay, endingAt: index, days: 7)
+            let usualSets = rolling(setsPerDay, endingAt: index, days: 42) / (Double(historyDays) / 7)
+            points.append(LoadPoint(day: entry.day, acute: weeklyAcute, chronic: weeklyChronic, status: status,
+                                    lowRatio: loadBand.lowerBound, highRatio: loadBand.upperBound,
+                                    acuteSets: acuteSets, usualSets: usualSets, maxMuscleSets: maxMuscle,
+                                    setCeiling: setCeiling, aboveUsualButNormal: normal))
         }
         let current = points.last ?? LoadPoint(day: calendar.startOfDay(for: now), acute: 0, chronic: 0, status: .calibrating,
                                                lowRatio: loadBand.lowerBound, highRatio: loadBand.upperBound)

@@ -76,7 +76,7 @@ struct MuscularLoadCard: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Text(point.status.explanation)
+                Text(point.explanation)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -168,7 +168,7 @@ struct MuscularLoadDetailView: View {
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
-                    Text(shown.status.explanation)
+                    Text(shown.explanation)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -188,7 +188,7 @@ struct MuscularLoadDetailView: View {
             } header: {
                 Text("Last \(range.rawValue) days")
             } footer: {
-                Text("Line: your load of the previous 7 days, each day, in hard sets. Green band: your optimal range – \(store.profile.loadBandText) of your usual week (the weekly average of the last 6 weeks, or of the weeks so far).")
+                Text("Line: your load of the previous 7 days, each day. Load adds up every muscle a set trains (a bench press set counts for chest, triceps and shoulders), weighted by how hard it was – so it is larger than your number of sets. Green band: your optimal range – \(store.profile.loadBandText) of your usual week (the weekly average of the last 6 weeks, or of the weeks so far). A jump above it only counts as High or Big jump when a muscle got more than \(store.profile.weeklySets.upperBound) sets in 7 days.")
             }
 
             Section("Breakdown") {
@@ -279,7 +279,7 @@ struct LoadHistoryChart: View {
                             Text(point.day.formatted(.dateTime.day().month(.abbreviated)))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                            Text(point.showsRatio ? "\(point.percentOfUsual) % · \(point.status.displayName)" : "\(Int(point.acute.rounded())) hard sets · \(point.status.displayName)")
+                            Text(point.showsRatio ? "\(point.percentOfUsual) % · \(point.status.displayName)" : "\(Int(point.acuteSets.rounded())) sets · \(point.status.displayName)")
                                 .font(.caption.weight(.semibold))
                         }
                         .padding(6)
