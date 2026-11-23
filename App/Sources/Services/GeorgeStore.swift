@@ -545,8 +545,14 @@ final class GeorgeStore {
                     session.startedAt = nil
                     session.endedAt = nil
                 } else {
-                    session.accumulatedSeconds = session.elapsedSeconds(at: now)
-                    if status.isPerformed && session.endedAt == nil { session.endedAt = now }
+                    // Where it really stopped, as Finish would: left idle (another device's workout
+                    // marked here hours later), at its last set + rest – not now.
+                    let clock = LiveClock(startedAt: session.startedAt, accumulatedSeconds: session.accumulatedSeconds, resumedAt: session.resumedAt)
+                    let end = FinishTime.endFromOutside(clock: clock, kind: session.kind, content: session.content,
+                                                        restSeconds: Double(settings.defaultRestSeconds), now: now)
+                    session.accumulatedSeconds = clock.activeSeconds(until: end)
+                    // Its end now (a continued workout's earlier end isn't kept).
+                    if status.isPerformed { session.endedAt = end }
                 }
                 session.resumedAt = nil
             }
@@ -861,7 +867,9 @@ final class GeorgeStore {
             guard let self else { return }
             for template in createdTemplates { self.context.delete(template) }
             for program in createdPrograms { self.context.delete(program) }
-            for backup in backups {
+            // Newest first: a template replaced twice (two imported programs into one) ends with its
+            // first backup – how it was before the import. The same for program notes.
+            for backup in backups.reversed() {
                 backup.template.subtitle = backup.subtitle
                 backup.template.kindRaw = backup.kindRaw
                 backup.template.notes = backup.notes
@@ -870,14 +878,15 @@ final class GeorgeStore {
                 // The bytes as they were – not re-encoded, so nothing a newer George added is lost.
                 backup.template.restoreContentData(backup.contentData)
             }
-            for (program, notes) in programNotes where !createdPrograms.contains(where: { $0.id == program.id }) {
+            for (program, notes) in programNotes.reversed() where !createdPrograms.contains(where: { $0.id == program.id }) {
                 program.notes = notes
             }
             self.settings.activeProgramID = previousActive
             self.save()
             AppLog.info("Import undone", category: "import")
         }
-        return ImportOutcome(programs: result, created: createdCount, replaced: backups.count, undo: undo)
+        let replacedCount = Set(backups.map { ObjectIdentifier($0.template) }).count
+        return ImportOutcome(programs: result, created: createdCount, replaced: replacedCount, undo: undo)
     }
 
     /// The sample programs that come with the app (files in `samples/`).

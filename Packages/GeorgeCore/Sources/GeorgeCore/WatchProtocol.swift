@@ -371,8 +371,15 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
     public var discardedSessionID: UUID?
     /// The workout that was just saved (shown as a summary on the watch).
     public var lastFinished: WatchFinishSummary?
+    /// Which commands the phone's George reads (nil: a phone from before v7 – it drops a command
+    /// it can't read). 1: `WatchCommand.undoSet`.
+    public var protocolVersion: Int?
 
-    public init(generatedAt: Date = Date(), templates: [WatchTemplate], upcoming: [WatchSessionSummary], streak: WatchStreak?, live: WatchLiveState?, unit: WeightUnit, discardedSessionID: UUID? = nil, lastFinished: WatchFinishSummary? = nil) {
+    /// What this build of George reads.
+    public static let currentProtocolVersion = 1
+
+    public init(generatedAt: Date = Date(), templates: [WatchTemplate], upcoming: [WatchSessionSummary], streak: WatchStreak?, live: WatchLiveState?, unit: WeightUnit, discardedSessionID: UUID? = nil, lastFinished: WatchFinishSummary? = nil,
+                protocolVersion: Int? = WatchSnapshot.currentProtocolVersion) {
         self.generatedAt = generatedAt
         self.templates = templates
         self.upcoming = upcoming
@@ -381,6 +388,7 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
         self.unit = unit
         self.discardedSessionID = discardedSessionID
         self.lastFinished = lastFinished
+        self.protocolVersion = protocolVersion
     }
 }
 
@@ -417,6 +425,15 @@ public enum WatchCommand: Codable, Hashable, Sendable {
     case recordEnergy(Int)
     /// "Mark not done": the phone unticks the set only if it is done (a repeat changes nothing).
     case undoSet(UUID)
+}
+
+public extension WatchCommand {
+    /// "Mark not done" for a done set: `undoSet` for a phone that reads it (`phone` is its latest
+    /// snapshot), else `toggleSet` – an older phone drops a command it can't read, and toggling a
+    /// done set unticks it too.
+    static func markNotDone(_ setID: UUID, phone: WatchSnapshot?) -> WatchCommand {
+        (phone?.protocolVersion ?? 0) >= 1 ? .undoSet(setID) : .toggleSet(setID)
+    }
 }
 
 /// A command with when and for which workout it was sent. The phone drops stale starts (older

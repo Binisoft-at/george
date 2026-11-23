@@ -280,7 +280,8 @@ struct ProgressModel: Sendable {
         // The period before, just as long (so a half-finished week compares fairly).
         let previous = DateInterval(start: calendar.addingWeeks(-input.weeks, to: start),
                                     end: calendar.addingWeeks(-input.weeks, to: end))
-        let weeks = StatsEngine.weekly(input.records, calendar: calendar, weeks: input.weeks, now: now, trainingDays: input.trainingDays)
+        let weeks = StatsEngine.weekly(input.records, calendar: calendar, weeks: input.weeks, now: now, trainingDays: input.trainingDays,
+                                       rescueCountsDouble: input.streakConfig.rescueCountsDouble)
         return ProgressModel(
             weeks: weeks,
             goals: Dictionary(weeks.map { ($0.weekStart, input.streakConfig.goal(forWeekStarting: $0.weekStart, calendar: calendar)) },
@@ -472,13 +473,14 @@ struct WorkoutDaysChart: View {
         Chart {
             ForEach(weeks) { week in
                 let target = goal(of: week)
+                // Days as the streak counts them (a rescue workout counts double).
                 BarMark(
                     x: .value("Week", week.weekStart, unit: .weekOfYear),
-                    y: .value("Days", week.workoutDays)
+                    y: .value("Days", week.effectiveDays)
                 )
-                .foregroundStyle(week.workoutDays >= target ? Tone.accent : Tone.accent.opacity(0.4))
+                .foregroundStyle(week.effectiveDays >= target ? Tone.accent : Tone.accent.opacity(0.4))
                 .cornerRadius(4)
-                .accessibilityValue("\(week.workoutDays) of \(target) days\(week.workoutDays >= target ? ", goal reached" : "")")
+                .accessibilityValue("\(week.effectiveDays) of \(target) days\(week.effectiveDays >= target ? ", goal reached" : "")")
             }
             if distinctGoals.count > 1 {
                 // The goal changed in this range: a step line, each week at its own goal.
@@ -505,7 +507,7 @@ struct WorkoutDaysChart: View {
                             Text(week.weekStart.formatted(.dateTime.day().month(.abbreviated)))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                            Text("\(week.workoutDays) days · \(week.sessions) workouts")
+                            Text("\(week.effectiveDays) days\(week.effectiveDays > week.workoutDays ? " (rescue counts double)" : "") · \(week.sessions) workouts")
                                 .font(.caption.weight(.semibold))
                         }
                         .padding(6)

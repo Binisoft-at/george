@@ -313,8 +313,13 @@ struct SessionListView: View {
             return
         }
         guard case .session(let id) = router.detail, let session = sessions.first(where: { $0.id == id }) else { return }
-        if session.id == live.session?.id || session.status == .active {
+        if session.id == live.session?.id {
             toasts.show("A running workout is discarded in live mode", symbol: "play.circle")
+            return
+        }
+        if session.status == .active {
+            // Not live here: another device runs it ("Running on your iPhone – end it there first").
+            toasts.show("\(ThisDevice.runningTitle(for: session)) – end it there first", symbol: "iphone.and.arrow.forward")
             return
         }
         router.close(.session(session.id))

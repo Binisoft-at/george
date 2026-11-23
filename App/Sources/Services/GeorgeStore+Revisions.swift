@@ -94,8 +94,9 @@ extension GeorgeStore {
 
     // MARK: After an iCloud import
 
-    /// What the store holds, cheaply: every performed workout's stamp, the size and newest change of the
-    /// other tables, and the workouts in progress. `CloudImportRefresher` compares it after each import.
+    /// What the store holds, cheaply: every performed workout's stamp, plans, templates and programs row
+    /// by row (a few fields each), the size and newest change of the other tables, and the workouts in
+    /// progress. `CloudImportRefresher` compares it after each import.
     func syncFingerprint() -> SyncFingerprint {
         var performed: [UUID: HistoryStamp] = [:]
         for session in fetchPerformedSessions(scalarsOnly: true) { performed[session.id] = session.historyStamp }
@@ -104,10 +105,30 @@ extension GeorgeStore {
         let planned = SessionStatus.planned.rawValue
         let skipped = SessionStatus.skipped.rawValue
         let plans = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.statusRaw == planned || $0.statusRaw == skipped })
+        // Plans, templates and programs row by row: a plan moved to another day, a new title, a program
+        // archived or a restore's older dates don't stamp a newer date.
+        let planFields: [PartialKeyPath<WorkoutSession>] = [\.id, \.statusRaw, \.plannedDate, \.title, \.updatedAt]
+        let planStamp = rowStamp(plans, fields: planFields) { (session: WorkoutSession) -> PlanRow in
+            PlanRow(id: session.id, status: session.statusRaw, plannedDate: session.plannedDate, title: session.title,
+                    updatedAt: session.updatedAt)
+        }
+        let templateFields: [PartialKeyPath<WorkoutTemplate>] = [
+            \.id, \.name, \.kindRaw, \.scheduleRaw, \.isPinned, \.isFavorite, \.sortIndex, \.updatedAt,
+        ]
+        let templateStamp = rowStamp(FetchDescriptor<WorkoutTemplate>(), fields: templateFields) { (template: WorkoutTemplate) -> TemplateRow in
+            TemplateRow(id: template.id, name: template.name, kind: template.kindRaw, schedule: template.scheduleRaw,
+                        isPinned: template.isPinned, isFavorite: template.isFavorite, sortIndex: template.sortIndex,
+                        updatedAt: template.updatedAt)
+        }
+        let programFields: [PartialKeyPath<Program>] = [\.id, \.name, \.kindRaw, \.isArchived, \.isPinned, \.sortIndex, \.updatedAt]
+        let programStamp = rowStamp(FetchDescriptor<Program>(), fields: programFields) { (program: Program) -> ProgramRow in
+            ProgramRow(id: program.id, name: program.name, kind: program.kindRaw, isArchived: program.isArchived,
+                       isPinned: program.isPinned, sortIndex: program.sortIndex, updatedAt: program.updatedAt)
+        }
         let tables: [String: TableStamp] = [
-            "plans": tableStamp(plans, newest: \.updatedAt),
-            "templates": tableStamp(FetchDescriptor<WorkoutTemplate>(), newest: \.updatedAt),
-            "programs": tableStamp(FetchDescriptor<Program>(), newest: \.updatedAt),
+            "plans": planStamp,
+            "templates": templateStamp,
+            "programs": programStamp,
             "settings": tableStamp(FetchDescriptor<SyncedSettings>(), newest: \.updatedAt),
             "exercises": tableStamp(FetchDescriptor<UserExercise>(), newest: \.updatedAt),
             "breaks": tableStamp(FetchDescriptor<ExcusedWeek>(), newest: \.createdAt),
@@ -126,6 +147,45 @@ extension GeorgeStore {
         let newest = (try? context.fetch(latest))?.first.map { $0[keyPath: date] }
         return TableStamp(count: count, newest: newest)
     }
+
+    /// A small table read row by row – only `fields` are loaded (never a workout's content).
+    private func rowStamp<T: PersistentModel, Row: Hashable>(_ descriptor: FetchDescriptor<T>, fields: [PartialKeyPath<T>],
+                                                              row: (T) -> Row) -> TableStamp {
+        var fetch = descriptor
+        fetch.propertiesToFetch = fields
+        let rows = ((try? context.fetch(fetch)) ?? []).map(row)
+        return TableStamp(rows: rows, newest: nil)
+    }
+}
+
+/// What the iCloud fingerprint compares of a planned or skipped workout, a template and a program.
+private struct PlanRow: Hashable {
+    let id: UUID
+    let status: String
+    let plannedDate: Date?
+    let title: String
+    let updatedAt: Date
+}
+
+private struct TemplateRow: Hashable {
+    let id: UUID
+    let name: String
+    let kind: String
+    let schedule: String
+    let isPinned: Bool
+    let isFavorite: Bool
+    let sortIndex: Double
+    let updatedAt: Date
+}
+
+private struct ProgramRow: Hashable {
+    let id: UUID
+    let name: String
+    let kind: String
+    let isArchived: Bool
+    let isPinned: Bool
+    let sortIndex: Double
+    let updatedAt: Date
 }
 
 extension WorkoutSession {

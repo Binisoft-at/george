@@ -36,11 +36,20 @@ struct MissedPlansCard: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.orange)
                         .frame(width: 24)
-                    Text(line(for: session))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    // The name on its own line: next to Do today, ▶ and Skip, one line with the
+                    // date first cut the name off on an iPhone.
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(store.displayName(of: session))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                        Text(line(for: session))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
                     Spacer(minLength: 4)
                 }
                 .contentShape(Rectangle())
@@ -73,12 +82,12 @@ struct MissedPlansCard: View {
         .padding(.vertical, 8)
     }
 
-    /// "Missed · Tue 10.11 · UPPER"
+    /// "Missed · Tue 10.11" (under the name)
     private func line(for session: WorkoutSession) -> String {
         let date = store.plannedDay(of: session)
         let calendar = store.calendar
         let day = String(format: "%02d.%02d", calendar.component(.day, from: date), calendar.component(.month, from: date))
-        return "Missed · \(date.formatted(.dateTime.weekday(.abbreviated))) \(day) · \(store.displayName(of: session))"
+        return "Missed · \(date.formatted(.dateTime.weekday(.abbreviated))) \(day)"
     }
 
     /// Moves the missed plan to today (same time of day, an automatic title follows the date). Undo

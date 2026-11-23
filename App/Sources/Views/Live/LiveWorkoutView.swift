@@ -1743,6 +1743,8 @@ struct LiveEditSheet: View {
                 ReorderBlocksSheet(content: binding)
             }
         }
+        // An exercise's page would open in the main window behind live mode (unseen): not offered here.
+        .environment(\.opensExerciseDetails, false)
         .macSheet(width: 600, height: 700)
     }
 }

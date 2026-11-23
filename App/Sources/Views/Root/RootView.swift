@@ -200,10 +200,22 @@ final class Router {
         for key in Array(paths.keys) {
             paths[key]?.removeAll { $0 == .detail(item) }
         }
-        // iPad: the detail column next to a list.
+        // iPad: the detail column next to a list – what was opened on top of a closed item goes
+        // with it (no orphaned page with Back to an empty column).
+        for key in Set(splitPaths.keys).union(splitDetail.keys) {
+            let onTop = splitPaths[key] ?? []
+            let kept = ListDetailPath.close(item, shown: splitDetail[key], onTop: onTop, wrap: Route.detail)
+            if kept != onTop { splitPaths[key] = kept }
+        }
         if splitDetail.values.contains(item) { splitDetail = splitDetail.filter { $0.value != item } }
-        for key in Array(splitPaths.keys) where splitPaths[key]?.contains(.detail(item)) == true {
-            splitPaths[key]?.removeAll { $0 == .detail(item) }
+    }
+
+    /// Something is opened on top of `item` (Back returns to it): it's covered, not left.
+    func isCovered(_ item: DetailItem) -> Bool {
+        if ListDetailPath.isCovered(item, shown: detail, onTop: detailPath, wrap: { $0 }) { return true }
+        if paths.values.contains(where: { ListDetailPath.isCovered(item, shown: nil, onTop: $0, wrap: Route.detail) }) { return true }
+        return Set(splitPaths.keys).union(splitDetail.keys).contains { key in
+            ListDetailPath.isCovered(item, shown: splitDetail[key], onTop: splitPaths[key] ?? [], wrap: Route.detail)
         }
     }
 
@@ -899,7 +911,8 @@ struct RootPresentation: ViewModifier {
                     Button("Keep Going with \(live.session?.title ?? "It")") { live.keepCurrentWorkout() }
                     Button("Finish It First") { live.finishCurrentFirst() }
                     Button("Save It and Start \(target.title)") {
-                        Task { await live.finishCurrentAndStart() }
+                        // The start is passed along: the dialog's dismissal clears `pendingStart` first.
+                        Task { await live.finishCurrentAndStart(target) }
                     }
                     Button("Cancel", role: .cancel) { live.cancelPendingStart() }
                 }
@@ -1008,7 +1021,10 @@ struct ScreenView: View {
         case .favorites:
             SessionListView(scope: .favorites)
         case .kind(let raw):
+            // Each type its own list: a ⌘-click selection (and the bulk bar acting on it) doesn't
+            // carry over to another type's list, where those workouts aren't shown.
             SessionListView(scope: .kind(WorkoutKind(raw)))
+                .id(raw)
         case .templates:
             TemplateListView(programID: nil)
         case .program(let id):

@@ -202,9 +202,9 @@ struct AutomaticBackupsView: View {
 
     private var footer: String {
         #if os(iOS)
-        return "George keeps the last \(BackupSchedule.keep): one a week, and one before every import or restore. They're also in the Files app: On My iPhone (or iPad) › George › Backups."
+        return "George keeps \(BackupSchedule.keep): one a week (the last \(BackupSchedule.keepWeekly) always stay), and one before every import or restore. They're also in the Files app: On My iPhone (or iPad) › George › Backups."
         #else
-        return "George keeps the last \(BackupSchedule.keep): one a week, and one before every import or restore. Export Full Backup saves one wherever you like."
+        return "George keeps \(BackupSchedule.keep): one a week (the last \(BackupSchedule.keepWeekly) always stay), and one before every import or restore. Export Full Backup saves one wherever you like."
         #endif
     }
 
@@ -238,9 +238,17 @@ struct AutomaticBackupsView: View {
 struct RestorePreviewView: View {
     let pending: PendingRestore
     @Environment(GeorgeStore.self) private var store
+    @Environment(SyncMonitor.self) private var sync
     @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @State private var includeChanged = false
+    @State private var confirmBeforeSync = false
+
+    /// iCloud hasn't brought this device's data yet (a new device): what it brings later would sit
+    /// next to what a restore adds now – two of each, as iCloud can't keep records unique.
+    private var iCloudStillLoading: Bool {
+        sync.state.mode.isSynced && !store.cloudImportSeen
+    }
 
     var body: some View {
         let plan = pending.plan
@@ -273,9 +281,21 @@ struct RestorePreviewView: View {
                      : "Changed ones keep their newer version, and workouts added since stay. A backup of how things are now is saved first.")
             }
 
+            if iCloudStillLoading {
+                Section {
+                    Label("iCloud hasn't finished loading on this device. Restoring now can show workouts, templates and programs twice. Best wait until it's done.",
+                          systemImage: "exclamationmark.icloud")
+                        .foregroundStyle(.orange)
+                }
+            }
+
             Section {
                 Button {
-                    restore()
+                    if iCloudStillLoading {
+                        confirmBeforeSync = true
+                    } else {
+                        restore()
+                    }
                 } label: {
                     Label("Restore", systemImage: "clock.arrow.circlepath")
                         .frame(maxWidth: .infinity)
@@ -296,6 +316,12 @@ struct RestorePreviewView: View {
         .inlineTitle()
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+        }
+        .alert("Restore Before iCloud Is Done?", isPresented: $confirmBeforeSync) {
+            Button("Restore Anyway", role: .destructive) { restore() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("What iCloud still brings would show twice.")
         }
     }
 

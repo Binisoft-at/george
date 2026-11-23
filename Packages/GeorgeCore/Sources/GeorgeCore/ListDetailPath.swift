@@ -39,4 +39,30 @@ public enum ListDetailPath {
         if onTop.isEmpty && shown == item { return onTop }
         return onTop + [element]
     }
+
+    /// Whether something is opened on top of `item` (Back returns to it): it is the shown item with
+    /// entries on top, or an entry below the topmost one. A covered page isn't left yet.
+    public static func isCovered<Element: Equatable, Item: Equatable>(
+        _ item: Item,
+        shown: Item?,
+        onTop: [Element],
+        wrap: (Item) -> Element
+    ) -> Bool {
+        if shown == item && !onTop.isEmpty { return true }
+        guard let index = onTop.firstIndex(of: wrap(item)) else { return false }
+        return index < onTop.count - 1
+    }
+
+    /// What stays on top once `item` is closed (deleted): nothing when it was the shown item –
+    /// what was opened from it goes with it – else the entries without it.
+    public static func close<Element: Equatable, Item: Equatable>(
+        _ item: Item,
+        shown: Item?,
+        onTop: [Element],
+        wrap: (Item) -> Element
+    ) -> [Element] {
+        if shown == item { return [] }
+        let element = wrap(item)
+        return onTop.filter { $0 != element }
+    }
 }

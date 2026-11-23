@@ -32,6 +32,9 @@ public struct WeekStat: Identifiable, Hashable, Sendable {
     public var volumeKg: Double
     public var sets: Int
     public var energyKcal: Double
+    /// Days as the streak counts them: `workoutDays`, plus one for a rescue workout when it counts
+    /// double (`StreakConfig.rescueCountsDouble`) – what decides whether the week met its goal.
+    public var effectiveDays: Int = 0
 }
 
 public struct ExercisePoint: Identifiable, Hashable, Sendable {
@@ -166,8 +169,10 @@ public enum StatsEngine {
     /// `workingVolumeKg`). Pass `trainingDays` (the streak's qualifying entries, see `TrainingDays`)
     /// so workout days match the streak – a too-short routine doesn't count, an Apple Health workout
     /// does when it counts for the streak; without them every performed session's day counts.
+    /// `effectiveDays` follows the streak's rescue rule (`rescueCountsDouble`), from the rescue flags
+    /// of `trainingDays`.
     public static func weekly(_ sessions: [SessionRecord], calendar: Calendar = .training(), weeks: Int = 12, now: Date = Date(),
-                              trainingDays: [ActivityEntry]? = nil) -> [WeekStat] {
+                              trainingDays: [ActivityEntry]? = nil, rescueCountsDouble: Bool = true) -> [WeekStat] {
         let current = calendar.weekStart(for: now)
         var stats: [Date: WeekStat] = [:]
         for offset in 0..<max(1, weeks) {
@@ -186,12 +191,19 @@ public enum StatsEngine {
             stats[start] = stat
             if trainingDays == nil { days[start, default: []].insert(calendar.startOfDay(for: session.date)) }
         }
+        var rescueWeeks = Set<Date>()
         for entry in trainingDays ?? [] where entry.date <= now.addingTimeInterval(60) {
             let start = calendar.weekStart(for: entry.date)
             guard stats[start] != nil else { continue }
             days[start, default: []].insert(calendar.startOfDay(for: entry.date))
+            if entry.isRescue { rescueWeeks.insert(start) }
         }
-        for (start, set) in days { stats[start]?.workoutDays = set.count }
+        for (start, set) in days {
+            stats[start]?.workoutDays = set.count
+            // The streak's rule: a rescue workout counts double, once a week.
+            let bonus = rescueCountsDouble && rescueWeeks.contains(start) && !set.isEmpty ? 1 : 0
+            stats[start]?.effectiveDays = set.count + bonus
+        }
         return stats.values.sorted { $0.weekStart < $1.weekStart }
     }
 

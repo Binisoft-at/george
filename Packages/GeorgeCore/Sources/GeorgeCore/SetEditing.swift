@@ -11,8 +11,9 @@ public enum NumberParser {
             .replacingOccurrences(of: ",", with: ".")
         let number = cleaned.prefix { $0.isNumber || $0 == "." }
         guard !number.isEmpty, number != ".", number.filter({ $0 == "." }).count <= 1 else { return nil }
-        // A runaway digit string becomes infinity, which can't be stored (JSON has no infinity).
-        guard let value = Double(number), value.isFinite else { return nil }
+        // A runaway digit string becomes infinity, which can't be stored (JSON has no infinity). Nothing
+        // in a set comes near ten million; a pasted 20-digit number would trap where it becomes an Int.
+        guard let value = Double(number), value.isFinite, value < WorkoutSet.largestValue else { return nil }
         return value
     }
 
@@ -56,19 +57,19 @@ public extension WorkoutSet {
         let planFollows = !inSession || !isDone
         switch field {
         case .reps:
-            let reps = value.map { max(0, Int($0.rounded())) }
+            let reps = value.map { Int(Self.storable($0).rounded()) }
             if inSession { self.reps = reps }
             if planFollows { targetReps = reps.map(String.init) }
         case .weight:
-            let weight = value.map { max(0, $0) }
+            let weight = value.map(Self.storable)
             if inSession { self.weight = weight }
             if planFollows { targetWeight = weight }
         case .seconds:
-            let seconds = value.map { max(0, Int($0.rounded())) }
+            let seconds = value.map { Int(Self.storable($0).rounded()) }
             if inSession { self.seconds = seconds }
             if planFollows { targetSeconds = seconds }
         case .meters:
-            let meters = value.map { max(0, $0) }
+            let meters = value.map(Self.storable)
             if inSession { self.meters = meters }
             if planFollows { targetMeters = meters }
         case .rpe:
@@ -80,6 +81,18 @@ public extension WorkoutSet {
     /// Reps in reserve (10 − RPE), when an RPE was logged.
     var repsInReserve: Int? {
         rpe.map { max(0, Int((10 - $0).rounded())) }
+    }
+}
+
+extension WorkoutSet {
+    /// Every number a set stores stays below this (ten million): far above any real weight, rep
+    /// count, time or distance, and far below where turning it into an Int traps.
+    static let largestValue: Double = 10_000_000
+
+    /// A number made safe to store in a set: at least 0, below `largestValue`, NaN as 0.
+    static func storable(_ value: Double) -> Double {
+        guard !value.isNaN else { return 0 }
+        return Swift.min(Swift.max(0, value), largestValue - 1)
     }
 }
 

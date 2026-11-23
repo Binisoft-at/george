@@ -37,6 +37,19 @@ public enum DuplicateMerge {
         return (keep, source)
     }
 
+    /// Two copies of one item where `kept` stays (e.g. the routine in the kept "Stretch & Yoga"):
+    /// whether the other copy's version moves into it – it was edited, and later than `kept` was. Fresh
+    /// copies both devices made never replace an edit.
+    public static func prefersOther(_ other: Stamp, over kept: Stamp) -> Bool {
+        other.wasEdited && (!kept.wasEdited || other.updatedAt > kept.updatedAt)
+    }
+
+    /// The synced extras of two settings copies as one: the values of `newer` (the copy changed last),
+    /// and keys only `older` has stay.
+    public static func mergedExtras(_ newer: SettingsExtras, over older: SettingsExtras) -> SettingsExtras {
+        SettingsExtras(older.values.merging(newer.values) { _, new in new })
+    }
+
     /// One setting while merging: the value of the copy changed last – unless that copy still has
     /// the default there and the other one chose something (the newer copy may be a new device that
     /// only changed one thing before its first sync).

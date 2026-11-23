@@ -73,6 +73,9 @@ extension GeorgeStore {
         pick(\.birthYear)
         pick(\.experienceRaw)
         pick(\.goalRaw)
+        // Settings without their own field ("Send to Thalia" …): key by key, keys only the kept copy has stay.
+        let extras = DuplicateMerge.mergedExtras(source.extras, over: target.extras)
+        if extras != target.extras { target.extrasData = extras.encoded() }
         target.updatedAt = max(source.updatedAt, target.updatedAt)
     }
 
@@ -139,7 +142,8 @@ extension GeorgeStore {
     // MARK: "Stretch & Yoga"
 
     /// The routines folder made on two devices: its templates move into the oldest copy (a routine
-    /// both added stays once, its workouts point at that one), and the other copies go.
+    /// both added stays once, as edited last, and its workouts point at that one), and the other
+    /// copies go.
     private func mergeRoutinePrograms() -> Bool {
         let copies = fetchPrograms().filter { isRoutineProgram($0) }.sorted { $0.createdAt < $1.createdAt }
         guard copies.count > 1, let keep = copies.first else { return false }
@@ -148,6 +152,20 @@ extension GeorgeStore {
         for other in copies.dropFirst() {
             for template in other.orderedTemplates {
                 if let same = kept.first(where: { $0.name == template.name }) {
+                    // Edited on that device (and later than here): the kept routine takes that version.
+                    if DuplicateMerge.prefersOther(DuplicateMerge.Stamp(createdAt: template.createdAt, updatedAt: template.updatedAt),
+                                                   over: DuplicateMerge.Stamp(createdAt: same.createdAt, updatedAt: same.updatedAt)) {
+                        same.subtitle = template.subtitle
+                        same.kindRaw = template.kindRaw
+                        same.notes = template.notes
+                        same.colorHex = template.colorHex
+                        same.tagsRaw = template.tagsRaw
+                        same.priorityRaw = template.priorityRaw
+                        same.scheduleRaw = template.scheduleRaw
+                        // The bytes as they are – not re-encoded.
+                        same.restoreContentData(template.contentData)
+                        same.updatedAt = template.updatedAt
+                    }
                     for session in sessions where session.templateID == template.id {
                         session.templateID = same.id
                     }

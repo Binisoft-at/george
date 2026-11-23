@@ -150,11 +150,19 @@ final class HealthKitManager {
             let workouts = try await descriptor.result(for: healthStore)
                 .filter { !Self.isFromGeorge($0, ownPrefix: ownPrefix) }
             // Effort only matters for recent workouts (muscle load looks back 6 weeks).
-            let effortCutoff = Date().addingTimeInterval(-42 * 86_400)
+            let now = Date()
+            let effortCutoff = now.addingTimeInterval(-42 * 86_400)
             var effortsChanged = false
-            for workout in workouts.prefix(80) where workout.startDate >= effortCutoff && effortCache[workout.uuid] == nil {
-                effortCache[workout.uuid] = .some(await effort(of: workout))
-                effortsChanged = true
+            // New workouts, and recent ones without a score yet: it may be rated in Fitness later, or
+            // Apple's estimate written once the watch synced ("none" is kept for good only after a week).
+            for workout in workouts.prefix(80) where workout.startDate >= effortCutoff {
+                let cached = effortCache[workout.uuid]
+                guard HealthEffortLookup.needsLookup(known: cached != nil, score: cached ?? nil, endedAt: workout.endDate, now: now) else { continue }
+                let score = await effort(of: workout)
+                if cached != .some(score) {
+                    effortCache[workout.uuid] = .some(score)
+                    effortsChanged = true
+                }
             }
             if effortsChanged { saveEffortCache(keeping: Set(workouts.map(\.uuid))) }
             let mapped = workouts.map { workout -> ExternalWorkout in

@@ -62,12 +62,14 @@ enum GeorgeIntents {
 
         case .addRest(let seconds):
             guard live.isActive else { throw GeorgeIntentError.noWorkout }
+            // Paused: no rest starts – only one stopped by Pause gets longer (it runs on with Resume).
+            if live.isPaused && !live.hasPausedRest { return "Your workout is paused." }
             live.perform(.addRest(seconds))
             return "Rest is \(seconds) seconds longer."
 
         case .skipRest:
             guard live.isActive else { throw GeorgeIntentError.noWorkout }
-            guard live.restEndsAt != nil else { return "You're not resting right now." }
+            guard live.restEndsAt != nil || live.hasPausedRest else { return "You're not resting right now." }
             live.perform(.skipRest)
             return live.currentItem.map { "Rest skipped. Up now: \($0.name)." } ?? "Rest skipped."
 

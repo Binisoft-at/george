@@ -3,6 +3,19 @@ import BinisoftKit
 import SwiftData
 import GeorgeCore
 
+private struct OpensExerciseDetailsKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// Off in live mode's own editor: "Open Exercise Details" would open the page in the main
+    /// window's navigation behind live mode, where it can't be seen.
+    var opensExerciseDetails: Bool {
+        get { self[OpensExerciseDetailsKey.self] }
+        set { self[OpensExerciseDetailsKey.self] = newValue }
+    }
+}
+
 /// Full editor for one exercise inside a workout.
 struct ItemEditorSheet: View {
     @Binding var content: WorkoutContent
@@ -16,6 +29,7 @@ struct ItemEditorSheet: View {
     @Environment(Router.self) private var router
     @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.opensExerciseDetails) private var opensExerciseDetails
     @State private var newLink = ""
     @State private var showSwap = false
     @State private var playing: URL?
@@ -44,12 +58,14 @@ struct ItemEditorSheet: View {
                     if let equipment = exercise.equipment {
                         LabeledContent("Equipment", value: equipment.capitalized)
                     }
-                    Button {
-                        dismiss()
-                        // On top of the workout or template (with Back on the Mac).
-                        router.push(.exercise(exercise.id))
-                    } label: {
-                        Label("Open Exercise Details", systemImage: "info.circle")
+                    if opensExerciseDetails {
+                        Button {
+                            dismiss()
+                            // On top of the workout or template (with Back on the Mac).
+                            router.push(.exercise(exercise.id))
+                        } label: {
+                            Label("Open Exercise Details", systemImage: "info.circle")
+                        }
                     }
                 }
             }

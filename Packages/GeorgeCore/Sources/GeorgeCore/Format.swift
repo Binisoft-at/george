@@ -9,7 +9,10 @@ public enum Format {
 
     /// 12 -> "12", 12.5 -> "12.5", 12.25 -> "12.25"
     public static func number(_ value: Double) -> String {
-        if value.rounded() == value { return String(Int(value)) }
+        if value.rounded() == value {
+            // Int(_:) traps on infinity and beyond its range: such a number (bad stored data) prints as is.
+            return abs(value) < 1e15 ? String(Int(value)) : String(format: "%.0f", value)
+        }
         let rounded = (value * 100).rounded() / 100
         var text = String(format: "%.2f", rounded)
         while text.hasSuffix("0") { text.removeLast() }

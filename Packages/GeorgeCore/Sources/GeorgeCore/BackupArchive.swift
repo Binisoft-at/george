@@ -400,7 +400,10 @@ public struct RestorePlan: Equatable, Sendable {
 public enum BackupSchedule {
     /// Automatic backups kept in Documents/Backups.
     public static let keep = 8
-    /// A weekly backup is written when the last automatic one is this old.
+    /// Of those, the newest weekly ones that always stay: backups before imports and restores never
+    /// push them out.
+    public static let keepWeekly = 4
+    /// A weekly backup is written when the last weekly one is this old.
     public static let interval: TimeInterval = 7 * 24 * 3600
     static let prefix = "George Backup "
 
@@ -430,10 +433,22 @@ public enum BackupSchedule {
         return formatter(timeZone).date(from: String(stamp))
     }
 
-    /// The automatic backups to delete so that the newest `keep` stay.
-    public static func filesToDelete(_ names: [String], keep: Int = BackupSchedule.keep, timeZone: TimeZone = .current) -> [String] {
+    /// Why an automatic backup was written, from its file name (nil for any other file).
+    public static func reason(fromFileName name: String) -> BackupReason? {
+        guard name.hasPrefix(prefix) else { return nil }
+        return BackupReason.allCases.first { name.hasSuffix(" (\($0.rawValue)).json") }
+    }
+
+    /// The automatic backups to delete so that `keep` stay: the newest `keepWeekly` weekly ones
+    /// always, the other places for the newest of the rest. A burst of imports or restores can't push
+    /// out the weeks before it.
+    public static func filesToDelete(_ names: [String], keep: Int = BackupSchedule.keep,
+                                     keepWeekly: Int = BackupSchedule.keepWeekly, timeZone: TimeZone = .current) -> [String] {
         let dated = names.compactMap { name in date(fromFileName: name, timeZone: timeZone).map { (name, $0) } }
             .sorted { $0.1 > $1.1 }
-        return dated.dropFirst(max(0, keep)).map(\.0)
+        let weekly = dated.filter { reason(fromFileName: $0.0) == .weekly }.prefix(max(0, min(keepWeekly, keep)))
+        let protected = Set(weekly.map(\.0))
+        let others = dated.filter { !protected.contains($0.0) }
+        return others.dropFirst(max(0, keep - protected.count)).map(\.0)
     }
 }

@@ -30,7 +30,7 @@ final class LiveWorkoutController {
         var savedToHealth: Bool
         /// Compared with the last time this workout was done (nil the first time).
         var comparison: SessionComparison? = nil
-        /// Loads that went up against the template ("Deadlift 100 → 105 kg").
+        /// What "Update Loads" would change in the template ("Deadlift 100→105 kg", "Plank 45s→1 min").
         var loadChanges: [String] = []
         /// A workout without a template that could become one.
         var canSaveAsTemplate = false
@@ -322,7 +322,16 @@ final class LiveWorkoutController {
         // another device's (then this one never got its own back, and it stayed in progress).
         guard session == nil,
               let id = UserDefaults.standard.string(forKey: Prefs.liveSessionID).flatMap(UUID.init(uuidString:)),
-              let active = store.session(id: id), active.status == .active else { return }
+              let active = store.session(id: id) else { return }
+        guard active.status == .active else {
+            // Ended elsewhere while this device didn't hear of it (closed, or suspended before the
+            // import was looked at): what it kept about the workout goes, as `detach` does, so a later
+            // Continue Here or Discard never starts from an old run.
+            LiveResume.clear(for: id)
+            UserDefaults.standard.removeObject(forKey: Prefs.liveSessionID)
+            UserDefaults.standard.removeObject(forKey: Prefs.liveClaimedAt)
+            return
+        }
         // Continued on another device while this app was closed: it isn't taken back here.
         guard restoreOwnership(of: active) else { return }
         attach(active, restoring: true)
@@ -384,10 +393,23 @@ final class LiveWorkoutController {
     private func endElsewhere(_ other: WorkoutSession) {
         guard other.modelContext != nil, other.status == .active, other.id != session?.id else { return }
         let content = other.content
-        other.accumulatedSeconds = other.elapsedSeconds()
+        if RunningWorkout.endedStatusIsPartial(content) {
+            // Where it really stopped, as Finish would: left idle, at its last set + rest – not hours
+            // later, now (`FinishTime.endFromOutside`).
+            let clock = LiveClock(startedAt: other.startedAt, accumulatedSeconds: other.accumulatedSeconds, resumedAt: other.resumedAt)
+            let end = FinishTime.endFromOutside(clock: clock, kind: other.kind, content: content,
+                                                restSeconds: Double(store.settings.defaultRestSeconds), now: Date())
+            other.accumulatedSeconds = clock.activeSeconds(until: end)
+            other.endedAt = end
+            other.status = .partial
+        } else {
+            // Nothing done: planned again with a fresh clock (its next Start begins at 0:00).
+            other.accumulatedSeconds = 0
+            other.startedAt = nil
+            other.endedAt = nil
+            other.status = .planned
+        }
         other.resumedAt = nil
-        other.endedAt = Date()
-        other.status = RunningWorkout.endedStatusIsPartial(content) ? .partial : .planned
         store.save()
         AppLog.info("Ended a workout running elsewhere (\(content.completedSets) sets)", category: "workout")
     }
@@ -405,6 +427,12 @@ final class LiveWorkoutController {
             stale.resumedAt = nil
             stale.endedAt = last ?? Date()
             stale.status = RunningWorkout.endedStatusIsPartial(stale.content) ? .partial : .planned
+            if stale.status == .planned {
+                // Nothing done: planned again with a fresh clock (its next Start begins at 0:00).
+                stale.accumulatedSeconds = 0
+                stale.startedAt = nil
+                stale.endedAt = nil
+            }
             LiveResume.clear(for: stale.id)
             AppLog.info("Stale workout ended as stopped early", category: "workout")
         }
@@ -414,6 +442,9 @@ final class LiveWorkoutController {
     func continueHere(_ other: WorkoutSession) {
         // Ended or deleted elsewhere since it was shown: nothing to take over.
         guard other.modelContext != nil, other.status == .active else { return }
+        // Unless this device made the last claim (its own run), what it kept about the workout is
+        // from an earlier run here: never loaded (an old "before Start" for Discard, an old watch state).
+        if LiveOwner(raw: other.liveDeviceID)?.id != ThisDevice.installID { LiveResume.clear(for: other.id) }
         UserDefaults.standard.set(other.id.uuidString, forKey: Prefs.liveSessionID)
         // Claimed and saved at once: the device that ran it lets go as soon as this syncs, instead of
         // saving its stale copy over the sets logged here.
@@ -591,6 +622,11 @@ final class LiveWorkoutController {
 
     private func attach(_ newSession: WorkoutSession, restoring: Bool = false) {
         resetTransientState()
+        // The watch's numbers of a workout before don't carry over (Continue Here, Undo, a relaunch):
+        // the panel and Finish wait for this one's.
+        heartRate = nil
+        watchAverageHeartRate = nil
+        watchEnergy = nil
         session = newSession
         attachedID = newSession.id
         content = newSession.content
@@ -783,9 +819,9 @@ final class LiveWorkoutController {
     }
 
     /// "Finish … and start": the running workout is saved properly (Apple Health included), then
-    /// the new one starts.
-    func finishCurrentAndStart() async {
-        guard let target = pendingStart else { return }
+    /// the new one starts. `target` comes from the dialog's button: by the time this runs, the
+    /// dialog's dismissal has cleared `pendingStart`.
+    func finishCurrentAndStart(_ target: StartTarget) async {
         pendingStart = nil
         if let session {
             await finish(effort: session.effort > 0 ? session.effort : session.kind.defaultEffort, notes: nil, showSummary: false)
@@ -839,6 +875,14 @@ final class LiveWorkoutController {
         let now = Date()
         // A workout continued after "stopped early": Apple Health gets only the part from here.
         if session?.id != newSession.id { before?.segmentStartedAt = now }
+        // Planned (or skipped) with nothing done starts with a fresh clock: one ended from outside
+        // before may still carry its old start, time and end, and would run on from there.
+        if newSession.status == .planned || newSession.status == .skipped, newSession.doneSetCount == 0 {
+            newSession.accumulatedSeconds = 0
+            newSession.startedAt = nil
+            newSession.endedAt = nil
+            newSession.resumedAt = nil
+        }
         newSession.status = .active
         if newSession.startedAt == nil { newSession.startedAt = now }
         if newSession.plannedDate == nil { newSession.plannedDate = now }
@@ -1910,6 +1954,14 @@ final class LiveWorkoutController {
     }
 
     func addRest(_ seconds: Int) {
+        // Paused: no rest runs until Resume – the one waiting for it gets longer (none starts).
+        if isPaused {
+            guard let rest = pausedRest else { return }
+            pausedRest = (remaining: max(0, rest.remaining + Double(seconds)), total: max(0, rest.total + seconds))
+            saveResume()
+            syncLive()
+            return
+        }
         guard let restEndsAt else {
             startRest(seconds)
             return
@@ -1922,11 +1974,18 @@ final class LiveWorkoutController {
         syncLive()
     }
 
-    /// Ends the rest now (the set becomes due).
+    /// Ends the rest now (the set becomes due). Paused: the rest waiting for Resume goes.
     func skipRest() {
+        if pausedRest != nil {
+            pausedRest = nil
+            saveResume()
+        }
         cancelRest()
         syncLive()
     }
+
+    /// A rest stopped by Pause, carried on by Resume.
+    var hasPausedRest: Bool { pausedRest != nil }
 
     private func cancelRest() {
         restTask?.cancel()
@@ -2078,13 +2137,15 @@ final class LiveWorkoutController {
         session.content = content
         // A workout without sets (tennis, a run, "just track time") is complete when it's finished.
         session.status = content.isComplete || content.totalSets == 0 ? .completed : .partial
-        session.effort = effort
+        // No rating (0, the watch's "Save without rating"): a rating the workout already had stays.
+        if effort > 0 { session.effort = effort }
         if let notes, !notes.isEmpty {
             session.notes = session.notes.isEmpty ? notes : session.notes + "\n" + notes
         }
         let settings = store.settings
         let bodyMass = health.latestBodyMassKg ?? settings.bodyMassKg
-        let estimated = EnergyEstimator.kilocalories(kind: session.kind, durationSeconds: session.accumulatedSeconds, bodyMassKg: bodyMass, effort: effort)
+        let estimateEffort = FinishRating.forEstimate(effort, kind: session.kind)
+        let estimated = EnergyEstimator.kilocalories(kind: session.kind, durationSeconds: session.accumulatedSeconds, bodyMassKg: bodyMass, effort: estimateEffort)
         session.energyKcal = estimated
         var averageHeartRate = watchAverageHeartRate
         var measuredEnergy = watchEnergy
@@ -2106,6 +2167,11 @@ final class LiveWorkoutController {
         }
         let recordedOnWatch = HealthLink.watchSaves(watchHeard: watchIsRecording, watchWorkoutID: watchWorkoutID, watchStoppedAt: watchStoppedAt)
         session.recordedOnWatch = recordedOnWatch || watchWorkoutID != nil
+        // Continued after "stopped early": only the part since continuing is new (the first is in
+        // Health, and its numbers are kept here already).
+        let continued = discardKeepsSavedPart ? preStart : nil
+        // Heart rate and calories measured for this part, kept below.
+        var partNumbers: MeasuredNumbers?
         if recordedOnWatch {
             // The watch saves the HKWorkout (with heart rate); effort is attached when its id arrives
             // (kept on the device until then), or now when it came while Finish waited.
@@ -2117,17 +2183,26 @@ final class LiveWorkoutController {
                 LiveResume.addPendingHealthLink(PendingHealthLink(sessionID: finishedID, effort: effort, finishedAt: end))
             }
             savedToHealth = true
+            // The watch's numbers are running totals until now (or its Finish tap). A workout that ended
+            // clearly earlier (left running, ended at its last set) gets the heart rate of its own time
+            // from Apple Health, and George's calorie estimate.
+            if !MeasuredNumbers.watchTotalsFit(workoutEnd: end, countedUntil: (endIsChosen ? nil : endedAt) ?? now) {
+                let hr = await health.heartRate(from: continued?.segmentStartedAt ?? start, to: end)
+                averageHeartRate = hr?.average
+                measuredEnergy = nil
+                partNumbers = MeasuredNumbers(averageHeartRate: hr?.average, maxHeartRate: hr?.max)
+            } else {
+                partNumbers = MeasuredNumbers(averageHeartRate: averageHeartRate, activeEnergy: measuredEnergy)
+            }
         } else if canSaveToHealth {
             // The watch stopped recording on the way: its part is in Apple Health already.
             if let watchWorkoutID {
                 Task { [health] in await health.relateEffort(effort, toWorkoutWithID: watchWorkoutID) }
                 savedToHealth = true
             }
-            // Continued after "stopped early": only the part since continuing (the first is in Health).
-            let continued = discardKeepsSavedPart ? preStart : nil
             if let hr = await health.heartRate(from: continued?.segmentStartedAt ?? start, to: end) {
                 averageHeartRate = hr.average
-                store.recordHealthMetrics(sessionID: finishedID, averageHeartRate: hr.average, maxHeartRate: hr.max, activeEnergy: nil, bumping: false)
+                partNumbers = MeasuredNumbers(averageHeartRate: hr.average, maxHeartRate: hr.max)
             }
             if let span = FinishTime.healthSpan(start: start, end: end, activeSeconds: session.accumulatedSeconds,
                                                 continuedAt: continued?.segmentStartedAt, activeBeforeContinuing: continued?.accumulatedSeconds ?? 0,
@@ -2136,7 +2211,7 @@ final class LiveWorkoutController {
                 let request = HealthKitManager.SaveRequest(
                     sessionID: finishedID, title: session.title, kind: session.kind, start: span.start, end: span.end,
                     activeSeconds: span.activeSeconds,
-                    energyKcal: EnergyEstimator.kilocalories(kind: session.kind, durationSeconds: span.activeSeconds, bodyMassKg: bodyMass, effort: effort),
+                    energyKcal: EnergyEstimator.kilocalories(kind: session.kind, durationSeconds: span.activeSeconds, bodyMassKg: bodyMass, effort: estimateEffort),
                     effort: effort,
                     exercises: done.map(\.name),
                     muscles: Array(Set(done.flatMap { library.muscles(for: $0) })).sorted(),
@@ -2157,10 +2232,22 @@ final class LiveWorkoutController {
                 }
             }
         }
-        if recordedOnWatch {
-            store.recordHealthMetrics(sessionID: finishedID, averageHeartRate: averageHeartRate, maxHeartRate: nil, activeEnergy: measuredEnergy, bumping: false)
-        } else {
-            measuredEnergy = nil
+        if !recordedOnWatch { measuredEnergy = nil }
+        if var numbers = partNumbers {
+            // Continued: with the first part's numbers kept here, the whole workout's (calories added,
+            // heart rate weighted by time) – not the new part's alone.
+            if let continued, let kept = store.healthMetrics(for: finishedID) {
+                numbers = MeasuredNumbers.combined(
+                    earlier: MeasuredNumbers(averageHeartRate: kept.averageHeartRate, maxHeartRate: kept.maxHeartRate, activeEnergy: kept.activeEnergyKcal),
+                    earlierSeconds: continued.accumulatedSeconds,
+                    part: numbers, partSeconds: max(0, session.accumulatedSeconds - continued.accumulatedSeconds))
+                averageHeartRate = numbers.averageHeartRate
+                measuredEnergy = numbers.activeEnergy
+            }
+            if !numbers.isEmpty {
+                store.recordHealthMetrics(sessionID: finishedID, averageHeartRate: numbers.averageHeartRate, maxHeartRate: numbers.maxHeartRate,
+                                          activeEnergy: numbers.activeEnergy, bumping: false)
+            }
         }
         store.save(bumping: false)
         // The one bump of Finish – before the summary and the watch's snapshot, so the streak and
@@ -2170,7 +2257,9 @@ final class LiveWorkoutController {
         let record = session.record()
         let records = StatsEngine.newRecords(in: record, comparedTo: history)
         let template = store.template(id: session.templateID)
-        let loadChanges = template.map { content.loadChanges(comparedTo: $0.content, unit: unit) } ?? []
+        // What "Update Loads" would write (heavier weights, longer holds and distances, to-failure
+        // sets too) – the same rule the workout's page offers it by.
+        let loadChanges = template.map { content.templateChanges(into: $0.content, mode: .loads, unit: unit) } ?? []
         let canUpdate = settings.askToUpdateTemplate && (store.sessionDiffersFromTemplate(session) || !loadChanges.isEmpty)
         // Each earlier workout's template, without loading the workouts.
         let templateOf = store.performedTemplateIDs()
@@ -2218,8 +2307,17 @@ final class LiveWorkoutController {
     /// The running workout was saved before and continued (stopped early, "Save It and Start"):
     /// Discard throws away only what was done since continuing.
     var discardKeepsSavedPart: Bool {
-        guard let before = preStart, let status = SessionStatus(rawValue: before.statusRaw) else { return false }
-        return status.isPerformed
+        if let before = preStart {
+            guard let status = SessionStatus(rawValue: before.statusRaw) else { return false }
+            return status.isPerformed
+        }
+        // Taken over here (Continue Here): no snapshot on this device, the synced session tells.
+        guard let session, session.modelContext != nil else { return false }
+        if case .keepEarlierPart = TakenOverDiscard.outcome(createdAt: session.createdAt, startedAt: session.startedAt,
+                                                            endedAt: session.endedAt) {
+            return true
+        }
+        return false
     }
 
     /// Throws away what was done since Start. A workout continued after "stopped early" goes back to
@@ -2253,14 +2351,30 @@ final class LiveWorkoutController {
             session.resumedAt = nil
             // The automatic title Start gave it for today goes; a title typed since stays.
             if let auto = before.autoTitle, session.title == auto { session.title = before.title }
-        } else if !deleteSession, content.completedSets == 0,
-                  session.createdAt < (session.startedAt ?? Date()).addingTimeInterval(-120) {
-            // Taken over without a Start here (another device): a session planned earlier goes back to the plan.
-            session.content = content
-            session.status = .planned
-            session.resumedAt = nil
-            session.accumulatedSeconds = 0
-            session.startedAt = nil
+        } else if !deleteSession {
+            // Taken over without a Start here (Continue Here): how it looked before Start stayed on the
+            // device that started it. The synced session tells what it was (`TakenOverDiscard`).
+            switch TakenOverDiscard.outcome(createdAt: session.createdAt, startedAt: session.startedAt, endedAt: session.endedAt) {
+            case .keepEarlierPart(let endedAt):
+                // Saved before and continued: that part stays (sets, effort, Apple Health link), the
+                // sets ticked since go.
+                let earlier = content.takingBackSets(doneAfter: endedAt)
+                session.content = earlier
+                session.status = TakenOverDiscard.earlierPartIsComplete(earlier) ? .completed : .partial
+                session.accumulatedSeconds = TakenOverDiscard.earlierActiveSeconds(
+                    accumulated: session.accumulatedSeconds, startedAt: session.startedAt, endedAt: endedAt)
+                session.resumedAt = nil
+            case .backToPlan:
+                // Planned earlier: back to the plan, its ticks taken back.
+                session.content = content.takingBackSets(doneAfter: nil)
+                session.status = .planned
+                session.resumedAt = nil
+                session.accumulatedSeconds = 0
+                session.startedAt = nil
+                session.endedAt = nil
+            case .delete:
+                deletes = true
+            }
         } else {
             deletes = true
         }
@@ -2476,8 +2590,9 @@ final class LiveWorkoutController {
         case .pause: pause()
         case .resume: resume()
         case .finish(let effort):
-            guard let session else { return }
-            let rating = effort ?? session.kind.defaultEffort
+            guard session != nil else { return }
+            // "Save without rating" on the watch: no effort is stored (George and Apple Health).
+            let rating = FinishRating.stored(effort)
             // Known at once, before the save starts: the watch's saved workout may arrive any moment.
             pendingHealthSessionID = session.id
             pendingEffort = rating
@@ -2487,6 +2602,13 @@ final class LiveWorkoutController {
             // A Discard that arrives late doesn't throw away what was done here after it was tapped.
             if let sentAt, let last = lastSignOfLife, last > sentAt.addingTimeInterval(5) {
                 AppLog.info("Ignored a late watch Discard: the workout went on here", category: "watch")
+                // The watch threw its recording away when Discard was tapped (and sends nothing more):
+                // Finish saves the workout from the iPhone instead of waiting for the watch's.
+                if watchIsRecording {
+                    watchIsRecording = false
+                    watchStoppedAt = sentAt
+                    saveResume()
+                }
                 return syncWatch()
             }
             discard()
@@ -2703,7 +2825,13 @@ extension LiveWorkoutController {
             if let linkID = plan.linkID { target.healthWorkoutID = linkID.uuidString }
             if awaited || plan.linkID != nil { target.recordedOnWatch = true }
         }
-        store.recordHealthMetrics(sessionID: sessionID, averageHeartRate: metrics.averageHeartRate, maxHeartRate: nil, activeEnergy: metrics.activeEnergy)
+        // Its totals are the workout's only when this recording is the workout's link (not a later part
+        // of a continued one, whose numbers Finish added to the first part's) and it didn't run on long
+        // after the workout ended (one left running and ended at its last set).
+        let isItsRecording = target.healthWorkoutID.flatMap(UUID.init(uuidString:)) == workoutID
+        if isItsRecording, MeasuredNumbers.watchTotalsFit(workoutEnd: target.endedAt ?? .distantFuture, countedUntil: metrics.endedAt ?? Date()) {
+            store.recordHealthMetrics(sessionID: sessionID, averageHeartRate: metrics.averageHeartRate, maxHeartRate: nil, activeEnergy: metrics.activeEnergy)
+        }
         // The same message twice adds nothing.
         guard awaited || plan.linkID != nil else { return }
         let effort = pendingRating > 0 ? pendingRating : (pending?.effort ?? target.effort)

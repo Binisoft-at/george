@@ -2,6 +2,11 @@ import Foundation
 import SwiftData
 import BinisoftKit
 import GeorgeCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 extension Prefs {
     /// When the last full backup was written – automatic or exported (seconds since 2001, 0 = never).
@@ -38,7 +43,8 @@ extension GeorgeStore {
         try makeBackupArchive(reason: .manual).encoded()
     }
 
-    /// Writes an automatic backup to Documents/Backups and keeps the newest 8. The data is taken now,
+    /// Writes an automatic backup to Documents/Backups and prunes the folder (8 kept, the last 4 weekly
+    /// ones always among them). The data is taken now,
     /// on the main actor, and written in the background (await the returned task to know it's done).
     /// Nothing is written while there is no data (a new device before its first sync), so empty
     /// copies never push out good ones.
@@ -62,13 +68,31 @@ extension GeorgeStore {
         }
     }
 
-    /// The weekly automatic backup, when the newest one is a week old (after launch; once per launch,
-    /// however many windows the Mac opens).
+    /// The weekly automatic backup, when the newest weekly one is a week old. Looked at after launch,
+    /// then whenever the app comes back to the front and when the day changes (a Mac can stay open for
+    /// weeks) – at most once an hour, however many windows the Mac opens.
     func backUpIfDue(now: Date = Date()) {
-        guard !BackupFolder.checkedThisLaunch else { return }
-        BackupFolder.checkedThisLaunch = true
-        guard BackupSchedule.isDue(lastBackup: BackupFolder.newestDate(), now: now) else { return }
+        watchForDueBackups()
+        if let last = BackupFolder.lastCheck, now.timeIntervalSince(last) < 3600 { return }
+        BackupFolder.lastCheck = now
+        let newestWeekly = BackupFolder.entries().first { $0.reason == BackupReason.weekly.rawValue }?.date
+        guard BackupSchedule.isDue(lastBackup: newestWeekly, now: now) else { return }
         writeAutomaticBackup(reason: .weekly)
+    }
+
+    /// Checks again in the foreground and on a new day (from the first check on).
+    private func watchForDueBackups() {
+        guard BackupFolder.observers.isEmpty else { return }
+        #if os(macOS)
+        let foreground = NSApplication.didBecomeActiveNotification
+        #else
+        let foreground = UIApplication.willEnterForegroundNotification
+        #endif
+        for name in [foreground, Notification.Name.NSCalendarDayChanged] {
+            BackupFolder.observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.backUpIfDue() }
+            })
+        }
     }
 
     // MARK: Restoring
@@ -480,8 +504,10 @@ enum BackupFolder {
         let size: Int
     }
 
-    /// `GeorgeStore.backUpIfDue()` ran in this launch.
-    @MainActor static var checkedThisLaunch = false
+    /// When `GeorgeStore.backUpIfDue()` last looked (nil until the first look after launch).
+    @MainActor static var lastCheck: Date?
+    /// Foreground and new-day observers that look again (`GeorgeStore.backUpIfDue()`).
+    @MainActor static var observers: [NSObjectProtocol] = []
 
     static var url: URL? {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
@@ -512,7 +538,8 @@ enum BackupFolder {
 
     static func newestDate() -> Date? { entries().first?.date }
 
-    /// Keeps the newest `BackupSchedule.keep` automatic backups.
+    /// Keeps `BackupSchedule.keep` automatic backups, the newest weekly ones always among them
+    /// (`BackupSchedule.filesToDelete`).
     static func prune() {
         guard let folder = url,
               let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else { return }

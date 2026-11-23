@@ -310,10 +310,13 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
         return "•"
     }
 
-    /// A new set copied from the last set (targets only).
+    /// A new set copied from the last set (targets only). Sets added for today only (the drop set
+    /// after "Can't finish", live warm-ups) are skipped: a copy would lose that tag and be planned.
     public func makeNextSet() -> WorkoutSet {
-        if let last = sets.last {
+        if let last = sets.last(where: { $0.addedLive != true }) ?? sets.last {
             var next = last.clearedCopy()
+            // Only today's sets left: a plain set with their numbers.
+            if next.addedLive == true { next.kind = .working }
             next.addedLive = nil
             return next
         }

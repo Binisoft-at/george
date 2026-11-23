@@ -312,6 +312,11 @@ extension GeorgeStore {
         }
         // A planned workout on a day that already counts adds no day.
         plannedDays.subtract(entries.map { calendar.startOfDay(for: $0.date) })
+        // Nor does a new one: a day that counts (an Apple Health workout too) is taken, with rest next to it.
+        for entry in entries {
+            let date = calendar.startOfDay(for: entry.date)
+            if date >= busyFrom && date < end { busy.insert(date) }
+        }
         let suggestion = suggestedTemplate(in: program, on: start)
         let rotationStart = suggestion.flatMap { s in templates.firstIndex { $0.id == s.id } } ?? 0
         return WeekPlanner.propose(

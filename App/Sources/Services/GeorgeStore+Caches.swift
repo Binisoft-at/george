@@ -134,8 +134,10 @@ extension GeorgeStore {
     /// log or the day changes.
     func performedToday() -> [WorkoutSession] {
         let today = calendar.startOfDay(for: Date())
+        // Each one still done: marking a workout not done may not move the history (when the history
+        // index hadn't seen it as done yet).
         if let cached = caches.performedToday, cached.revision == historyRevision, cached.day == today,
-           cached.sessions.allSatisfy({ $0.modelContext != nil && !$0.isDeleted }) {
+           cached.sessions.allSatisfy({ $0.modelContext != nil && !$0.isDeleted && $0.status.isPerformed }) {
             return cached.sessions
         }
         let sessions = uncachedPerformedToday()

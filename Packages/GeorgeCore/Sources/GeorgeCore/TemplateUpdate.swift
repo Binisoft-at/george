@@ -32,13 +32,25 @@ public extension WorkoutContent {
     /// Short lines for what saving this workout into `template` would change ("Bench 4→3 sets",
     /// "Row 50→52.5 kg", "Face Pull added"). Empty when the template would stay the same.
     func templateChanges(into template: WorkoutContent, mode: TemplateUpdateMode, unit: WeightUnit = .kg) -> [String] {
-        asTemplate(mode: mode, base: template).changes(comparedTo: template, unit: unit)
+        let old = mode == .everything ? template.withSwapsFolded() : template
+        return asTemplate(mode: mode, base: template).changes(comparedTo: old, unit: unit)
     }
 
     /// Whether saving this workout would change the template's exercises, groups or set counts – not
     /// counting what was only added for today (a drop set, live warm-ups).
     func changesTemplateStructure(_ template: WorkoutContent) -> Bool {
-        asTemplate(mode: .everything, base: template).structureDiffers(from: template)
+        asTemplate(mode: .everything, base: template).structureDiffers(from: template.withSwapsFolded())
+    }
+
+    /// This content with each superset swap folded into one exercise, as `.everything` saves it. A
+    /// template an older George saved straight after a swap still holds both exercises; compared
+    /// folded, a workout done just as planned reads as unchanged.
+    internal func withSwapsFolded() -> WorkoutContent {
+        var copy = self
+        for b in copy.blocks.indices where copy.blocks[b].items.count > 1 {
+            copy.blocks[b].items = copy.blocks[b].foldedSwaps()
+        }
+        return copy
     }
 
     /// The template a workout makes: see `asTemplate(promoteActuals:)`.

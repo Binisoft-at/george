@@ -125,6 +125,9 @@ private struct SessionDocument: View {
                     previousBefore: isPastWorkout ? session.date : nil,
                     excludingSessionID: isPastWorkout ? session.id : nil
                 )
+                // Running on another device: read-only, like the header and notes – an exercise
+                // added or a number changed here would never be saved.
+                .disabled(runsElsewhere)
             } else {
                 // "Can't read this workout" / "Update George on this device to edit" – never an empty editor.
                 ReadOnlyContentSection(state: readState, content: content)
@@ -163,6 +166,15 @@ private struct SessionDocument: View {
     private func withSaving(_ base: some View) -> some View {
         base
         .onChange(of: session.contentData) { _, newData in externalChange(newData) }
+        // Live mode ended (Finish, Discard, continued elsewhere) while this page stayed open: its
+        // saves were skipped while it ran, so the page reloads – the copy from before Start would
+        // otherwise show, and the next edit would write it over the logged sets.
+        .onChange(of: isLive) { _, nowLive in
+            guard !nowLive, session.modelContext != nil, !session.isDeleted else { return }
+            if let edit = pendingEdit, edit.session !== session { writePendingEdit() }
+            pendingEdit = nil
+            load()
+        }
         .onChange(of: content) { _, newContent in contentEdited(newContent) }
         .task(id: editCount) {
             guard pendingEdit != nil else { return }
@@ -348,9 +360,11 @@ private struct SessionDocument: View {
     }
 
     private func discardDraftIfEmpty(_ id: UUID) {
-        guard router.draftSessionID == id else { return }
+        // Covered by a page opened on top of it (Back returns to it): not left yet.
+        guard router.draftSessionID == id, !router.isCovered(.session(id)) else { return }
         router.draftSessionID = nil
-        store.discardIfEmptyDraft(sessionID: id)
+        // Gone: no list or tab keeps it, to show it again as "Workout not found".
+        if store.discardIfEmptyDraft(sessionID: id) { router.close(.session(id)) }
     }
 
     // MARK: Header

@@ -458,7 +458,7 @@ private struct ExercisesPage: View {
             if Self.canEdit(target.workoutSet) {
                 Button("Edit reps/weight") { logging = target }
             }
-            Button("Mark not done") { connector.perform(.undoSet(target.workoutSet.id)) }
+            Button("Mark not done") { connector.perform(.markNotDone(target.workoutSet.id, phone: connector.snapshot)) }
             Button("Cancel", role: .cancel) {}
         } message: { target in
             let done = target.workoutSet
@@ -775,7 +775,14 @@ private struct EndWorkoutSheet: View {
     let kind: WorkoutKind
     let onEnd: (Int?) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var effort = 6
+    @State private var effort: Int
+
+    /// The wheel starts at the kind's usual effort (a calm yoga flow isn't "somewhat hard"), as on the phone.
+    init(kind: WorkoutKind, onEnd: @escaping (Int?) -> Void) {
+        self.kind = kind
+        self.onEnd = onEnd
+        _effort = State(initialValue: kind.defaultEffort)
+    }
 
     var body: some View {
         NavigationStack {

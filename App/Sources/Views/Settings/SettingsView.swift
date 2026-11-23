@@ -193,7 +193,8 @@ struct SettingsView: View {
             } header: {
                 Text("Import & Export")
             } footer: {
-                Text("A full backup holds everything and can be restored – George also saves one each week and before every import. The workout log is a readable list for Numbers or Excel – it can't be imported back. Your data lives in iCloud.")
+                // Where the data is now (Storage under About): iCloud only when this launch syncs.
+                Text("A full backup holds everything and can be restored – George also saves one each week and before every import. The workout log is a readable list for Numbers or Excel – it can't be imported back. " + (sync.state.mode.isSynced ? "Your data lives in iCloud." : "Your data is on this device only – export a full backup to keep a copy."))
             }
 
             Section {

@@ -120,10 +120,22 @@ public struct HistoryIndex: Sendable {
 public struct TableStamp: Hashable, Sendable {
     public var count: Int
     public var newest: Date?
+    /// Small tables: every row's fields as one number (`init(rows:newest:)`), so an edit that doesn't
+    /// stamp the date – a plan moved to another day, a program archived – still counts. 0 otherwise.
+    public var digest: Int
 
-    public init(count: Int, newest: Date?) {
+    public init(count: Int, newest: Date?, digest: Int = 0) {
         self.count = count
         self.newest = newest
+        self.digest = digest
+    }
+
+    /// A table read row by row. The same rows in any order give the same stamp (in one launch: Swift's
+    /// hashes change between launches, and fingerprints are only compared within one).
+    public init<Row: Hashable>(rows: [Row], newest: Date?) {
+        var hasher = Hasher()
+        for value in rows.map(\.hashValue).sorted() { hasher.combine(value) }
+        self.init(count: rows.count, newest: newest, digest: hasher.finalize())
     }
 }
 
