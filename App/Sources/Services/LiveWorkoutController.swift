@@ -3136,6 +3136,9 @@ extension LiveWorkoutController {
     private func endedAway(_ session: WorkoutSession, deleted: Bool, fromImport: Bool) {
         guard !deleted else {
             lastDiscardedSessionID = attachedID
+            // Deletes made here let go of live mode first, so a deleted running workout was deleted
+            // elsewhere. Its title can't be read any more (the model is gone).
+            handOverNotice = "The workout was deleted on another device"
             return
         }
         let owner = LiveOwner(raw: session.liveDeviceID)
