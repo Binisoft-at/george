@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import BinisoftKit
 import GeorgeCore
 
@@ -9,14 +10,23 @@ struct WelcomeView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
+    @Environment(SyncMonitor.self) private var sync
     @Environment(\.dismiss) private var dismiss
     @AppStorage(Prefs.didOnboard) private var didOnboard = false
     @AppStorage(Prefs.welcomeVersion) private var welcomeVersion = 0
     @AppStorage(Prefs.healthAsked) private var healthAsked = false
+    /// Programs as they arrive from iCloud (a new device finds the other devices' plans here).
+    @Query private var programs: [Program]
     @State private var page: TutorialPage = .welcome
     @State private var goal = 3
     @State private var unit: WeightUnit = .kg
+    /// Only what was picked here is written – never this page's defaults over synced settings.
+    @State private var goalEdited = false
+    @State private var unitEdited = false
     @State private var sample: GeorgeStore.SampleProgram = .gym
+    /// "Start fresh anyway" shows after a while of looking for iCloud data; tapped, the start options show.
+    @State private var canStartFresh = false
+    @State private var startFresh = false
 
     var body: some View {
         ZStack {
@@ -27,10 +37,26 @@ struct WelcomeView: View {
                 bottomBar
             }
         }
-        .onAppear {
-            goal = store.settings.weeklyGoal
-            unit = store.settings.unit
+        .onAppear(perform: loadSettings)
+        // Settings that arrive from iCloud meanwhile show here (unless changed on this page).
+        .onChange(of: store.revision) { _, _ in loadSettings() }
+        .task {
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            canStartFresh = true
         }
+    }
+
+    private func loadSettings() {
+        if !goalEdited { goal = store.settings.weeklyGoal }
+        if !unitEdited { unit = store.settings.unit }
+    }
+
+    /// A new device (or a reinstall) whose iCloud data hasn't arrived yet: the start options wait,
+    /// so a sample program or an empty one isn't added next to the plans already in iCloud.
+    private var lookingForICloudData: Bool {
+        guard !didOnboard, !startFresh, programs.isEmpty, sync.state.mode.isSynced, !store.cloudImportSeen else { return false }
+        let account = sync.state.account
+        return account != .noAccount && account != .restricted && sync.state.lastError == nil
     }
 
     // MARK: Chrome
@@ -213,6 +239,7 @@ struct WelcomeView: View {
                     ForEach(1...7, id: \.self) { day in
                         Button {
                             goal = day
+                            goalEdited = true
                             Haptics.tap()
                         } label: {
                             Text("\(day)")
@@ -235,7 +262,7 @@ struct WelcomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Weights in", systemImage: "scalemass.fill")
                     .font(.headline)
-                Picker("Units", selection: $unit) {
+                Picker("Units", selection: Binding(get: { unit }, set: { unit = $0; unitEdited = true })) {
                     Text("Kilograms").tag(WeightUnit.kg)
                     Text("Pounds").tag(WeightUnit.lb)
                 }
@@ -245,7 +272,26 @@ struct WelcomeView: View {
             .padding(16)
             .card(padding: 0, cornerRadius: 22)
 
-            if store.fetchPrograms().isEmpty {
+            if lookingForICloudData {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Looking for your workouts in iCloud…")
+                            .font(.headline)
+                    }
+                    Text("If you use George on another device, your programs and settings arrive in a moment.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if canStartFresh {
+                        Button("Start Fresh Anyway") {
+                            withAnimation(.snappy) { startFresh = true }
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+                .padding(16)
+                .card(padding: 0, cornerRadius: 22)
+            } else if programs.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("How do you want to start?", systemImage: "sparkles")
                         .font(.headline)
@@ -271,6 +317,12 @@ struct WelcomeView: View {
                 }
             } else {
                 VStack(spacing: 10) {
+                    if !didOnboard {
+                        // A new device: the plans came from iCloud.
+                        Label("Welcome back – \(programs.count) program\(programs.count == 1 ? "" : "s") from iCloud", systemImage: "checkmark.icloud")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     Button {
                         finish { router.startTour() }
                     } label: {
@@ -302,15 +354,27 @@ struct WelcomeView: View {
     }
 
     private func finish(then action: (@MainActor () -> Void)? = nil) {
-        let settings = store.settings
-        if settings.goalHistory.isEmpty {
-            settings.weeklyGoal = goal
-            settings.goalHistory = [GoalChange(effectiveFrom: .distantPast, daysPerWeek: goal)]
-        } else if settings.weeklyGoal != goal {
-            settings.setWeeklyGoal(goal, calendar: store.calendar)
+        // Only what was picked on this page is written: on a new device the goal and units from
+        // iCloud (maybe still on their way) aren't overwritten by this page's defaults.
+        let current = store.settings
+        let firstGoal = goalEdited && current.goalHistory.isEmpty
+        let changedGoal = goalEdited && !firstGoal && current.weeklyGoal != goal
+        let changedUnit = unitEdited && current.unit != unit
+        if firstGoal || changedGoal || changedUnit {
+            let calendar = store.calendar
+            let pickedGoal = goal
+            let pickedUnit = unit
+            store.updateSettings { settings in
+                if firstGoal {
+                    // The whole history is judged by the goal chosen at setup.
+                    settings.weeklyGoal = pickedGoal
+                    settings.goalHistory = [GoalChange(effectiveFrom: .distantPast, daysPerWeek: pickedGoal)]
+                } else if changedGoal {
+                    settings.setWeeklyGoal(pickedGoal, calendar: calendar)
+                }
+                if changedUnit { settings.unit = pickedUnit }
+            }
         }
-        if settings.unit != unit { settings.unit = unit }
-        store.save()
         didOnboard = true
         welcomeVersion = Prefs.currentWelcomeVersion
         Haptics.success()

@@ -78,19 +78,24 @@ public struct WatchSessionSummary: Codable, Hashable, Identifiable, Sendable {
 
 public struct WatchStreak: Codable, Hashable, Sendable {
     public var weeks: Int
+    /// Days that count this week – a rescue workout counts double, like on the phone.
     public var doneDays: Int
     public var goal: Int
     public var credits: Int
     public var headline: String
     public var dots: [Bool]
+    /// Start of the week `doneDays` and `dots` belong to (nil from older phone versions). Once that
+    /// week is over the watch and its complication show an empty week instead of last week's days.
+    public var weekStart: Date?
 
-    public init(weeks: Int, doneDays: Int, goal: Int, credits: Int, headline: String, dots: [Bool]) {
+    public init(weeks: Int, doneDays: Int, goal: Int, credits: Int, headline: String, dots: [Bool], weekStart: Date? = nil) {
         self.weeks = weeks
         self.doneDays = doneDays
         self.goal = goal
         self.credits = credits
         self.headline = headline
         self.dots = dots
+        self.weekStart = weekStart
     }
 }
 
@@ -229,10 +234,13 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
     public var voiceMuted: Bool?
     /// The exercise the user is looking at on the phone when it differs from the plan's current one.
     public var viewingExerciseID: UUID?
+    /// Sides of the timed current set: 2 for "30 s each side" (`timedSetSeconds` covers both sides).
+    /// Nil from older phones and for one-sided holds.
+    public var timedSides: Int?
 
     public init(sessionID: UUID, title: String, kind: WorkoutKind, startedAt: Date, accumulatedSeconds: Double, resumedAt: Date?, isPaused: Bool, restEndsAt: Date?, restTotalSeconds: Int?, currentSetID: UUID?, exercises: [WatchExercise], completedSets: Int, totalSets: Int,
                 setStartedAt: Date? = nil, lastSetEndedAt: Date? = nil, plannedRestSeconds: Int? = nil, timedSetSeconds: Int? = nil, behindSeconds: Double? = nil, lastDeltaSeconds: Double? = nil,
-                usesStartButton: Bool? = nil, question: WatchQuestion? = nil, asksEnergy: Bool? = nil, voiceMuted: Bool? = nil, viewingExerciseID: UUID? = nil) {
+                usesStartButton: Bool? = nil, question: WatchQuestion? = nil, asksEnergy: Bool? = nil, voiceMuted: Bool? = nil, viewingExerciseID: UUID? = nil, timedSides: Int? = nil) {
         self.sessionID = sessionID
         self.title = title
         self.kind = kind
@@ -257,6 +265,47 @@ public struct WatchLiveState: Codable, Hashable, Sendable {
         self.asksEnergy = asksEnergy
         self.voiceMuted = voiceMuted
         self.viewingExerciseID = viewingExerciseID
+        self.timedSides = timedSides
+    }
+
+    /// One side of a running per-side hold.
+    public struct HoldSide: Equatable, Sendable {
+        /// 1 or 2.
+        public var number: Int
+        public var count: Int
+        public var start: Date
+        public var end: Date
+
+        public init(number: Int, count: Int, start: Date, end: Date) {
+            self.number = number
+            self.count = count
+            self.start = start
+            self.end = end
+        }
+
+        public func remaining(at date: Date) -> Double { max(0, end.timeIntervalSince(date)) }
+        public var seconds: Double { end.timeIntervalSince(start) }
+    }
+
+    /// 2 while a per-side hold is current, else 1.
+    public var holdSideCount: Int { max(1, min(2, timedSides ?? 1)) }
+
+    /// The side of the running per-side hold at `date` (side 2 also once the hold ran out, until the
+    /// phone logs it). Nil for one-sided holds, while paused or resting, or when no hold runs.
+    public func holdSide(at date: Date) -> HoldSide? {
+        guard holdSideCount > 1, !isPaused, restEndsAt == nil, let start = setStartedAt,
+              let total = timedSetSeconds, total > 0 else { return nil }
+        let perSide = Double(total) / Double(holdSideCount)
+        let elapsed = max(0, date.timeIntervalSince(start))
+        let number = min(holdSideCount, Int(elapsed / perSide) + 1)
+        let sideStart = start.addingTimeInterval(perSide * Double(number - 1))
+        return HoldSide(number: number, count: holdSideCount, start: sideStart, end: sideStart.addingTimeInterval(perSide))
+    }
+
+    /// When to switch sides in a running per-side hold (the end of side 1); nil otherwise.
+    public var holdSwitchAt: Date? {
+        guard let start = setStartedAt, let first = holdSide(at: start) else { return nil }
+        return first.end
     }
 
     /// The exercise and set the plan says are due.
@@ -337,7 +386,9 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
 
 /// Commands the watch sends to the phone (the phone owns the data).
 public enum WatchCommand: Codable, Hashable, Sendable {
+    /// Flips a set (older watches; newer ones send `completeSet` / `undoSet`, which name the outcome).
     case toggleSet(UUID)
+    /// Older watches: whatever set is current when it arrives. Newer ones send `completeSet(id:)`.
     case completeCurrentSet
     /// "I'm starting the set now" – measures the real rest against the plan.
     case startSet
@@ -364,6 +415,8 @@ public enum WatchCommand: Codable, Hashable, Sendable {
     case answerFeedback(setID: UUID, repsInReserve: Int?, fatigue: Double?)
     /// Energy check-in 1…5.
     case recordEnergy(Int)
+    /// "Mark not done": the phone unticks the set only if it is done (a repeat changes nothing).
+    case undoSet(UUID)
 }
 
 /// A command with when and for which workout it was sent. The phone drops stale starts (older
@@ -388,12 +441,22 @@ public struct WatchCommandEnvelope: Codable, Hashable, Sendable {
         }
     }
 
+    /// Logs or unlogs one named set: safe to apply late, and to apply twice.
+    public var targetsOneSet: Bool {
+        switch command {
+        case .completeSet, .undoSet: return true
+        default: return false
+        }
+    }
+
     /// Whether the phone should act on it, given the running workout and the time now.
     public func isFresh(activeSessionID: UUID?, now: Date = Date()) -> Bool {
         if case .requestSnapshot = command { return true }
         if isStart { return activeSessionID == nil && now.timeIntervalSince(sentAt) <= 120 }
         guard let activeSessionID else { return false }
         if let sessionID, sessionID != activeSessionID { return false }
+        // A tick made out of range still counts, however late, as long as it's the same workout.
+        if targetsOneSet, sessionID == activeSessionID { return true }
         // Live commands that are very old are no longer meaningful (the set has moved on).
         return now.timeIntervalSince(sentAt) <= 15 * 60
     }

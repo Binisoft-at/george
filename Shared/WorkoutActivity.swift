@@ -22,12 +22,14 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         /// A running rest (nil while working or paused).
         var restStartedAt: Date?
         var restEndsAt: Date?
-        /// A running hold (timed set).
+        /// A running hold (timed set). For a per-side hold: the side that's running.
         var holdStartedAt: Date?
         var holdEndsAt: Date?
         var isPaused: Bool
-        /// What the big button does: start the set (true) or log it as done (false).
+        /// What the big button does: start the set (true) or log it as done (false). Paused: resume.
         var primaryIsStart: Bool
+        /// Per-side holds: the side running now (1 or 2); nil otherwise (and from older app versions).
+        var holdSide: Int? = nil
     }
 
     var sessionID: UUID
@@ -58,8 +60,21 @@ extension WorkoutActivityAttributes.ContentState {
     /// The content is outdated once the countdown ran out (the view then says "Go").
     var staleDate: Date? { restEndsAt ?? holdEndsAt }
 
-    var primaryLabel: String { primaryIsStart ? "Start" : "Done" }
-    var primarySymbol: String { primaryIsStart ? "play.fill" : "checkmark" }
+    var primaryLabel: String {
+        if isPaused { return "Resume" }
+        return primaryIsStart ? "Start" : "Done"
+    }
+
+    var primarySymbol: String {
+        if isPaused { return "play.fill" }
+        return primaryIsStart ? "play.fill" : "checkmark"
+    }
+
+    /// "Hold", or "Side 1 of 2" for a per-side hold.
+    var holdCaption: String {
+        guard let holdSide else { return "Hold" }
+        return "Side \(holdSide) of 2"
+    }
 
     /// "Set 2 of 4".
     var setPosition: String {

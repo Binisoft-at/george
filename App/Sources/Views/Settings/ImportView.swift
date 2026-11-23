@@ -11,9 +11,6 @@ import AppKit
 
 /// Import a program CSV (from Files, a shared file, or pasted text from another AI).
 struct ImportView: View {
-    /// Set when a CSV is opened from another app.
-    static var pendingURL: URL?
-
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(ToastCenter.self) private var toasts
@@ -26,10 +23,12 @@ struct ImportView: View {
     @State private var result: CSVImportResult?
     @State private var errorMessage: String?
     @State private var targetProgramID: UUID?
-    /// Off for files (a shared plan must not overwrite yours), on for pasted AI text (usually your own
-    /// plan, edited).
+    /// Always off at first – for files and pasted text alike. Turning it on is your choice, and the
+    /// import asks once more before it replaces anything.
     @State private var replaceExisting = false
     @State private var copiedPrompt = false
+    /// The import waiting for "Replace and Import".
+    @State private var confirmReplace: CSVImportResult?
 
     var body: some View {
         Form {
@@ -91,12 +90,16 @@ struct ImportView: View {
                     Text("Import Into")
                 } footer: {
                     Text(replaceExisting
-                         ? "A template with the same name gets the imported exercises, notes and weekdays. You can undo the import right after."
-                         : "Nothing of yours is overwritten: a name that's taken gets a number, e.g. “UPPER (2)”.")
+                         ? "A template with the same name gets the imported exercises, notes, tags and weekdays, and program notes are replaced. Its past workouts stay. A backup is saved first, and you can undo right after."
+                         : "Nothing of yours is overwritten: a name that's taken gets a number, e.g. “UPPER (2)”, and imported program notes go below yours. A backup is saved first.")
                 }
                 Section {
                     Button {
-                        performImport(result)
+                        if replaceExisting && (replaceCount(result) > 0 || replacesNotes(result)) {
+                            confirmReplace = result
+                        } else {
+                            performImport(result)
+                        }
                     } label: {
                         Label(importTitle(result), systemImage: "square.and.arrow.down.fill")
                             .frame(maxWidth: .infinity)
@@ -120,11 +123,26 @@ struct ImportView: View {
             case .failure(let error): errorMessage = error.localizedDescription
             }
         }
-        .onAppear {
-            if let url = ImportView.pendingURL {
-                ImportView.pendingURL = nil
-                load(url: url)
-            }
+        // Replacing is never one tap: what goes is said once more.
+        .confirmationDialog(
+            confirmReplace.map { replaceQuestion($0) } ?? "Replace?",
+            isPresented: Binding(get: { confirmReplace != nil }, set: { if !$0 { confirmReplace = nil } }),
+            titleVisibility: .visible,
+            presenting: confirmReplace
+        ) { pending in
+            Button("Replace and Import", role: .destructive) { performImport(pending) }
+            Button("Cancel", role: .cancel) { confirmReplace = nil }
+        } message: { pending in
+            Text(replaceCount(pending) > 0
+                 ? "Their exercises, notes, tags and weekdays become the imported ones. A backup is saved first, and you can undo right after."
+                 : "Your program notes become the imported ones. A backup is saved first, and you can undo right after.")
+        }
+        // A CSV opened from Finder or another app, or dropped on the window – also one that comes
+        // while this sheet is open already.
+        .onChange(of: router.importURL, initial: true) { _, url in
+            guard let url else { return }
+            router.importURL = nil
+            load(url: url)
         }
     }
 
@@ -135,6 +153,11 @@ struct ImportView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Label(program.name, systemImage: "folder.fill")
                         .font(.headline)
+                    if let line = notesLine(for: program) {
+                        Label(line.text, systemImage: "note.text")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(line.caution ? Tone.cautionText : Color.secondary)
+                    }
                     ForEach(program.workouts, id: \.name) { workout in
                         HStack {
                             KindIcon(kind: workout.kind, size: 24)
@@ -195,6 +218,30 @@ struct ImportView: View {
         }
     }
 
+    /// What happens to an existing program's notes ("Program notes will be replaced").
+    private func notesLine(for program: ImportedProgram) -> (text: String, caution: Bool)? {
+        switch store.notesChange(for: program, into: programs.first { $0.id == targetProgramID }, replace: replaceExisting) {
+        case .replace: return ("Program notes will be replaced", true)
+        case .append: return ("Program notes are added below yours", false)
+        case .set, .unchanged: return nil
+        }
+    }
+
+    private func replacesNotes(_ result: CSVImportResult) -> Bool {
+        result.programs.contains { notesLine(for: $0)?.caution == true }
+    }
+
+    /// "Replace UPPER and LOWER?", "Replace 3 templates?", "Replace the program notes?"
+    private func replaceQuestion(_ result: CSVImportResult) -> String {
+        let names = result.programs.flatMap { program in program.workouts.compactMap { existing($0, in: program)?.name } }
+        switch names.count {
+        case 0: return "Replace the program notes?"
+        case 1: return "Replace your “\(names[0])”?"
+        case 2: return "Replace “\(names[0])” and “\(names[1])”?"
+        default: return "Replace \(names.count) templates?"
+        }
+    }
+
     private func replaceCount(_ result: CSVImportResult) -> Int {
         guard replaceExisting else { return 0 }
         return result.programs.reduce(0) { sum, program in
@@ -244,7 +291,8 @@ struct ImportView: View {
             .replacingOccurrences(of: "```csv", with: "")
             .replacingOccurrences(of: "```", with: "")
         fileName = "Pasted text"
-        replaceExisting = true
+        // Like a file: nothing is replaced unless you turn it on (and confirm).
+        replaceExisting = false
         parse(cleaned, defaultName: "Imported Program")
     }
 
@@ -260,7 +308,10 @@ struct ImportView: View {
     }
 
     private func performImport(_ result: CSVImportResult) {
+        confirmReplace = nil
         let target = programs.first { $0.id == targetProgramID }
+        // Everything as it is now goes into Documents/Backups first (Settings → Import & Export).
+        store.writeAutomaticBackup(reason: .beforeImport)
         let outcome = store.importProgramsWithUndo(result.programs, into: target, replaceTemplates: replaceExisting)
         AppLog.info("Imported \(outcome.programs.count) program(s), \(outcome.created) new, \(outcome.replaced) replaced", category: "import")
         if let first = outcome.programs.first {

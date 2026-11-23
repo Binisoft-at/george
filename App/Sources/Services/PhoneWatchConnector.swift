@@ -19,10 +19,29 @@ final class PhoneWatchConnector: NSObject {
     var onMetrics: ((WatchMetrics) -> Void)?
     /// Supplies a fresh snapshot when the watch asks for one.
     var snapshotProvider: (() -> WatchSnapshot)?
+    /// Called each time activation completes (paired / installed are known from then on).
+    var onActivated: (() -> Void)?
 
+    /// Activation completed at least once (`isPaired` / `isWatchAppInstalled` are real values).
+    private(set) var isActivated = false
+    @ObservationIgnored private var didRequestActivation = false
+
+    /// True while `isPaired` / `isWatchAppInstalled` are still unknown: this iPhone supports a watch
+    /// but activation hasn't completed yet. False on iPad and Mac.
+    var awaitsActivation: Bool {
+        #if os(iOS)
+        return WCSession.isSupported() && !isActivated
+        #else
+        return false
+        #endif
+    }
+
+    /// Safe to call more than once: as early as possible at launch (also for background launches),
+    /// and again from the window.
     func activate() {
         #if os(iOS)
-        guard WCSession.isSupported() else { return }
+        guard !didRequestActivation, WCSession.isSupported() else { return }
+        didRequestActivation = true
         let session = WCSession.default
         session.delegate = self
         session.activate()
@@ -87,6 +106,9 @@ extension PhoneWatchConnector: WCSessionDelegate {
         let reachable = session.isReachable
         Task { @MainActor in
             self.updateState(paired: paired, installed: installed, reachable: reachable)
+            self.isActivated = true
+            // A workout restored before the link was up decides now whether the iPhone records it itself.
+            self.onActivated?()
             if let snapshot = self.snapshotProvider?() { self.sendSnapshot(snapshot) }
         }
     }

@@ -78,6 +78,9 @@ sport uses – scaled by duration (per hour) and effort (5 = neutral) – but ne
 
 The muscle screen and the per-muscle chart show fractional sets per week against your target band
 from Settings → Your Profile (e.g. 10–16 for an intermediate building muscle; defaults when not set).
+While the history is shorter than the range, the average only counts the weeks with data (from the
+week of the first logged set: 8 weeks of 12 sets read 12 a week on 1Y, not 1.8), and the footer says
+so. The Load metric's rows show "Load 12" – effort-weighted load, never called sets.
 Recovery estimates stretch with age (×1 up to 30, +0.8 % a year, at most ×1.35). Details and sources:
 [COACH.md](COACH.md#your-profile--whats-optimal-for-you).
 

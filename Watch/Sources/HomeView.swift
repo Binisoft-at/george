@@ -337,7 +337,14 @@ private struct UnmatchedRecordingRow: View {
 private struct StreakCard: View {
     let streak: WatchStreak
 
+    /// The snapshot's week is still running (a cached one from last week shows an empty week).
+    private var isCurrent: Bool {
+        SnapshotTiming.isInWeek(startingAt: streak.weekStart, Date(), calendar: .current)
+    }
+
     var body: some View {
+        let dots = SnapshotTiming.dots(streak.dots, weekStart: streak.weekStart, on: Date(), calendar: .current)
+        let doneDays = SnapshotTiming.doneDays(streak.doneDays, weekStart: streak.weekStart, on: Date(), calendar: .current)
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Label {
@@ -355,18 +362,18 @@ private struct StreakCard: View {
                 }
             }
             HStack(spacing: 4) {
-                ForEach(Array(streak.dots.prefix(7).enumerated()), id: \.offset) { item in
+                ForEach(Array(dots.prefix(7).enumerated()), id: \.offset) { item in
                     Circle()
                         .fill(item.element ? Color.orange : Color.white.opacity(0.2))
                         .frame(width: 8, height: 8)
                 }
                 Spacer(minLength: 4)
-                Text("\(streak.doneDays)/\(streak.goal) days")
+                Text("\(doneDays)/\(streak.goal) days")
                     .font(.caption2)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
-            if !streak.headline.isEmpty {
+            if isCurrent && !streak.headline.isEmpty {
                 Text(streak.headline)
                     .font(.caption2)
                     .foregroundStyle(.secondary)

@@ -38,8 +38,39 @@ private struct SessionDocument: View {
     @State private var confirmReset = false
     @State private var confirmNotDone = false
     @State private var logSession: WorkoutSession?
+    /// A finished workout opens read-only (a stray tap or swipe doesn't change history); Edit unlocks it.
+    @State private var isEditingPast = false
+    /// On screen (not covered by a pushed screen): only then it's what ⌘↩ starts.
+    @State private var isShown = false
+    /// "Update Template" is offered only when saving would change the template.
+    @State private var templateDiffers = false
+    /// What "Update Template" would write, shown for confirmation.
+    @State private var templateOffer: TemplateOffer?
+    /// Whether this device can read and edit the stored workout (see `StoredContent`).
+    @State private var readState: StoredContent.ReadState = .readable
+
+    private struct TemplateOffer {
+        /// Heavier loads only (empty: none).
+        var loads: [String]
+        /// Everything: sets, exercises and numbers.
+        var all: [String]
+    }
 
     private var isLive: Bool { live.session?.id == session.id }
+
+    /// A performed workout that isn't running (opened from history).
+    private var isPastWorkout: Bool { session.status.isPerformed && !isLive }
+
+    /// In progress but not live here: another device runs it (synced). Read-only – its next save
+    /// would overwrite any change made here.
+    private var runsElsewhere: Bool { session.status == .active && !isLive }
+
+    /// Ticks, swipes and "+" are off for a finished workout until Edit.
+    private var isLocked: Bool { (session.status.isPerformed && !isLive && !isEditingPast) || !canEditContent || runsElsewhere }
+
+    /// Off when the stored workout can't be read here or a newer George wrote it: it is shown
+    /// read-only, never saved over, and Start refuses (instead of an empty editor).
+    private var canEditContent: Bool { isLive || readState.isEditable }
 
     /// While this session is running, edits go through the live controller.
     private var contentBinding: Binding<WorkoutContent> {
@@ -51,36 +82,59 @@ private struct SessionDocument: View {
 
     var body: some View {
         List {
+            if runsElsewhere {
+                runningElsewhereBanner
+            }
             if session.status.isPerformed && !isLive {
                 RecapOverviewSection(session: session)
             }
             headerSection
+                .disabled(runsElsewhere)
             if session.status.isPerformed {
                 StatsTilesSection(session: session)
             }
-            WorkoutEditorSections(
-                content: contentBinding,
-                mode: .session(isLive: isLive),
-                defaultKind: session.kind,
-                onToggleSet: isLive ? { (setID: UUID) in live.toggleSet(setID) } : nil,
-                state: editor
-            )
+            if canEditContent {
+                WorkoutEditorSections(
+                    content: contentBinding,
+                    mode: .session(isLive: isLive),
+                    defaultKind: session.kind,
+                    onToggleSet: isLive ? { (setID: UUID) in live.toggleSet(setID) } : nil,
+                    isEditing: !isLocked,
+                    state: editor,
+                    // A finished workout compares with the one before it, not with itself or a later one.
+                    previousBefore: isPastWorkout ? session.date : nil,
+                    excludingSessionID: isPastWorkout ? session.id : nil
+                )
+            } else {
+                // "Can't read this workout" / "Update George on this device to edit" – never an empty editor.
+                ReadOnlyContentSection(state: readState, content: content)
+            }
             MuscleTargetsSection(content: contentBinding.wrappedValue, kind: session.kind, performed: session.status.isPerformed)
             notesSection
+                .disabled(runsElsewhere)
         }
         .groupedList()
         .safeAreaInset(edge: .bottom) { actionBar }
-        .workoutEditorSheets(content: contentBinding, mode: .session(isLive: isLive), defaultKind: session.kind, state: editor)
+        .workoutEditorSheets(content: contentBinding, mode: .session(isLive: isLive), defaultKind: session.kind, state: editor,
+                             onToggleSet: isLive ? { (setID: UUID) in live.toggleSet(setID) } : nil)
+        .onChange(of: session.id) { _, _ in isEditingPast = false }
+        // "New Empty Workout" left without adding anything goes again (no empty "Missed" tomorrow).
+        .onChange(of: session.id) { oldID, _ in discardDraftIfEmpty(oldID) }
+        .onDisappear { discardDraftIfEmpty(session.id) }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .inlineTitle()
         .toolbar { toolbarItems }
+        // ⌘↩ (Workout menu) starts or continues this workout while it's shown.
+        .focusedSceneValue(\.startTarget, isShown ? startCommand : nil)
+        .onAppear { isShown = true }
+        .onDisappear { isShown = false }
         .onAppear(perform: load)
         .onChange(of: session.contentData) { _, newData in
             // External change (sync, watch, live view): reload unless it's our own write.
             if newData != loadedData && !isLive { load() }
         }
         .onChange(of: content) { oldContent, newContent in
-            guard !isLive, newContent != session.content else { return }
+            guard !isLive, !runsElsewhere, canEditContent, newContent != session.content else { return }
             session.content = newContent
             loadedData = session.contentData
             // A finished workout's status follows its ticks: all done → completed, some → stopped early,
@@ -92,7 +146,14 @@ private struct SessionDocument: View {
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 router.close(.session(session.id))
-                if isLive { live.discard() } else { store.trash(session, toasts: toasts) }
+                if isLive {
+                    // The running workout itself is deleted (not just what was done since Start).
+                    let title = session.title
+                    let undo = live.discard(deleteSession: true)
+                    toasts.show("Deleted \u{201C}\(title)\u{201D}", symbol: "trash.fill", undo: undo)
+                } else {
+                    store.trash(session, toasts: toasts)
+                }
             }
         }
         .confirmationDialog("Reset all sets?", isPresented: $confirmReset, titleVisibility: .visible) {
@@ -111,6 +172,19 @@ private struct SessionDocument: View {
         } message: {
             Text("No set is ticked any more. As not done, it doesn't count for your streak and stats.")
         }
+        .confirmationDialog("Update “\(session.templateName)”?", isPresented: showsTemplateOffer, titleVisibility: .visible, presenting: templateOffer) { offer in
+            if !offer.loads.isEmpty {
+                Button("Heavier Loads Only") { applyTemplateUpdate(.loads) }
+            }
+            Button(offer.loads.isEmpty ? "Update Template" : "Save All Changes") { applyTemplateUpdate(.everything) }
+            Button("Cancel", role: .cancel) {}
+        } message: { offer in
+            Text(templateOfferMessage(offer))
+        }
+        // Whether "Update Template" would change anything, refreshed when the workout changes.
+        .task(id: session.contentData) {
+            templateDiffers = session.templateID != nil && !store.templateChanges(from: session, mode: .everything).isEmpty
+        }
         .sheet(item: $logSession) { session in
             NavigationStack { LogPastWorkoutSheet(session: session) }
         }
@@ -122,6 +196,53 @@ private struct SessionDocument: View {
     private func load() {
         content = session.content
         loadedData = session.contentData
+        readState = session.contentReadState
+    }
+
+    // MARK: Update Template
+
+    private var showsTemplateOffer: Binding<Bool> {
+        Binding(get: { templateOffer != nil }, set: { if !$0 { templateOffer = nil } })
+    }
+
+    /// Works out what the update would write, then asks with those lines.
+    private func offerTemplateUpdate() {
+        let all = store.templateChanges(from: session, mode: .everything)
+        guard !all.isEmpty else {
+            templateDiffers = false
+            toasts.show("\u{201C}\(session.templateName)\u{201D} already matches", symbol: "checkmark.circle.fill")
+            return
+        }
+        templateOffer = TemplateOffer(loads: store.templateChanges(from: session, mode: .loads), all: all)
+    }
+
+    private func templateOfferMessage(_ offer: TemplateOffer) -> String {
+        var lines = Array(offer.all.prefix(6))
+        if offer.all.count > 6 { lines.append("and \(offer.all.count - 6) more") }
+        lines.append(offer.loads.isEmpty
+                     ? "Drop sets and warm-ups added during the workout stay out."
+                     : "“Heavier Loads Only” keeps the sets and reps as planned.")
+        return lines.joined(separator: "\n")
+    }
+
+    private func applyTemplateUpdate(_ mode: TemplateUpdateMode) {
+        let name = session.templateName
+        let restore = store.updateTemplate(from: session, mode: mode)
+        templateOffer = nil
+        templateDiffers = !store.templateChanges(from: session, mode: .everything).isEmpty
+        let undo: (() -> Void)? = restore.map { restore in
+            {
+                restore()
+                templateDiffers = true
+            }
+        }
+        toasts.show("Updated \u{201C}\(name)\u{201D}", symbol: "arrow.triangle.2.circlepath", undo: undo)
+    }
+
+    private func discardDraftIfEmpty(_ id: UUID) {
+        guard router.draftSessionID == id else { return }
+        router.draftSessionID = nil
+        store.discardIfEmptyDraft(sessionID: id)
     }
 
     // MARK: Header
@@ -188,21 +309,71 @@ private struct SessionDocument: View {
         return parts.joined(separator: " · ")
     }
 
+    private var startButtonTitle: String {
+        if isLive { return "Open Live Workout" }
+        if runsElsewhere { return "Continue Here" }
+        return session.status == .partial ? "Continue Workout" : "Start Workout"
+    }
+
+    /// Start, continue – or take over a workout another device runs (asks first while one runs here).
+    private func startOrContinue() {
+        if runsElsewhere && !live.isActive {
+            live.continueHere(session)
+        } else {
+            live.requestStart(.session(session))
+        }
+    }
+
+    /// What ⌘↩ does on this screen (nil: a finished or skipped workout – the menu then starts the
+    /// suggested one).
+    private var startCommand: StartCommand? {
+        guard session.status != .completed && session.status != .skipped else { return nil }
+        let title = session.title.isEmpty ? "Workout" : session.title
+        let verb: String
+        if isLive {
+            verb = "Show"
+        } else if runsElsewhere || session.status == .partial {
+            verb = "Continue"
+        } else {
+            verb = "Start"
+        }
+        return StartCommand(title: "\(verb) \(title)", isEnabled: canEditContent) { startOrContinue() }
+    }
+
+    /// Shown while another device runs this workout.
+    private var runningElsewhereBanner: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Running on another device")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Read-only here – changes would be overwritten. Continue Here to take it over.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "iphone.and.arrow.forward")
+                    .foregroundStyle(.green)
+            }
+        }
+    }
+
     /// Start / continue, always reachable at the bottom.
     @ViewBuilder
     private var actionBar: some View {
         if session.status != .completed && session.status != .skipped {
             Button {
-                live.requestStart(.session(session))
+                startOrContinue()
             } label: {
-                Label(isLive ? "Open Live Workout" : (session.status == .partial ? "Continue Workout" : "Start Workout"), systemImage: "play.fill")
+                Label(startButtonTitle, systemImage: "play.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
             .buttonStyle(.glassProminent)
             .tint(.accentColor)
-            .keyboardShortcut(.return, modifiers: .command)
+            // ⌘↩ is the Workout menu's item (it follows this screen), not a second shortcut here.
+            .disabled(!canEditContent)
             .padding(.horizontal)
             .padding(.bottom, 8)
             .frame(maxWidth: 560)
@@ -293,30 +464,41 @@ private struct SessionDocument: View {
     @ToolbarContentBuilder
     private var toolbarItems: some ToolbarContent {
         ToolbarItemGroup(placement: .georgeTrailing) {
+            if session.status.isPerformed && !isLive && canEditContent {
+                // A finished workout is read-only until Edit (ticks, swipes and "+" change history).
+                Button(isEditingPast ? "Done" : "Edit") {
+                    withAnimation(.snappy) { isEditingPast.toggle() }
+                }
+                .fontWeight(isEditingPast ? .semibold : .regular)
+            }
             Menu {
-                Button {
-                    let copy = store.duplicate(session, asPlannedOn: Date())
-                    router.open(.session(copy.id))
-                } label: { Label("Do Again Today", systemImage: "arrow.clockwise") }
-                Button {
-                    let template = store.saveAsTemplate(session, into: session.program)
-                    router.open(.template(template.id))
-                } label: { Label("Save as New Template", systemImage: "square.on.square") }
-                if session.templateID != nil {
+                // Copies of a workout this device can't fully read would come out empty or stripped.
+                if canEditContent {
+                    // Opens on top (with Back on the Mac); the list keeps this workout selected.
                     Button {
-                        store.updateTemplate(from: session)
-                    } label: { Label("Update “\(session.templateName)” Template", systemImage: "arrow.triangle.2.circlepath") }
+                        let copy = store.duplicate(session, asPlannedOn: Date())
+                        router.push(.session(copy.id))
+                    } label: { Label("Do Again Today", systemImage: "arrow.clockwise") }
+                    Button {
+                        let template = store.saveAsTemplate(session, into: session.program)
+                        router.push(.template(template.id))
+                    } label: { Label("Save as New Template", systemImage: "square.on.square") }
+                }
+                if canEditContent && session.templateID != nil && templateDiffers {
+                    Button {
+                        offerTemplateUpdate()
+                    } label: { Label("Update “\(session.templateName)” Template…", systemImage: "arrow.triangle.2.circlepath") }
                 }
                 Button {
                     session.isPinned.toggle()
                     store.save()
                 } label: { Label(session.isPinned ? "Unpin" : "Pin", systemImage: "pin") }
-                if contentBinding.wrappedValue.blocks.count > 1 {
+                if canEditContent && !runsElsewhere && contentBinding.wrappedValue.blocks.count > 1 {
                     Button {
                         showReorder = true
                     } label: { Label("Reorder Exercises", systemImage: "arrow.up.arrow.down") }
                 }
-                if session.status.isPerformed && !isLive {
+                if session.status.isPerformed && !isLive && canEditContent {
                     Button {
                         confirmReset = true
                     } label: { Label("Reset All Sets", systemImage: "arrow.uturn.backward") }
@@ -326,6 +508,7 @@ private struct SessionDocument: View {
             } label: {
                 Image(systemName: "ellipsis")
             }
+            .help("More")
         }
     }
 }
@@ -338,14 +521,17 @@ private struct StatsTilesSection: View {
     @State private var metrics: HealthMetrics?
 
     var body: some View {
-        let energy = (metrics?.activeEnergyKcal ?? 0) > 0 ? (metrics?.activeEnergyKcal ?? 0) : session.energyKcal
+        // Measured (Watch, this device) or George's estimate – marked, so the two are never mixed up.
+        let energy = EnergyDisplay.choose(measured: metrics?.activeEnergyKcal, estimated: session.energyKcal)
         let heartRate = metrics?.averageHeartRate ?? 0
+        // Working volume (no warm-ups, both sides) – the same number as the share card and Progress.
+        let volume = session.content.workingVolumeKg
         Section {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10) {
                 tile("Duration", Format.minutes(session.durationSeconds), "clock")
                 tile("Sets", "\(session.doneSetCount)/\(session.setCount)", "checklist")
-                if session.volumeKg > 0 { tile("Volume", Format.volume(session.volumeKg, unit: store.unit), "scalemass") }
-                if energy > 0 { tile("Energy", "\(Int(energy)) kcal", "flame") }
+                if volume > 0 { tile("Volume", Format.volume(volume, unit: store.unit), "scalemass") }
+                if let energy { tile("Energy", energy.text, "flame", note: energy.isMeasured ? nil : "estimated") }
                 if heartRate > 0 { tile("Avg HR", "\(Int(heartRate)) bpm", "heart") }
                 if session.effort > 0 { tile("Effort", "\(session.effort)/10", "gauge.with.dots.needle.67percent") }
             }
@@ -369,7 +555,7 @@ private struct StatsTilesSection: View {
         }
     }
 
-    private func tile(_ title: String, _ value: String, _ symbol: String) -> some View {
+    private func tile(_ title: String, _ value: String, _ symbol: String, note: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(title, systemImage: symbol)
                 .font(.caption)
@@ -379,6 +565,11 @@ private struct StatsTilesSection: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            if let note {
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)

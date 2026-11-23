@@ -48,6 +48,11 @@ enum GeorgeIntents {
 
         case .primary:
             guard live.isActive else { throw GeorgeIntentError.noWorkout }
+            // Paused: the big button carries on (as in the app) – it never logs a set then.
+            if live.isPaused {
+                live.primaryAction()
+                return "Workout resumed."
+            }
             guard live.currentSet != nil || live.content.nextPendingSet() != nil else {
                 return "Every set is done. Finish the workout in George."
             }
@@ -283,7 +288,7 @@ extension WidgetBridge {
         let streak = snapshot.streak.map { streak in
             WidgetSnapshot.Streak(
                 weeks: streak.weeks, doneDays: streak.doneDays, goal: streak.goal, headline: streak.headline,
-                dots: streak.dots, weekStart: (store?.calendar ?? .current).weekStart(for: Date())
+                dots: streak.dots, weekStart: streak.weekStart ?? (store?.calendar ?? .current).weekStart(for: Date())
             )
         }
         let live = snapshot.live.map { WidgetSnapshot.Live(title: $0.title, symbol: $0.kind.symbol) }
@@ -309,7 +314,8 @@ extension WidgetBridge {
             return WidgetSnapshot.Workout(
                 title: next.title,
                 detail: TemplateEntity.detail(exercises: session.exerciseCount, minutes: minutes, program: nil),
-                symbol: session.kind.symbol, isPlanned: true, programName: session.program?.name ?? ""
+                symbol: session.kind.symbol, isPlanned: true, programName: session.program?.name ?? "",
+                plannedDay: store.calendar.startOfDay(for: store.plannedDay(of: session))
             )
         case .template(let template):
             return WidgetSnapshot.Workout(

@@ -34,11 +34,19 @@ Everything that makes live mode feel like training with a coach. Every extra can
   runs; a double tap on the picture only acts on the exercise that's due.
 - **At the station**: your own notes and links for an exercise (Exercise Library) show in live mode;
   *Band: red* chip for band work; *Add warm-up sets* (empty bar, 50 / 70 / 85 %) for heavy lifts;
-  plates per side for barbell weights (bar weight in Settings); “Last: …” opens the exercise's history.
+  plates per side for barbell weights (bar weight in Settings) – in orange with “≈ 60 kg” when the
+  plates at hand can't make up the weight (`PlateMath.load`); “Last: …” opens the exercise's history.
+  “Last time” and the prefill of a new workout pair sets by role: warm-ups with warm-ups, working
+  sets with working sets, drop sets with drop sets (`WorkoutSet.matchingPrevious`).
 - **The day steers the advice**: on a low-energy day or with high muscular load “Go up” becomes
   “Hold last time's numbers”, with overtraining-level load “A step lighter” (`ProgressionAdvisor`).
 - **Supersets keep their rounds** after a swap or a drop set (`WorkoutContent.roundSlots`); a swap in
-  straight sets gets its own block (never a fake superset).
+  straight sets gets its own block (never a fake superset). Rounds count working sets only: warm-ups
+  run first as a lead-in (no round rest after them), a drop set stays in its round, and a swapped
+  exercise's replacement continues its rounds (`WorkoutBlock.lanes`) – none of these is a set-count
+  mismatch, and *Match sets* pads only the replacement, only with working sets.
+- **Progression ignores drop sets**: top weight, missed reps and reps in reserve are judged on the
+  working sets, and the effort question after a drop set is stored on the set before it.
 - **Rest alerts are exact**: a skipped or finished rest never buzzes later; “10 seconds” isn't said
   when the app woke up late; the countdown and “Go” cut off a less important line.
 - **Voice: Speak through** headphones & speaker / headphones only / follow silent mode, asked once in
@@ -47,7 +55,11 @@ Everything that makes live mode feel like training with a coach. Every extra can
   leaving the app), live edits are not on the undo stack, and dashboards refresh at start and finish.
 - **Finish**: Share and Done right away at the bottom, a tap shows everything, Reduce Motion turns
   the animation off; *Beat last time on 3 of 4* with a “vs. last time” card (`StatsEngine.compare`);
-  heavier loads offer to update the template, a workout without a template can become one; a
+  heavier loads offer *Update Loads* (only heavier weights go into the matching working sets; sets
+  and rep ranges stay), changed sets or exercises offer *Update Template* – both list the exact
+  changes first and can be undone; drop sets and warm-ups added during the workout, a missed rep
+  target and fatigue answers never go into the template (`WorkoutContent.asTemplate(mode:base:)`);
+  a workout without a template can become one; a
   matching **cool-down** routine is offered (`RoutineLibrary.coolDown`). Effort defaults by kind.
 - **Empty workout** (tennis, a run): add exercises, use a routine's moves, or just track the time; it
   finishes as completed, not “stopped early”.
@@ -150,7 +162,7 @@ and the key cues), a **George file** (`.csv` – opens straight in George as a t
 | **No big Done button** | Each set is clearly *done* (filled, ✓), *current* (highlighted, "NOW", big numbers) or *open*. Tick whichever you did. The bottom bar shows what's next and a set timer instead. ␣ still completes the current set on a keyboard. | `LiveWorkoutView`, `LiveSetRow` |
 | **Typing numbers** | Tap a number → big keypad with the phone's decimal key; "62,5" and "62.5" both work. Chips: last time, previous set, plan, ± one step. "Same for the rest" copies to the following open sets. Drag a number sideways to step it. Long-press a set for every field. | `ValuePadSheet`, `ValueTile`, `NumberParser` |
 | **Edits that stick** | In a workout a number changes what was done; while the set is still open the plan follows, so the set always shows what you typed. Templates change their plan. Finished sets show "Plan was …" when they differ. | `WorkoutSet.setValue(_:_:inSession:)` |
-| **Supersets side by side** | One page per superset/circuit: exercises as columns (A1, A2), one row per round, the current cell highlighted. "Match sets" evens out different set counts (adds copies of the last set, removes only open sets). Also in the editor's group header. | `SupersetCard`, `WorkoutContent.matchSetCounts` |
+| **Supersets side by side** | One page per superset/circuit: exercises as columns (A1, A2), a warm-up row first, then one row per round, the current cell highlighted. "Match sets" evens out different round counts (adds copies of the last working set to each exercise's last part – a swapped exercise's replacement, never the one it replaced – and removes only open sets). Also in the editor's group header. | `SupersetCard`, `WorkoutContent.matchSetCounts`, `WorkoutBlock.matchRounds` |
 | **Set timer against dawdling** | Time since the last set; turns orange, then red, once it's past the planned rest + set time + slack (calm 90 s, normal 30 s, full energy 15 s). Up to two gentle nudges per gap (haptic + voice), never on calm days. | `PaceTracker`, `SetTimerBar` |
 | **Momentum** | A flame that breathes when sets come on time and shrinks when they don't, a progress bar that glows, a body figure whose muscles fill as their sets get done, bursts on each tick, banners for "exercise done", new best weight and halfway. | `MomentumHeader`, `FlameBadge`, `MiniBodyFill`, `BurstView`, `CelebrationBanner` |
 | **Voice coach** | "Let's go. First up …", "Rest 90 seconds", "10 seconds", "Go! Bench Press, 8 reps at 62.5 kilos", "Bench Press done", "New personal best!", the finish summary. Ducks music while speaking. | `VoiceCoach` |
@@ -179,9 +191,12 @@ of their page (`RecapOverviewSection`).
 - Check-ins come from **Today** ("How's your energy today?", once a day, changeable) and before a
   workout. Stored as `EnergyCheckIn` (synced; self-reported, not Health data).
 - **Insights → Energy**: weekly averages, trend, best/lowest weekday, a **rhythm** (autocorrelation of
-  the daily series over 5–40 day lags; needs ≥ 30 check-ins over ≥ 6 weeks and r ≥ 0.3 over two full
-  cycles), the link with workout performance (volume against the usual for the same workout), and –
-  with Apple Health – with sleep and HRV.
+  the detrended daily series over 5–40 day lags; needs ≥ 30 check-ins over ≥ 6 weeks with at least 60 %
+  of the days logged, and a real peak: r ≥ max(0.3, 2/√(n − lag)), the highest within a quarter of the
+  lag, a dip below zero before it, still positive at twice the lag, covered 2.5 times – random check-ins,
+  a step or a slow decline show no rhythm), the link with workout performance (volume against the usual
+  for the same workout), and – with Apple Health – with sleep and HRV. Only a clear rhythm (r ≥ 0.5)
+  becomes the "Energy often dips around Wed" hint on Today and the low-energy day in Plan This Week.
 - **Apple Health signals** (Settings → Workout Coach and the Energy page): HRV, resting heart rate and
   sleep vs. your own 30-day median → "Your body says: take it easy today", shown in the check-in with a
   suggested level. **State of Mind** moods can fill in days without a check-in. Both are read on demand

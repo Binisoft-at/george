@@ -25,6 +25,8 @@ struct SessionListView: View {
     @State private var tokens: [SearchToken] = []
     @State private var isSelecting = false
     @State private var selection = Set<UUID>()
+    /// Mac: rows ⌘-clicked or ⇧-clicked in the list. More than one shows the bulk actions.
+    @State private var listSelection = Set<DetailItem>()
     @State private var confirmBulkDelete = false
     @State private var logSession: WorkoutSession?
 
@@ -46,12 +48,16 @@ struct SessionListView: View {
                 .environment(\.editMode, .constant(.active))
                 #endif
             } else {
-                NavList {
+                NavList(selection: $listSelection) {
                     headerSection
                     listContent(groups)
                 }
             }
         }
+        #if os(macOS)
+        // The Delete key: the selected workout(s) go, with Undo – never one in progress.
+        .onDeleteCommand(perform: deleteSelected)
+        #endif
         .groupedList()
         .navigationTitle(title ?? scope.title)
         .searchable(text: $query, tokens: $tokens, prompt: "Search workouts, exercises, notes") { token in
@@ -82,10 +88,19 @@ struct SessionListView: View {
             }
         }
         .toolbar { toolbarContent }
-        .confirmationDialog("Delete \(selection.count) workouts?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
+        .confirmationDialog("Delete \(bulkIDs.count) workouts?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
-                store.trash(selectedSessions, toasts: toasts)
+                // The running workout isn't deleted behind live mode's back (it's discarded there).
+                let deletable = selectedSessions.filter { $0.id != live.session?.id }
+                let keptRunning = deletable.count < selectedSessions.count
+                if deletable.isEmpty {
+                    if keptRunning { toasts.show("A running workout is discarded in live mode", symbol: "play.circle") }
+                } else {
+                    for session in deletable { router.close(.session(session.id)) }
+                    store.trash(deletable, toasts: toasts, keptRunning: keptRunning)
+                }
                 selection.removeAll()
+                listSelection.removeAll()
                 isSelecting = false
             }
         }
@@ -134,12 +149,30 @@ struct SessionListView: View {
                         }
                         .tint(.orange)
                     }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            router.close(.session(session.id))
-                            if live.session?.id == session.id { live.discard() } else { store.trash(session, toasts: toasts) }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                    // A full swipe never ends a workout in progress: the running one offers Open and
+                    // Discard… (live mode asks first) instead of Delete.
+                    .swipeActions(edge: .trailing, allowsFullSwipe: session.status != .active) {
+                        if live.session?.id == session.id {
+                            Button {
+                                live.isPresented = true
+                                live.discardRequest = true
+                            } label: {
+                                Label("Discard…", systemImage: "trash")
+                            }
+                            .tint(.red)
+                            Button {
+                                live.isPresented = true
+                            } label: {
+                                Label("Open", systemImage: "play.fill")
+                            }
+                            .tint(.green)
+                        } else {
+                            Button(role: .destructive) {
+                                router.close(.session(session.id))
+                                store.trash(session, toasts: toasts)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                         Button {
                             _ = store.duplicate(session, asPlannedOn: Date())
@@ -225,9 +258,41 @@ struct SessionListView: View {
         return result.filter { !tokens.contains($0) }
     }
 
-    private var selectedSessions: [WorkoutSession] {
-        sessions.filter { selection.contains($0.id) }
+    /// What the bulk actions work on: the rows ticked in Select mode, or (Mac) the rows ⌘-clicked.
+    private var bulkIDs: Set<UUID> {
+        if isSelecting { return selection }
+        guard listSelection.count > 1 else { return [] }
+        return Set(listSelection.compactMap { item -> UUID? in
+            if case .session(let id) = item { return id }
+            return nil
+        })
     }
+
+    /// Select mode, or more than one row selected on the Mac.
+    private var showsBulkActions: Bool { isSelecting || bulkIDs.count > 1 }
+
+    private var selectedSessions: [WorkoutSession] {
+        let ids = bulkIDs
+        return sessions.filter { ids.contains($0.id) }
+    }
+
+    #if os(macOS)
+    /// The Delete key. Several rows: asks first, like the bulk Delete. One: gone with Undo. A workout
+    /// in progress (here or on another device) is ended in live mode, not deleted.
+    private func deleteSelected() {
+        if bulkIDs.count > 1 {
+            confirmBulkDelete = true
+            return
+        }
+        guard case .session(let id) = router.detail, let session = sessions.first(where: { $0.id == id }) else { return }
+        if session.id == live.session?.id || session.status == .active {
+            toasts.show("A running workout is discarded in live mode", symbol: "play.circle")
+            return
+        }
+        router.close(.session(session.id))
+        store.trash(session, toasts: toasts)
+    }
+    #endif
 
     // MARK: Toolbar
 
@@ -260,15 +325,18 @@ struct SessionListView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease")
                 }
+                .help("Group, sort and select")
                 Button {
                     router.showCreate = true
                 } label: {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Create")
+                .help("Create")
             }
         }
-        if isSelecting {
+        // Select mode, or several rows ⌘-clicked on the Mac.
+        if showsBulkActions {
             ToolbarItemGroup(placement: bulkPlacement) {
                 Menu {
                     Button("No Program") { store.move(selectedSessions, to: nil) }
@@ -278,32 +346,46 @@ struct SessionListView: View {
                 } label: {
                     Label("Move", systemImage: "folder")
                 }
-                .disabled(selection.isEmpty)
+                .disabled(bulkIDs.isEmpty)
+                .help("Move to a program")
                 Spacer()
                 Menu {
                     ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
-                        Button(status.displayName) { store.setStatus(status, for: selectedSessions) }
+                        Button(status.displayName) { mark(selectedSessions, as: status) }
                     }
                 } label: {
                     Label("Mark", systemImage: "checkmark.circle")
                 }
-                .disabled(selection.isEmpty)
+                .disabled(bulkIDs.isEmpty)
+                .help("Mark as")
                 Spacer()
                 Button {
                     for session in selectedSessions { _ = store.duplicate(session, asPlannedOn: Date()) }
                     selection.removeAll()
+                    listSelection.removeAll()
                 } label: {
                     Label("Duplicate", systemImage: "plus.square.on.square")
                 }
-                .disabled(selection.isEmpty)
+                .disabled(bulkIDs.isEmpty)
+                .help("Plan again today")
                 Spacer()
                 Button(role: .destructive) {
                     confirmBulkDelete = true
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                .disabled(selection.isEmpty)
+                .disabled(bulkIDs.isEmpty)
+                .help("Delete")
             }
+        }
+    }
+
+    /// Bulk "Mark": the workout running here stays in progress – it's finished in live mode.
+    private func mark(_ sessions: [WorkoutSession], as status: SessionStatus) {
+        let markable = sessions.filter { $0.id != live.session?.id }
+        if !markable.isEmpty { store.setStatus(status, for: markable) }
+        if markable.count < sessions.count {
+            toasts.show("The running workout stays in progress – finish it in live mode", symbol: "play.circle")
         }
     }
 

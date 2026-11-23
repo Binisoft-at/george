@@ -75,7 +75,8 @@ private struct CoachQuestionCard: View {
     }
 }
 
-/// Energy before the first set, 1 (drained) to 5 (great).
+/// Energy before the first set, 1 (drained) to 5 (great). Kept compact (the words are in the
+/// buttons' accessibility labels), so it doesn't push the set down.
 private struct EnergyCheckInRow: View {
     @Environment(WatchConnector.self) private var connector
 
@@ -95,14 +96,6 @@ private struct EnergyCheckInRow: View {
                     .accessibilityLabel(Text("Energy \(level) of 5, \(EnergyEntry.label(for: level))"))
                 }
             }
-            HStack {
-                Text(EnergyEntry.label(for: 1))
-                Spacer(minLength: 4)
-                Text(EnergyEntry.label(for: 5))
-            }
-            .font(.system(size: 10))
-            .foregroundStyle(.secondary)
-            .accessibilityHidden(true)
         }
     }
 }

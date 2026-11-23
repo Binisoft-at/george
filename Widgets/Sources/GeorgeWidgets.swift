@@ -70,6 +70,6 @@ struct StreakDots: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(streak.doneDays) of \(streak.goal) training days this week")
+        .accessibilityLabel("\(streak.doneDays(on: date)) of \(streak.goal) training days this week")
     }
 }

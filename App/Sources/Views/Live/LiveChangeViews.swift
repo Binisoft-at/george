@@ -71,7 +71,8 @@ struct DropWeightSheet: View {
                         }
                         let chosen = newWeight ?? options.dropFirst().first?.kg ?? options.first?.kg ?? weight
                         Button {
-                            live.dropWeight(repsDone: repsDone ?? max(0, target - 2), newWeightKg: chosen, applyToRemaining: applyToRemaining)
+                            // The set this sheet was opened for, even if "now" moved on meanwhile.
+                            live.dropWeight(setID: request.setID, repsDone: repsDone ?? max(0, target - 2), newWeightKg: chosen, applyToRemaining: applyToRemaining)
                             dismiss()
                         } label: {
                             Label("Drop to \(Format.weight(chosen, unit: live.unit)) & keep going", systemImage: "arrow.down.circle.fill")
@@ -94,6 +95,7 @@ struct DropWeightSheet: View {
                 MessageView(title: "No weight on this set", systemImage: "scalemass")
             }
         }
+        .macSheet(width: 520, height: 560)
     }
 
     private func chip(_ text: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -209,5 +211,6 @@ struct LiveSwapSheet: View {
                 MessageView(title: "Exercise not found", systemImage: "questionmark")
             }
         }
+        .macSheet(width: 520, height: 620)
     }
 }

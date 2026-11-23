@@ -4,7 +4,13 @@ import Foundation
 /// quoted fields (including embedded newlines and doubled quotes) and BOM handling.
 public enum CSVReader {
     public static func detectDelimiter(in text: String) -> Character {
-        let firstLine = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        // The header decides – not a "# comment" line or a blank line above it.
+        let firstLine = text.split(whereSeparator: \.isNewline)
+            .map { String($0).replacingOccurrences(of: "\u{FEFF}", with: "") }
+            .first { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.isEmpty && !trimmed.hasPrefix("#")
+            } ?? ""
         let candidates: [Character] = [",", ";", "\t"]
         var best: Character = ","
         var bestCount = 0

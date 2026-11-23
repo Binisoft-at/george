@@ -18,9 +18,11 @@ struct TemplateListView: View {
     @State private var query = ""
     @State private var tokens: [SearchToken] = []
     @State private var logPastFor: WorkoutTemplate?
+    /// Mac: rows ⌘-clicked or ⇧-clicked (the Delete key works on all of them).
+    @State private var listSelection = Set<DetailItem>()
 
     var body: some View {
-        NavList {
+        NavList(selection: $listSelection) {
             if let programHeader {
                 Section { programHeader }
                     .listRowBackground(Color.clear)
@@ -45,6 +47,10 @@ struct TemplateListView: View {
                 }
             }
         }
+        #if os(macOS)
+        // The Delete key: the selected template(s) go, with Undo.
+        .onDeleteCommand(perform: deleteSelected)
+        #endif
         .groupedList()
         .navigationTitle(programID == nil ? "All Templates" : "Templates")
         .searchable(text: $query, tokens: $tokens, prompt: "Search templates and exercises") { token in
@@ -82,9 +88,12 @@ struct TemplateListView: View {
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                 }
+                .help("Sort templates")
                 Button(action: newTemplate) {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("New Template")
+                .help("New Template")
             }
         }
         .sheet(item: $logPastFor) { template in
@@ -95,7 +104,7 @@ struct TemplateListView: View {
     private func row(_ template: WorkoutTemplate) -> some View {
         DetailLink(.template(template.id)) {
             // Grouped by program already – no program label on the rows.
-            TemplateRow(template: template) {
+            TemplateRow(template: template, isSelected: router.detail == .template(template.id)) {
                 store.requestStart(template, live: live, toasts: toasts)
             }
         }
@@ -185,10 +194,37 @@ struct TemplateListView: View {
         store.reorder(ordered)
     }
 
+    #if os(macOS)
+    /// The Delete key: the ⌘-clicked templates, or the one shown. Their logged workouts stay.
+    private func deleteSelected() {
+        var ids = Set(listSelection.compactMap { item -> UUID? in
+            if case .template(let id) = item { return id }
+            return nil
+        })
+        if ids.count < 2 {
+            guard case .template(let id) = router.detail else { return }
+            ids = [id]
+        }
+        let chosen = templates.filter { ids.contains($0.id) }
+        guard !chosen.isEmpty else { return }
+        for template in chosen { router.close(.template(template.id)) }
+        listSelection.removeAll()
+        if chosen.count == 1, let template = chosen.first {
+            store.trash(template, toasts: toasts)
+        } else {
+            // One change, one Undo.
+            for template in chosen { store.delete(template) }
+            toasts.show("Deleted \(chosen.count) templates", symbol: "trash.fill", undo: store.undoLastChange())
+        }
+    }
+    #endif
+
+    /// Name, type and program first (the create sheet's New Template) – backing out leaves no empty
+    /// "New Workout" in the rotation.
     private func newTemplate() {
-        let template = store.createTemplate(in: store.program(id: programID) ?? (programID == nil ? store.activeProgram : nil))
-        router.pickExercisesFor = template.id
-        router.open(.template(template.id))
+        router.newTemplateProgramID = programID
+        router.createStep = .newTemplate
+        router.showCreate = true
     }
 }
 
@@ -223,6 +259,7 @@ struct ProgramView: View {
                         } label: {
                             Image(systemName: "ellipsis")
                         }
+                        .help("Program options")
                     }
                 }
                 .sheet(isPresented: $editing) {
@@ -320,6 +357,7 @@ struct ExportSheet: View {
                 }
             }
         }
+        .macSheet(width: 640, height: 700)
     }
 }
 

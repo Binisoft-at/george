@@ -132,7 +132,7 @@ struct LiveCountdown: View {
                     .foregroundStyle(WidgetStyle.accent)
             case .large, .expanded:
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(countdown.isRest ? "Rest" : "Hold")
+                    Text(countdown.isRest ? "Rest" : state.holdCaption)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(timerInterval: countdown.interval, countsDown: true)
@@ -221,7 +221,17 @@ struct LiveActions: View {
                 .accessibilityLabel("Skip rest")
             }
             Spacer(minLength: 0)
-            if !state.allSetsDone {
+            if state.isPaused {
+                // Paused: the big button resumes – it never logs a set.
+                Button(intent: ResumeWorkoutIntent()) {
+                    Label(state.primaryLabel, systemImage: state.primarySymbol)
+                        .font(.headline)
+                        .padding(.horizontal, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(WidgetStyle.accent)
+                .accessibilityLabel("Resume the workout")
+            } else if !state.allSetsDone {
                 Button(intent: SetActionIntent()) {
                     Label(state.primaryLabel, systemImage: state.primarySymbol)
                         .font(.headline)

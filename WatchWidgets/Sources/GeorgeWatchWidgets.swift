@@ -73,6 +73,12 @@ struct ComplicationView: View {
         live?.symbol ?? next?.symbol ?? "figure.strengthtraining.traditional"
     }
 
+    /// "Today", "Missed · Tue" or "Next workout" as of this entry (the midnight entry moves on).
+    private var nextCaption: String {
+        guard let next, let data = entry.data else { return "Next workout" }
+        return next.caption(on: entry.date, updatedAt: data.updatedAt)
+    }
+
     /// What's due in a running workout ("Squat"), else its title.
     private var liveLine: String {
         guard let live else { return "" }
@@ -109,7 +115,7 @@ struct ComplicationView: View {
             .gaugeStyle(.accessoryCircularCapacity)
             .widgetAccentable()
         } else if let data = entry.data, data.goal > 0 {
-            Gauge(value: Double(min(data.doneDays, data.goal)), in: 0...Double(data.goal)) {
+            Gauge(value: Double(min(data.doneDays(on: entry.date), data.goal)), in: 0...Double(data.goal)) {
                 Image(systemName: "flame.fill")
             } currentValueLabel: {
                 Image(systemName: symbol)
@@ -156,7 +162,7 @@ struct ComplicationView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             VStack(alignment: .leading, spacing: 1) {
-                Label(next?.isToday == true ? "Today" : "Next workout", systemImage: symbol)
+                Label(nextCaption, systemImage: symbol)
                     .font(.headline)
                     .widgetAccentable()
                     .lineLimit(1)
@@ -164,11 +170,12 @@ struct ComplicationView: View {
                     .font(.body)
                     .lineLimit(1)
                 if let data = entry.data, data.goal > 0 {
-                    Text("\(data.doneDays) of \(data.goal) days · \(data.streakWeeks)-week streak")
+                    Text("\(data.doneDays(on: entry.date)) of \(data.goal) days · \(data.streakWeeks)-week streak")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                } else if let detail = next?.detail, !detail.isEmpty {
+                } else if let detail = next?.detail, !detail.isEmpty, next?.plannedDay == nil {
+                    // A planned session's "Planned today" would go stale after midnight; the caption says it.
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)

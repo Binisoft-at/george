@@ -17,8 +17,13 @@ struct WorkoutRecap: Identifiable, Equatable {
     let duration: Double
     let completedSets: Int
     let totalSets: Int
+    /// Working volume (no warm-ups, × 2 for each-side moves) – the number Progress and the exercise chart show.
     let volumeKg: Double
+    /// Done sets without warm-ups (the share card's "SETS", like Progress).
+    let workingSets: Int
     let energyKcal: Double
+    /// Measured (Apple Health, from the Watch) rather than George's estimate.
+    let energyIsMeasured: Bool
     let averageHeartRate: Double?
     let effort: Int
     let energyBefore: Int
@@ -31,6 +36,9 @@ struct WorkoutRecap: Identifiable, Equatable {
     let unit: WeightUnit
 
     var completion: Double { Double(completedSets) / Double(max(1, totalSets)) }
+
+    /// The calories as shown ("406 kcal", or "≈318 kcal" for George's estimate); nil without any.
+    var energy: EnergyDisplay? { energyKcal > 0 ? EnergyDisplay(kcal: energyKcal, isMeasured: energyIsMeasured) : nil }
 
     /// The best line for the top: a record beats a full workout beats "stopped early".
     var headline: String {
@@ -48,14 +56,9 @@ struct WorkoutRecap: Identifiable, Equatable {
         return "\(completedSets) sets in \(Format.minutes(duration))."
     }
 
+    /// The same words as Progress → Records (e1RM rounded in the display unit).
     func recordText(_ record: PersonalRecord) -> String {
-        switch record.metric {
-        case .weight: return Format.weight(record.value, unit: unit)
-        case .oneRepMax: return "e1RM " + Format.weight(record.value, unit: unit)
-        case .reps: return "\(Int(record.value)) reps"
-        case .duration: return Format.shortDuration(Int(record.value))
-        case .volume: return Format.volume(record.value, unit: unit)
-        }
+        record.detail(unit: unit)
     }
 
     @MainActor
@@ -65,7 +68,8 @@ struct WorkoutRecap: Identifiable, Equatable {
         let record = session.record()
         let found = records ?? StatsEngine.newRecords(in: record, comparedTo: store.performedRecords())
         let metrics = store.healthMetrics(for: session.id)
-        let streak = store.streakSummary(healthEntries: health.externalWorkouts)
+        // The streak as of when this workout ended – an old workout doesn't show today's streak.
+        let streak = store.streakSummary(healthEntries: health.externalWorkouts, now: session.endedAt ?? session.date)
         let highlights: [Highlight] = content.allItems
             .filter { $0.completedSets > 0 }
             .map { item -> (WorkoutItem, Double) in
@@ -81,17 +85,24 @@ struct WorkoutRecap: Identifiable, Equatable {
                 return Highlight(name: item.name, detail: best.isEmpty ? sets : "\(sets) · best \(best)")
             }
         let heartRate = averageHeartRate ?? metrics?.averageHeartRate
+        // Measured on this device (Watch) when there is a value, else George's estimate – the same
+        // number the lists and Today show. A value passed in (the finish screen) is measured when it
+        // matches the stored measurement.
         let measuredEnergy = metrics?.activeEnergyKcal ?? 0
+        let shownEnergy = EnergyDisplay.choose(measured: measuredEnergy, estimated: session.energyKcal)
+        let energy = energyKcal ?? shownEnergy?.kcal ?? 0
+        let energyIsMeasured = measuredEnergy > 0 && abs(energy - measuredEnergy) < 0.5
         return WorkoutRecap(
             id: session.id, title: session.title, date: session.startedAt ?? session.date, kind: session.kind,
             duration: session.durationSeconds, completedSets: content.completedSets, totalSets: content.totalSets,
-            volumeKg: content.volumeKg,
-            energyKcal: energyKcal ?? (measuredEnergy > 0 ? measuredEnergy : session.energyKcal),
+            volumeKg: content.workingVolumeKg, workingSets: content.workingSets,
+            energyKcal: energy,
+            energyIsMeasured: energyIsMeasured,
             averageHeartRate: (heartRate ?? 0) > 0 ? heartRate : nil,
             effort: session.effort, energyBefore: session.energyBefore, records: found,
             muscleSets: muscles.plannedSets(content, completedOnly: true, kind: session.kind),
             highlights: Array(highlights), streakWeeks: streak.currentWeeks,
-            weekDays: streak.thisWeek.workoutDays, weekGoal: streak.thisWeek.goal, unit: store.unit
+            weekDays: streak.thisWeek.effectiveDays, weekGoal: streak.thisWeek.goal, unit: store.unit
         )
     }
 }
@@ -136,106 +147,6 @@ struct RecapHero: View {
             guard animated else { shown = 1; return }
             withAnimation(.easeOut(duration: 1.2).delay(0.2)) { shown = 1 }
         }
-    }
-}
-
-/// Time, volume, energy, heart rate as tiles whose numbers count up.
-struct RecapStatsGrid: View {
-    let recap: WorkoutRecap
-    var animated = true
-    @State private var shown = 0.0
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-            tile("Time", Format.minutes(recap.duration * shown), "clock", .blue)
-            if recap.volumeKg > 0 {
-                tile("Volume", Format.volume(recap.volumeKg * shown, unit: recap.unit), "scalemass.fill", .accentColor)
-            }
-            if recap.energyKcal > 0 {
-                tile("Energy", "\(Int(recap.energyKcal * shown)) kcal", "flame.fill", .orange)
-            }
-            if let hr = recap.averageHeartRate {
-                tile("Avg heart rate", "\(Int(hr * shown)) bpm", "heart.fill", .pink)
-            }
-            if recap.effort > 0 {
-                tile("Effort", "\(recap.effort)/10", "gauge.with.dots.needle.67percent", .purple)
-            }
-            if recap.streakWeeks > 0 {
-                tile("Streak", "\(recap.streakWeeks) wk · \(recap.weekDays)/\(recap.weekGoal)", "flame", .orange)
-            }
-        }
-        .onAppear {
-            guard animated else { shown = 1; return }
-            withAnimation(.easeOut(duration: 1.0).delay(0.4)) { shown = 1 }
-        }
-    }
-
-    private func tile(_ title: String, _ value: String, _ symbol: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: symbol)
-                .font(.caption)
-                .foregroundStyle(tint)
-            Text(value)
-                .font(.title3.weight(.bold))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .card(padding: 0, cornerRadius: 18)
-    }
-}
-
-/// New records with a trophy each.
-struct RecapRecordsCard: View {
-    let recap: WorkoutRecap
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("New personal records", systemImage: "trophy.fill")
-                .font(.headline)
-                .foregroundStyle(.yellow)
-                .symbolEffect(.bounce, value: recap.records.count)
-            ForEach(recap.records) { record in
-                HStack {
-                    Text(record.exerciseName)
-                    Spacer()
-                    Text(recap.recordText(record))
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                }
-                .font(.subheadline)
-            }
-        }
-        .padding()
-        .card(padding: 0, cornerRadius: 20)
-    }
-}
-
-/// Which exercises carried the workout.
-struct RecapHighlightsCard: View {
-    let recap: WorkoutRecap
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Highlights", systemImage: "star.fill")
-                .font(.headline)
-            ForEach(recap.highlights) { highlight in
-                HStack {
-                    Text(highlight.name).lineLimit(1)
-                    Spacer()
-                    Text(highlight.detail)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                .font(.subheadline)
-            }
-        }
-        .padding()
-        .card(padding: 0, cornerRadius: 20)
     }
 }
 
@@ -361,13 +272,13 @@ struct ShareCardView: View {
         HStack(spacing: 0) {
             stat(Format.minutes(recap.duration), "TIME")
             divider
-            stat("\(recap.completedSets)", "SETS")
+            stat("\(recap.workingSets)", "SETS")
             if recap.volumeKg > 0 {
                 divider
                 stat(Format.volume(recap.volumeKg, unit: recap.unit), "LIFTED")
-            } else if recap.energyKcal > 0 {
+            } else if let energy = recap.energy {
                 divider
-                stat("\(Int(recap.energyKcal))", "KCAL")
+                stat(energy.number, "KCAL")
             }
         }
         .padding(.vertical, 12)
@@ -497,6 +408,7 @@ struct ShareCardSheet: View {
             }
             .task(id: styleRaw + formatRaw) { image = render() }
         }
+        .macSheet(width: 560, height: 760)
     }
 
     @MainActor
@@ -522,18 +434,61 @@ struct RecapOverviewSection: View {
     /// Built once per change of the workout, not on every redraw (it reads the whole history).
     @State private var recap: WorkoutRecap?
     @Environment(\.colorScheme) private var scheme
+    /// An older workout opens on one compact row; "Show recap" brings the full one back.
+    @State private var showsRecap = false
+
+    /// The celebration belongs to the day of the workout – opened later, the sets come first.
+    private var finishedToday: Bool {
+        store.calendar.isDateInToday(session.endedAt ?? session.date)
+    }
 
     var body: some View {
         Section {
             if let recap {
-                content(recap)
+                if finishedToday {
+                    content(recap)
+                } else {
+                    compact(recap)
+                    if showsRecap { content(recap) }
+                }
             } else {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                ProgressView().frame(maxWidth: .infinity, minHeight: finishedToday ? 120 : 44)
             }
         }
         .task(id: session.contentData) {
             recap = WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health)
         }
+    }
+
+    /// "12/14 sets · 52 min · ≈318 kcal", Show recap and Share – for a workout finished before today.
+    private func compact(_ recap: WorkoutRecap) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: recap.records.isEmpty ? "checkmark.seal.fill" : "trophy.fill")
+                .font(.title3)
+                .foregroundStyle(recap.records.isEmpty ? BrandPalette.blue : BrandPalette.gold)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summaryLine(recap))
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .lineLimit(2)
+                Button(showsRecap ? "Hide recap" : "Show recap") {
+                    withAnimation(.snappy) { showsRecap.toggle() }
+                }
+                .font(.caption)
+                .buttonStyle(.borderless)
+            }
+            Spacer(minLength: 8)
+            ShareRecapButton(recap: recap, prominent: false)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func summaryLine(_ recap: WorkoutRecap) -> String {
+        var parts = ["\(recap.completedSets)/\(recap.totalSets) sets"]
+        if recap.duration > 0 { parts.append(Format.minutes(recap.duration)) }
+        if let energy = recap.energy { parts.append(energy.text) }
+        return parts.joined(separator: " · ")
     }
 
     private func content(_ recap: WorkoutRecap) -> some View {

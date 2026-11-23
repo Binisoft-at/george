@@ -103,6 +103,8 @@ public enum CurrentWeekStatus: String, Sendable {
     case atRisk
     /// No streak running yet (first week or after a break).
     case fresh
+    /// This week is marked as a break (sick, travel): no goal, nothing at risk.
+    case onBreak
 }
 
 public struct DayDot: Hashable, Sendable, Identifiable {
@@ -136,6 +138,8 @@ public struct StreakSummary: Sendable {
     public var totalWorkoutDays: Int
     public var credits: Int
     public var maxCredits: Int
+    /// Successful weeks still needed for the next save, this week included while it runs. 0: this
+    /// week's goal is met and the save comes when the week ends. Nil when the saves are full.
     public var weeksUntilNextCredit: Int?
     public var thisWeek: CurrentWeek
     /// Oldest first.
@@ -150,6 +154,7 @@ public struct StreakSummary: Sendable {
         case .creditWillCover: return "A save will protect your streak this week"
         case .atRisk: return "Streak at risk this week"
         case .fresh: return thisWeek.neededDays == 0 ? "Goal reached" : "\(thisWeek.neededDays) workout\(thisWeek.neededDays == 1 ? "" : "s") to start a streak"
+        case .onBreak: return currentWeeks > 0 ? "Break week — your streak is safe" : "Break week — no goal this week"
         }
     }
 }
@@ -247,6 +252,9 @@ public struct StreakEngine: Sendable {
         if needed == 0 {
             status = .goalMet
             currentWeeks += 1
+        } else if excused.contains(thisWeekStart) {
+            // A break week is neutral: nothing to save, no reminders, no rescue.
+            status = .onBreak
         } else if needed < available {
             status = streak == 0 ? .fresh : .onTrack
         } else if needed == available {
@@ -279,14 +287,16 @@ public struct StreakEngine: Sendable {
 
         let thisWeek = CurrentWeek(
             weekStart: thisWeekStart, goal: goal, workoutDays: days, effectiveDays: effective,
-            neededDays: needed, remainingDays: remaining, workedOutToday: workedOutToday,
+            neededDays: status == .onBreak ? 0 : needed, remainingDays: remaining, workedOutToday: workedOutToday,
             hadRescue: hadRescue, status: status, dots: dots
         )
 
         var untilNext: Int? = nil
         if credits < config.maxCredits {
-            let progress = runMet % config.weeksPerCredit
-            untilNext = config.weeksPerCredit - progress
+            // A met week counts toward the next save already (it's earned when the week ends).
+            let pending = runMet + (status == .goalMet ? 1 : 0)
+            let progress = pending % config.weeksPerCredit
+            untilNext = status == .goalMet && progress == 0 ? 0 : config.weeksPerCredit - progress
         }
 
         return StreakSummary(

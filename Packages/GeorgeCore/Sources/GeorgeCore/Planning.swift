@@ -82,26 +82,51 @@ public extension WorkoutContent {
 // MARK: - Warm-ups and plates
 
 public enum PlateMath {
-    /// Plates per side for a barbell load (kg), greedy from the heaviest; nil if the load is below the bar.
-    public static func perSide(totalKg: Double, barKg: Double = 20, plates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]) -> [Double]? {
-        guard totalKg >= barKg else { return nil }
-        var remaining = (totalKg - barKg) / 2
+    /// How a barbell load is built from the plates at hand – and what they can't make up.
+    public struct Load: Equatable, Sendable {
+        /// Plates per side in kilograms, heaviest first.
+        public var perSide: [Double]
+        /// Kilograms per side the plates can't make up (0 when the load is exact).
+        public var missingPerSideKg: Double
+        /// What the bar really weighs with these plates (bar plus both sides).
+        public var loadedKg: Double
+        /// The plates make up the load (to within 50 g a side).
+        public var isExact: Bool { missingPerSideKg == 0 }
+    }
+
+    /// Plates per side for a barbell load (kg), greedy from the heaviest, with the leftover the plates
+    /// can't build; nil if the load is below the bar.
+    public static func load(totalKg: Double, barKg: Double = 20, plates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]) -> Load? {
+        guard totalKg + 0.0001 >= barKg else { return nil }
+        var remaining = max(0, (totalKg - barKg) / 2)
         var result: [Double] = []
-        for plate in plates.sorted(by: >) {
+        for plate in plates.filter({ $0 > 0 }).sorted(by: >) {
             while remaining + 0.0001 >= plate {
                 result.append(plate)
                 remaining -= plate
             }
         }
-        return remaining > 0.01 ? result : result
+        let missing = remaining >= 0.05 ? remaining : 0
+        return Load(perSide: result, missingPerSideKg: missing, loadedKg: barKg + 2 * result.reduce(0, +))
     }
 
-    /// "20 + 15 + 2.5 per side" (plates in kg; `plates` = the gym's plate set).
+    /// Plates per side for a barbell load (kg), greedy from the heaviest; nil if the load is below the bar.
+    /// Check `load(totalKg:barKg:plates:)` for what they can't make up.
+    public static func perSide(totalKg: Double, barKg: Double = 20, plates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]) -> [Double]? {
+        load(totalKg: totalKg, barKg: barKg, plates: plates)?.perSide
+    }
+
+    /// "20 + 15 + 2.5 per side" (plates in kg; `plates` = the gym's plate set). When the plates can't
+    /// make up the load, what they do make follows: "20 per side ≈ 60 kg" (show it as a caution –
+    /// `load(…)?.isExact` is false then).
     public static func text(totalKg: Double, barKg: Double = 20, plates available: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25], unit: WeightUnit = .kg) -> String? {
-        guard let plates = perSide(totalKg: totalKg, barKg: barKg, plates: available) else { return nil }
-        if plates.isEmpty { return "Empty bar" }
-        let parts = plates.map { Format.number(unit.fromKilograms($0)) }
-        return parts.joined(separator: " + ") + " per side"
+        guard let load = load(totalKg: totalKg, barKg: barKg, plates: available) else { return nil }
+        let text = load.perSide.isEmpty
+            ? "Empty bar"
+            : load.perSide.map { Format.number(unit.fromKilograms($0)) }.joined(separator: " + ") + " per side"
+        guard !load.isExact else { return text }
+        let loaded = (unit.fromKilograms(load.loadedKg) * 10).rounded() / 10
+        return text + " ≈ \(Format.number(loaded)) \(unit.rawValue)"
     }
 }
 
@@ -132,7 +157,12 @@ public extension WorkoutContent {
         let item = blocks[loc.block].items[loc.item]
         guard item.mode == .reps, !item.sets.contains(where: { $0.kind == .warmup }),
               let top = item.sets.filter({ $0.kind != .warmup }).compactMap(\.effectiveWeight).max() else { return 0 }
-        let warmups = WarmupBuilder.sets(topKg: top, barKg: barKg, incrementKg: incrementKg)
+        // Built from today's top weight: for this workout only, not saved back into the template.
+        let warmups = WarmupBuilder.sets(topKg: top, barKg: barKg, incrementKg: incrementKg).map { set -> WorkoutSet in
+            var tagged = set
+            tagged.addedLive = true
+            return tagged
+        }
         let firstOpen = item.sets.firstIndex { !$0.isDone } ?? item.sets.count
         blocks[loc.block].items[loc.item].sets.insert(contentsOf: warmups, at: firstOpen)
         return warmups.count
@@ -197,41 +227,110 @@ public struct PlannedDay: Hashable, Sendable, Identifiable {
 
 public enum WeekPlanner {
     /// Proposes workouts for the next `days` days starting at `from`.
-    /// * Templates with weekdays go on those days.
-    /// * Otherwise the program's rotation (starting at `rotationStart`) is spread evenly over the
-    ///   days so that `weeklyGoal` minus the days already trained this week is reached.
-    /// Days in `busyDays` (already planned or trained) are skipped.
+    /// * Templates with weekdays go on those days (a program that schedules every template: that's the plan).
+    /// * The other templates (the rotation, starting at `rotationStart`) fill each week up to its goal:
+    ///   this week `weeklyGoal` minus the days trained and the days already planned; the part of next
+    ///   week inside the window gets its share of the goal, minus what is planned there already.
+    ///   Picks are spread with rest days in between where possible, earlier days first (the end of
+    ///   the week stays as a fallback).
+    /// Days in `busyDays` (already planned or trained) are left free. `plannedDays`: days from `from`
+    /// on with a planned workout (not trained yet) – they count toward their week's goal.
     public static func propose(templates: [PlannableTemplate], rotationStart: Int, weeklyGoal: Int, trainedThisWeek: Int,
-                               busyDays: Set<Date>, lowEnergyDay: Date? = nil, from: Date, days: Int = 7,
-                               calendar: Calendar = .training()) -> [PlannedDay] {
+                               plannedDays: Set<Date> = [], busyDays: Set<Date>, lowEnergyDay: Date? = nil, from: Date,
+                               days: Int = 7, calendar: Calendar = .training()) -> [PlannedDay] {
         guard !templates.isEmpty else { return [] }
         let start = calendar.startOfDay(for: from)
         let window = (0..<max(1, days)).map { calendar.addingDays($0, to: start) }
-        let free = window.filter { !busyDays.contains(calendar.startOfDay(for: $0)) }
+        let busy = Set(busyDays.map { calendar.startOfDay(for: $0) })
+        let planned = Set(plannedDays.map { calendar.startOfDay(for: $0) }.filter { $0 >= start })
+        let free = window.filter { !busy.contains($0) }
         let low = lowEnergyDay.map { calendar.startOfDay(for: $0) }
         var result: [PlannedDay] = []
+
+        // Templates with weekdays on their days.
+        var taken = Set<Date>()
         let scheduled = templates.filter { !$0.scheduleDays.isEmpty }
-        if !scheduled.isEmpty {
-            for day in free {
-                let weekday = calendar.component(.weekday, from: day)
-                if let template = scheduled.first(where: { $0.scheduleDays.contains(weekday) }) {
-                    result.append(PlannedDay(date: day, templateID: template.id, templateName: template.name, isLowEnergyDay: day == low))
-                }
+        for day in free {
+            let weekday = calendar.component(.weekday, from: day)
+            if let template = scheduled.first(where: { $0.scheduleDays.contains(weekday) }) {
+                result.append(PlannedDay(date: day, templateID: template.id, templateName: template.name, isLowEnergyDay: day == low))
+                taken.insert(day)
             }
-            return result
         }
-        let wanted = min(free.count, max(0, weeklyGoal - trainedThisWeek))
-        guard wanted > 0 else { return [] }
-        // Evenly spread: pick free days at regular steps, leaving rest days in between.
+        let rotation = rotationOrder(templates, start: rotationStart)
+        guard !rotation.isEmpty else { return result }
+
+        // The rotation, week by week up to the goal.
+        let thisWeek = calendar.weekStart(for: start)
+        var weekStarts: [Date] = []
+        for day in window where !weekStarts.contains(calendar.weekStart(for: day)) {
+            weekStarts.append(calendar.weekStart(for: day))
+        }
+        var occupied = busy.union(taken)
         var chosen: [Date] = []
-        for i in 0..<wanted {
-            let index = Int((Double(i) * Double(free.count) / Double(wanted)).rounded(.down))
-            chosen.append(free[min(free.count - 1, index)])
+        for week in weekStarts {
+            let inWindow = window.filter { calendar.weekStart(for: $0) == week }
+            let open = inWindow.filter { !occupied.contains($0) }
+            let placed = taken.filter { calendar.weekStart(for: $0) == week }.count
+            var wanted: Int
+            if week == thisWeek {
+                let plannedHere = planned.filter { calendar.weekStart(for: $0) == week }.count
+                wanted = weeklyGoal - max(0, trainedThisWeek) - plannedHere
+            } else {
+                // Only part of that week is in the window: its share of the goal, never more than the goal.
+                let share = inWindow.count >= 7 ? weeklyGoal : Int((Double(weeklyGoal) * Double(inWindow.count) / 7).rounded())
+                let plannedInWindow = planned.filter { inWindow.contains($0) }.count
+                let plannedInWeek = planned.filter { calendar.weekStart(for: $0) == week }.count
+                wanted = min(share - plannedInWindow, weeklyGoal - plannedInWeek)
+            }
+            wanted = min(open.count, max(0, wanted - placed))
+            let picks = spread(wanted, over: open, occupied: occupied, calendar: calendar)
+            chosen += picks
+            occupied.formUnion(picks)
         }
-        for (i, day) in Array(Set(chosen)).sorted().enumerated() {
-            let template = templates[(rotationStart + i) % templates.count]
+        for (i, day) in chosen.sorted().enumerated() {
+            let template = rotation[i % rotation.count]
             result.append(PlannedDay(date: day, templateID: template.id, templateName: template.name, isLowEnergyDay: day == low))
         }
-        return result
+        return result.sorted { $0.date < $1.date }
+    }
+
+    /// The templates without weekdays in rotation order, starting at `start` (an index into
+    /// `templates`; a scheduled template there hands over to the next unscheduled one).
+    static func rotationOrder(_ templates: [PlannableTemplate], start: Int) -> [PlannableTemplate] {
+        guard !templates.isEmpty else { return [] }
+        let first = ((start % templates.count) + templates.count) % templates.count
+        return (0..<templates.count)
+            .map { templates[(first + $0) % templates.count] }
+            .filter { $0.scheduleDays.isEmpty }
+    }
+
+    /// `count` of the `open` days (sorted, at most a week) with as few workouts on back-to-back days
+    /// as possible – next to `occupied` days or to each other – and among those the earliest.
+    static func spread(_ count: Int, over open: [Date], occupied: Set<Date>, calendar: Calendar) -> [Date] {
+        guard count > 0, !open.isEmpty else { return [] }
+        guard count < open.count else { return open }
+        func neighbours(of day: Date, in days: Set<Date>) -> Int {
+            (days.contains(calendar.addingDays(-1, to: day)) ? 1 : 0) + (days.contains(calendar.addingDays(1, to: day)) ? 1 : 0)
+        }
+        // At most 7 open days: trying every combination is cheap.
+        var indices = Array(0..<count)
+        var best = indices
+        var bestScore = (Int.max, Int.max)
+        while true {
+            let days = indices.map { open[$0] }
+            let all = occupied.union(days)
+            let score = (days.reduce(0) { $0 + neighbours(of: $1, in: all) }, indices.reduce(0, +))
+            if score < bestScore {
+                bestScore = score
+                best = indices
+            }
+            var i = count - 1
+            while i >= 0 && indices[i] == open.count - count + i { i -= 1 }
+            if i < 0 { break }
+            indices[i] += 1
+            for j in (i + 1)..<count { indices[j] = indices[j - 1] + 1 }
+        }
+        return best.map { open[$0] }
     }
 }

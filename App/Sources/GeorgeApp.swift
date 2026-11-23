@@ -47,6 +47,14 @@ struct GeorgeApp: App {
         _live = State(initialValue: live)
         // Siri, Shortcuts, widgets and Live Activity buttons reach the app through here.
         GeorgeIntents.register(store: store, live: live)
+        // The watch link and the running workout come up at launch, not with the window: when iOS
+        // launches George in the background (a watch message, or iOS ended it mid-workout) there may
+        // be no window, and the watch's Start/Done must not be lost. The workout is attached on the
+        // first main-actor turn, once the app object exists.
+        if !LaunchOptions.current.isDemo {
+            watch.activate()
+            Task { @MainActor in live.restore() }
+        }
         // A training reminder's "Start Workout" button.
         NotificationDelegate.registerCategories()
         NotificationDelegate.shared.onStartNextWorkout = { [store, live] in
@@ -86,9 +94,19 @@ struct GeorgeApp: App {
                 .toasts(toasts, bottomPadding: 120)
                 #else
                 .toasts(toasts, bottomPadding: 24)
+                // A CSV opened from Finder goes to the open window – not a second window whose sheets
+                // would show twice (the router is shared).
+                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                 #endif
                 .undoableChanges(in: container.mainContext)
                 .task {
+                    if !launch.isDemo {
+                        // Normally done at launch already (see init); both do nothing the second time.
+                        live.restore()
+                        watch.activate()
+                    }
+                    // The exercise catalog (1.5 MB) and Apple Health load side by side.
+                    async let healthLoaded: Void = loadHealth()
                     await library.load()
                     router.applyLaunchOptions(launch, store: store, live: live)
                     guard !launch.isDemo else {
@@ -96,18 +114,25 @@ struct GeorgeApp: App {
                         health.readiness = BodyReadiness.evaluate(health.healthSignals, calendar: store.calendar)
                         return
                     }
-                    live.restore()
-                    watch.activate()
-                    if health.isAvailable && UserDefaults.standard.bool(forKey: Prefs.healthAsked) {
-                        await health.refresh()
-                        await health.loadSignals()
-                        store.healthBodyMassKg = health.latestBodyMassKg
-                    }
+                    await healthLoaded
                     live.syncWatch()
+                    // The weekly automatic backup (Documents/Backups), once the launch work is done.
+                    try? await Task.sleep(for: .seconds(8))
+                    store.backUpIfDue()
                 }
-                // A value typed a moment ago is saved before the app goes to the background.
+                // A value typed a moment ago and where the live workout stands are saved before the app
+                // goes to the background.
                 .onChange(of: scenePhase) { _, phase in
-                    if phase != .active { live.flushPersist() }
+                    if phase != .active { live.saveState() }
+                    // Back in the app: a match recorded on the watch since then counts toward streak and
+                    // load (at most every ten minutes).
+                    if phase == .active, !launch.isDemo, health.isAvailable, UserDefaults.standard.bool(forKey: Prefs.healthAsked) {
+                        Task {
+                            let before = health.workoutsVersion
+                            await health.refreshIfStale()
+                            if health.workoutsVersion != before { live.syncWatch() }
+                        }
+                    }
                     // Planning and template edits reach the widgets when leaving the app.
                     if phase == .background { WidgetBridge.write(snapshot: live.makeSnapshot()) }
                 }
@@ -121,6 +146,9 @@ struct GeorgeApp: App {
         #endif
         .commands {
             GeorgeCommands(router: router, live: live)
+            // View → Show/Hide Sidebar, Customize Toolbar.
+            SidebarCommands()
+            ToolbarCommands()
         }
 
         #if os(macOS)
@@ -144,12 +172,37 @@ struct GeorgeApp: App {
         }
         #endif
     }
+
+    /// Apple Health at launch: other apps' workouts (streak, load), the recovery signals, body mass.
+    private func loadHealth() async {
+        guard !launch.isDemo, health.isAvailable, UserDefaults.standard.bool(forKey: Prefs.healthAsked) else { return }
+        await health.refreshIfStale()
+        await health.loadSignals()
+        store.healthBodyMassKg = health.latestBodyMassKg
+    }
 }
 
 /// Menu bar commands and keyboard shortcuts (Mac, iPad with keyboard).
 struct GeorgeCommands: Commands {
     let router: Router
     let live: LiveWorkoutController
+    /// The template or workout shown in the detail: ⌘↩ starts that one ("Start UPPER").
+    @FocusedValue(\.startTarget) private var startTarget
+
+    /// One meaning for ⌘↩, said in the menu: show the running workout, start what's shown, or the
+    /// suggested workout.
+    private var startTitle: String {
+        if live.isActive { return "Show Live Workout" }
+        return startTarget?.title ?? "Start Suggested Workout"
+    }
+
+    private func startFromMenu() {
+        if !live.isActive, let startTarget {
+            startTarget.perform()
+        } else {
+            router.request(.startSuggested)
+        }
+    }
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -165,9 +218,10 @@ struct GeorgeCommands: Commands {
                 .keyboardShortcut("i", modifiers: .command)
         }
         CommandMenu("Workout") {
-            Button(live.isActive ? "Show Live Workout" : "Start Suggested Workout") { router.request(.startSuggested) }
+            Button(startTitle) { startFromMenu() }
                 .keyboardShortcut(.return, modifiers: .command)
-            Button(live.primaryIsStart ? "Start Set" : "Complete Set") { live.primaryAction() }
+                .disabled(!live.isActive && startTarget?.isEnabled == false)
+            Button(live.isPaused ? "Resume Workout" : (live.primaryIsStart ? "Start Set" : "Complete Set")) { live.primaryAction() }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(!live.isActive || live.currentSet == nil)
             Button(live.isPaused ? "Resume" : "Pause") { live.togglePause() }

@@ -134,8 +134,17 @@ public enum ProgramCSV {
 
     // MARK: Import
 
+    /// Heaviest target weight an import accepts (kg); more is clamped with a warning.
+    static let maxWeightKg = 1000.0
+    /// Cells that mean "no weight" – no warning when they aren't a number.
+    static let noWeightWords: Set<String> = ["bw", "bodyweight", "body weight", "-", "–", "—", "n/a", "na", "none", "x"]
+
     public static func parse(_ text: String, defaultProgramName: String = "Imported Program") throws -> CSVImportResult {
-        let allRows = CSVReader.parse(text)
+        let delimiter = CSVReader.detectDelimiter(in: text)
+        // Excel and Numbers in a comma locale (Austria, Germany …) write ";" files with "62,5": there a
+        // comma in weight, distance and duration is a decimal point, and lists are written with "/".
+        let decimalCommaFile = delimiter == ";"
+        let allRows = CSVReader.parse(text, delimiter: delimiter)
         // Drop comment lines.
         let rows = allRows.filter { row in
             !(row.fields.first?.trimmingCharacters(in: .whitespaces).hasPrefix("#") ?? false)
@@ -149,6 +158,8 @@ public enum ProgramCSV {
         struct ItemKey: Equatable {
             var group: String
             var name: String
+            /// Rows of the same exercise merge only within one section (a MAIN row after WARM-UP is new).
+            var section: String?
         }
 
         // Program name -> builder
@@ -165,6 +176,8 @@ public enum ProgramCSV {
             var blocks: [WorkoutBlock] = []
             var currentGroup: String? = nil
             var lastItemKey: ItemKey? = nil
+            /// The CSV line each exercise started on (for warnings after the rows are read).
+            var itemLines: [UUID: Int] = [:]
             init(name: String, order: Int) {
                 self.name = name
                 self.order = order
@@ -239,18 +252,6 @@ public enum ProgramCSV {
             let exerciseKind: WorkoutKind? = value("exercise_type").isEmpty ? nil : WorkoutKind(value("exercise_type"))
             let kindForDefaults = exerciseKind ?? (w.kindSet ? w.kind : WorkoutKind(value("workout_type").isEmpty ? "gym" : value("workout_type")))
 
-            // Per-set lists
-            let repsList = LooseParse.list(value("reps"))
-            var weightList = LooseParse.list(value("weight")).compactMap { LooseParse.double($0) }.map { unit.toKilograms($0) }
-            if weightList.isEmpty {
-                weightList = LooseParse.list(value("weight_lb")).compactMap { LooseParse.double($0) }.map { WeightUnit.lb.toKilograms($0) }
-            }
-            let durationList = LooseParse.list(value("duration")).compactMap { LooseParse.seconds($0) }
-            let distanceList = LooseParse.list(value("distance")).compactMap { LooseParse.meters($0) }
-            if !value("duration").isEmpty && durationList.isEmpty {
-                warnings.append(CSVWarning(line: row.line, message: "Couldn't read duration “\(value("duration"))” for \(exerciseName)."))
-            }
-
             var setCount = Int(value("sets")) ?? 0
             if value("sets").isEmpty == false && Int(value("sets")) == nil {
                 // "3-4" -> 3
@@ -259,7 +260,58 @@ public enum ProgramCSV {
                     warnings.append(CSVWarning(line: row.line, message: "Couldn't read sets “\(value("sets"))” for \(exerciseName); using 1."))
                 }
             }
-            setCount = max(setCount, repsList.count, weightList.count, durationList.count, distanceList.count, 1)
+            let declaredSets = setCount
+
+            // Per-set lists. A numeric cell with a decimal comma ("62,5") is one number, not two sets:
+            // always in a ";" file; in a "," file when one digit follows the comma ("62,5"), or two
+            // when `sets` is 1 ("61,25") – "20,25" with more sets stays a list, as the format guide says.
+            func numberCells(_ key: String) -> [String] {
+                let raw = value(key)
+                // A list written with "/" (or "|") may hold decimal commas in any file: "60/62,5/65".
+                if decimalCommaFile || raw.contains("/") || raw.contains("|") { return LooseParse.numberList(raw, decimalComma: true) }
+                if let digits = LooseParse.decimalCommaFractionDigits(raw), digits == 1 || (digits == 2 && declaredSets == 1) {
+                    return [raw]
+                }
+                return LooseParse.list(raw)
+            }
+            let repsList = LooseParse.list(value("reps"))
+            // Weights in kg; "nan", "inf" or "1e999" are no number, absurd ones are clamped.
+            func weights(_ key: String, unit weightUnit: WeightUnit) -> [Double] {
+                var result: [Double] = []
+                for cell in numberCells(key) {
+                    guard let number = LooseParse.double(cell) else {
+                        if !noWeightWords.contains(cell.lowercased()) {
+                            warnings.append(CSVWarning(line: row.line, message: "Couldn't read weight “\(cell)” for \(exerciseName)."))
+                        }
+                        continue
+                    }
+                    let kg = weightUnit.toKilograms(number)
+                    let clamped = min(maxWeightKg, max(0, kg))
+                    if clamped != kg {
+                        warnings.append(CSVWarning(line: row.line, message: "Weight “\(cell)” for \(exerciseName) is out of range; using \(Format.weight(clamped, unit: weightUnit))."))
+                    }
+                    result.append(clamped)
+                }
+                return result
+            }
+            var weightList = weights("weight", unit: unit)
+            if weightList.isEmpty {
+                weightList = weights("weight_lb", unit: .lb)
+            }
+            let durationList = numberCells("duration").compactMap { LooseParse.seconds($0) }
+            let distanceList = numberCells("distance").compactMap { LooseParse.meters($0) }
+            if !value("duration").isEmpty && durationList.isEmpty {
+                warnings.append(CSVWarning(line: row.line, message: "Couldn't read duration “\(value("duration"))” for \(exerciseName)."))
+            }
+            if !value("distance").isEmpty && distanceList.isEmpty {
+                warnings.append(CSVWarning(line: row.line, message: "Couldn't read distance “\(value("distance"))” for \(exerciseName)."))
+            }
+
+            let listCount = max(repsList.count, weightList.count, durationList.count, distanceList.count)
+            if declaredSets > 0 && listCount > declaredSets {
+                warnings.append(CSVWarning(line: row.line, message: "\(exerciseName): \(listCount) values for \(declaredSets) sets, so it gets \(listCount) sets."))
+            }
+            setCount = max(setCount, listCount, 1)
             if setCount > 50 {
                 warnings.append(CSVWarning(line: row.line, message: "Capped \(setCount) sets to 50 for \(exerciseName)."))
                 setCount = 50
@@ -280,7 +332,14 @@ public enum ProgramCSV {
 
             let setKind = SetKind(loose: value("set_type"))
             let load = value("load").isEmpty ? nil : value("load")
-            let rpe = LooseParse.double(value("rpe"))
+            var rpe = LooseParse.double(value("rpe"))
+            if rpe == nil && !value("rpe").isEmpty {
+                warnings.append(CSVWarning(line: row.line, message: "Couldn't read RPE “\(value("rpe"))” for \(exerciseName)."))
+            }
+            if let raw = rpe, !(1...10).contains(raw) {
+                rpe = min(10, max(1, raw))
+                warnings.append(CSVWarning(line: row.line, message: "RPE “\(value("rpe"))” for \(exerciseName) is outside 1–10; using \(Format.number(rpe ?? raw))."))
+            }
 
             var sets: [WorkoutSet] = []
             for i in 0..<setCount {
@@ -329,9 +388,9 @@ public enum ProgramCSV {
             var groupKey = value("group").uppercased()
             while let last = groupKey.last, last.isNumber, groupKey.count > 1 { groupKey.removeLast() }
             let section = value("section").isEmpty ? nil : value("section")
-            let key = ItemKey(group: groupKey, name: exerciseName.lowercased())
+            let key = ItemKey(group: groupKey, name: exerciseName.lowercased(), section: section ?? w.blocks.last?.section)
 
-            // Same exercise on consecutive rows (e.g. warm-up row + working row) -> merge sets.
+            // Same exercise on consecutive rows of one section (e.g. warm-up row + working row) -> merge sets.
             if let lastKey = w.lastItemKey, lastKey == key, let lastBlock = w.blocks.indices.last,
                let lastItem = w.blocks[lastBlock].items.indices.last,
                w.blocks[lastBlock].items[lastItem].name.lowercased() == key.name {
@@ -361,26 +420,25 @@ public enum ProgramCSV {
                 w.blocks.append(block)
                 w.currentGroup = groupKey.isEmpty ? nil : groupKey
             }
+            w.itemLines[item.id] = row.line
             w.lastItemKey = key
         }
 
-        // Grouped blocks: align set counts with rounds where provided.
+        // Grouped blocks: every exercise gets the group's rounds. Only round sets count – warm-ups and
+        // drop sets stay – and a working set that doesn't fit is reported, not dropped silently.
         var result: [ImportedProgram] = []
         for p in programs {
             var workouts: [ImportedWorkout] = []
             for w in p.workouts.sorted(by: { $0.order < $1.order }) {
                 var content = WorkoutContent(blocks: w.blocks)
-                for b in content.blocks.indices where content.blocks[b].style.isGrouped {
-                    if let rounds = content.blocks[b].rounds, rounds > 0 {
-                        for i in content.blocks[b].items.indices {
-                            var sets = content.blocks[b].items[i].sets
-                            if sets.count < rounds, let last = sets.last {
-                                while sets.count < rounds { sets.append(last.clearedCopy()) }
-                            } else if sets.count > rounds {
-                                sets = Array(sets.prefix(rounds))
-                            }
-                            content.blocks[b].items[i].sets = sets
-                        }
+                for block in content.blocks where block.style.isGrouped {
+                    guard let rounds = block.rounds, rounds > 0 else { continue }
+                    let removed = content.setRounds(blockID: block.id, to: rounds)
+                    for item in block.items {
+                        guard let count = removed[item.id], count > 0 else { continue }
+                        let sets = count == 1 ? "1 set" : "\(count) sets"
+                        warnings.append(CSVWarning(line: w.itemLines[item.id] ?? 0,
+                                                   message: "\(item.name) has more sets than its group's \(rounds) rounds; left out \(sets)."))
                     }
                 }
                 content.normalizeBlocks()
@@ -400,10 +458,11 @@ public enum ProgramCSV {
     // MARK: Export
 
     public static let exportHeader = [
-        "program", "workout", "workout_subtitle", "workout_type", "workout_order", "schedule", "workout_notes",
+        "program", "program_notes", "program_color",
+        "workout", "workout_subtitle", "workout_type", "workout_order", "schedule", "workout_notes", "tags",
         "section", "group", "group_style", "rounds", "rest_after_round",
         "exercise", "exercise_id", "exercise_type", "mode", "sets", "reps", "weight", "unit", "load",
-        "duration", "distance", "rest", "tempo", "rpe", "per_side", "set_type", "notes", "tutorial_url", "muscles", "equipment",
+        "duration", "distance", "rest", "tempo", "rpe", "per_side", "set_type", "notes", "tutorial_url", "image_url", "muscles", "equipment",
     ]
 
     public struct ExportWorkout: Sendable {
@@ -413,21 +472,28 @@ public enum ProgramCSV {
         public var order: Int
         public var scheduleDays: [Int]
         public var notes: String
+        public var tags: [String]
         public var content: WorkoutContent
-        public init(name: String, subtitle: String, kind: WorkoutKind, order: Int, scheduleDays: [Int], notes: String, content: WorkoutContent) {
+        public init(name: String, subtitle: String, kind: WorkoutKind, order: Int, scheduleDays: [Int], notes: String,
+                    tags: [String] = [], content: WorkoutContent) {
             self.name = name
             self.subtitle = subtitle
             self.kind = kind
             self.order = order
             self.scheduleDays = scheduleDays
             self.notes = notes
+            self.tags = tags
             self.content = content
         }
     }
 
-    public static func export(programName: String, workouts: [ExportWorkout], unit: WeightUnit = .kg) -> String {
+    /// A program as CSV that imports back the same: exercises, sets (warm-ups and drop sets as their
+    /// own rows), groups with rounds, tags, pictures, the program's notes and color.
+    public static func export(programName: String, workouts: [ExportWorkout], unit: WeightUnit = .kg,
+                              programNotes: String = "", programColor: String? = nil) -> String {
         let dayNames = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         var rows: [[String]] = [exportHeader]
+        var firstOfProgram = true
         for workout in workouts {
             var groupLetter = 0
             let schedule = workout.scheduleDays.compactMap { (1...7).contains($0) ? dayNames[$0] : nil }.joined(separator: ";")
@@ -451,26 +517,30 @@ public enum ProgramCSV {
                     }
                     if runs.isEmpty { runs = [[]] }
                     for run in runs {
-                        func joined(_ values: [String]) -> String {
+                        // Numbers are listed with "/" so "60/5" can never read back as 60.5.
+                        func joined(_ values: [String], separator: String = ",") -> String {
                             let nonEmpty = values.filter { !$0.isEmpty }
                             guard !nonEmpty.isEmpty else { return "" }
                             if Set(values).count == 1 { return values[0] }
-                            return values.joined(separator: ",")
+                            return values.joined(separator: separator)
                         }
                         let reps = joined(run.map { $0.targetReps ?? "" })
-                        let weights = joined(run.map { $0.targetWeight.map { Format.number(unit.fromKilograms($0)) } ?? "" })
-                        let durations = joined(run.map { $0.targetSeconds.map(String.init) ?? "" })
-                        let distances = joined(run.map { $0.targetMeters.map { Format.number($0) } ?? "" })
+                        let weights = joined(run.map { $0.targetWeight.map { Format.number(unit.fromKilograms($0)) } ?? "" }, separator: "/")
+                        let durations = joined(run.map { $0.targetSeconds.map(String.init) ?? "" }, separator: "/")
+                        let distances = joined(run.map { $0.targetMeters.map { Format.number($0) } ?? "" }, separator: "/")
                         let load = run.first?.targetLoad ?? ""
                         let rpe = run.first?.targetRPE.map { Format.number($0) } ?? ""
                         rows.append([
                             programName,
+                            firstOfProgram ? programNotes : "",
+                            firstOfProgram ? (programColor ?? "") : "",
                             workout.name,
                             first ? workout.subtitle : "",
                             first ? workout.kind.rawValue : "",
                             first ? String(workout.order) : "",
                             first ? schedule : "",
                             first ? workout.notes : "",
+                            first ? workout.tags.joined(separator: ";") : "",
                             block.section ?? "",
                             groupLabel,
                             groupLabel.isEmpty ? "" : block.style.rawValue,
@@ -494,10 +564,12 @@ public enum ProgramCSV {
                             run.first?.kind == .working || run.isEmpty ? "" : (run.first?.kind.rawValue ?? ""),
                             item.notes ?? "",
                             item.links.joined(separator: " "),
+                            item.imageURL ?? "",
                             item.muscles.joined(separator: ";"),
                             item.equipment ?? "",
                         ])
                         first = false
+                        firstOfProgram = false
                     }
                 }
             }
@@ -515,7 +587,15 @@ public enum ProgramCSV {
         public var durationSeconds: Double
         public var status: String
         public var content: WorkoutContent
-        public init(date: Date, title: String, program: String, kind: WorkoutKind, durationSeconds: Double, status: String, content: WorkoutContent) {
+        /// When it started (nil: only the day is known).
+        public var startedAt: Date?
+        /// 1–10, 0 = not rated.
+        public var effort: Int
+        /// George's estimate (MET × body weight × time); measured values stay on the device.
+        public var energyKcal: Double
+        public var notes: String
+        public init(date: Date, title: String, program: String, kind: WorkoutKind, durationSeconds: Double, status: String, content: WorkoutContent,
+                    startedAt: Date? = nil, effort: Int = 0, energyKcal: Double = 0, notes: String = "") {
             self.date = date
             self.title = title
             self.program = program
@@ -523,24 +603,56 @@ public enum ProgramCSV {
             self.durationSeconds = durationSeconds
             self.status = status
             self.content = content
+            self.startedAt = startedAt
+            self.effort = effort
+            self.energyKcal = energyKcal
+            self.notes = notes
         }
     }
 
-    /// One row per set — handy for spreadsheets or another AI to analyse progress.
-    public static func exportLog(_ sessions: [LogSession], unit: WeightUnit = .kg) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        var rows: [[String]] = [["date", "session", "program", "type", "duration_min", "status", "exercise", "set", "set_type", "done", "reps", "weight", "unit", "duration", "distance", "rpe", "target_reps", "target_weight"]]
+    public static let logHeader = [
+        "date", "session", "program", "type", "duration_min", "status", "exercise", "set", "set_type", "done", "reps", "weight", "unit",
+        "duration", "distance", "rpe", "target_reps", "target_weight", "started_at", "effort", "kcal", "notes",
+    ]
+
+    /// One row per set — handy for spreadsheets or another AI to analyse progress. A session without
+    /// sets (tennis, a run logged as an activity) gets one row of its own. Dates are local days in
+    /// `timeZone` (the day you trained, not the UTC day); session columns repeat on every row.
+    public static func exportLog(_ sessions: [LogSession], unit: WeightUnit = .kg, timeZone: TimeZone = .current) -> String {
+        let day = DateFormatter()
+        day.locale = Locale(identifier: "en_US_POSIX")
+        day.calendar = Calendar(identifier: .gregorian)
+        day.timeZone = timeZone
+        day.dateFormat = "yyyy-MM-dd"
+        let dayAndTime = DateFormatter()
+        dayAndTime.locale = Locale(identifier: "en_US_POSIX")
+        dayAndTime.calendar = Calendar(identifier: .gregorian)
+        dayAndTime.timeZone = timeZone
+        dayAndTime.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        var rows: [[String]] = [logHeader]
         for session in sessions.sorted(by: { $0.date < $1.date }) {
-            for item in session.content.allItems {
+            let sessionColumns: [String] = [
+                day.string(from: session.date),
+                session.title,
+                session.program,
+                session.kind.rawValue,
+                String(Int((session.durationSeconds / 60).rounded())),
+                session.status,
+            ]
+            let trailingColumns: [String] = [
+                session.startedAt.map { dayAndTime.string(from: $0) } ?? "",
+                session.effort > 0 ? String(session.effort) : "",
+                session.energyKcal > 0 ? String(Int(session.energyKcal.rounded())) : "",
+                session.notes,
+            ]
+            let items = session.content.allItems
+            if items.allSatisfy({ $0.sets.isEmpty }) {
+                rows.append(sessionColumns + Array(repeating: "", count: 12) + trailingColumns)
+                continue
+            }
+            for item in items {
                 for (index, set) in item.sets.enumerated() {
-                    rows.append([
-                        formatter.string(from: session.date),
-                        session.title,
-                        session.program,
-                        session.kind.rawValue,
-                        String(Int((session.durationSeconds / 60).rounded())),
-                        session.status,
+                    let setColumns: [String] = [
                         item.name,
                         String(index + 1),
                         set.kind.rawValue,
@@ -553,10 +665,74 @@ public enum ProgramCSV {
                         set.rpe.map { Format.number($0) } ?? "",
                         set.targetReps ?? "",
                         set.targetWeight.map { Format.number(unit.fromKilograms($0)) } ?? "",
-                    ])
+                    ]
+                    rows.append(sessionColumns + setColumns + trailingColumns)
                 }
             }
         }
         return CSVReader.write(rows: rows)
+    }
+}
+
+// MARK: - Program notes on import
+
+public extension ProgramCSV {
+    /// What happens to a program's notes when an import brings notes for it.
+    enum NotesChange: Equatable, Sendable {
+        /// Nothing changes (no notes in the file, or yours already hold them).
+        case unchanged
+        /// The program had no notes: they are set.
+        case set
+        /// "Replace templates" is on: the imported notes replace yours.
+        case replace
+        /// Yours stay; the imported ones are added below them.
+        case append
+    }
+
+    static func notesChange(existing: String, imported: String, replace: Bool) -> NotesChange {
+        let incoming = imported.trimmingCharacters(in: .whitespacesAndNewlines)
+        let current = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !incoming.isEmpty, incoming != current else { return .unchanged }
+        if current.isEmpty { return .set }
+        if replace { return .replace }
+        // A file exported from this program and imported again: its notes are already there.
+        return current.contains(incoming) ? .unchanged : .append
+    }
+
+    /// The program's notes after an import: replaced only with "Replace templates", otherwise the
+    /// imported notes go below yours under "— Imported <date> —".
+    static func mergedNotes(existing: String, imported: String, replace: Bool, dateText: String) -> String {
+        let incoming = imported.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch notesChange(existing: existing, imported: imported, replace: replace) {
+        case .unchanged: return existing
+        case .set, .replace: return incoming
+        case .append:
+            let current = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+            return current + "\n\n— Imported \(dateText) —\n" + incoming
+        }
+    }
+}
+
+// MARK: - Rounds
+
+public extension WorkoutContent {
+    /// Gives a superset/circuit `rounds` rounds (the CSV import's `rounds` column, the editor's
+    /// Rounds menu). Only round-starting sets count and are added or removed: warm-ups (the lead-in)
+    /// and drop sets (they follow their set) stay; sets already done are never removed (see
+    /// `WorkoutBlock.matchRounds`). Returns, per exercise, how many open sets were taken out.
+    @discardableResult
+    mutating func setRounds(blockID: UUID, to rounds: Int) -> [UUID: Int] {
+        guard let b = blocks.firstIndex(where: { $0.id == blockID }) else { return [:] }
+        let target = max(1, rounds)
+        let before = blocks[b].items
+        blocks[b].matchRounds(to: target)
+        blocks[b].rounds = target
+        var removed: [UUID: Int] = [:]
+        for item in before {
+            let kept = Set(blocks[b].items.first { $0.id == item.id }?.sets.map(\.id) ?? [])
+            let gone = item.sets.filter { !kept.contains($0.id) && $0.kind != .drop }.count
+            if gone > 0 { removed[item.id] = gone }
+        }
+        return removed
     }
 }

@@ -26,7 +26,7 @@ struct CoachSettingsSection: View {
         Section {
             Toggle(isOn: $startButton) { Label("Start button", systemImage: "play.circle") }
             Toggle(isOn: $autoRest) { Label("Start the rest timer by itself", systemImage: "timer.circle") }
-            Picker(selection: Binding(get: { settings.defaultRestSeconds }, set: { settings.defaultRestSeconds = $0; store.save() })) {
+            Picker(selection: Binding(get: { settings.defaultRestSeconds }, set: { value in store.updateSettings { $0.defaultRestSeconds = value } })) {
                 ForEach([30, 45, 60, 75, 90, 120, 150, 180], id: \.self) { Text(Format.shortDuration($0)).tag($0) }
             } label: {
                 Label("Default rest", systemImage: "hourglass.bottomhalf.filled")
@@ -103,9 +103,7 @@ struct CoachSettingsSheet: View {
                 }
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 560)
-        #endif
+        .macSheet(width: 520, height: 640)
     }
 }
 
@@ -157,10 +155,15 @@ struct VoiceSettingsView: View {
 
             if voice {
                 Section {
-                    Picker(selection: $routeRaw) {
-                        ForEach(VoiceRoute.allCases) { Text($0.title).tag($0.rawValue) }
-                    } label: {
+                    // Stacked: the value ("Headphones & speaker") gets the whole width instead of
+                    // squeezing next to the label.
+                    VStack(alignment: .leading, spacing: 6) {
                         Label("Speak through", systemImage: "headphones")
+                        Picker("Speak through", selection: $routeRaw) {
+                            ForEach(VoiceRoute.allCases) { Text($0.title).tag($0.rawValue) }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
                     }
                 } footer: {
                     Text((VoiceRoute(rawValue: routeRaw) ?? .everywhere).detail)
@@ -240,14 +243,14 @@ struct VoiceSettingsView: View {
     private var systemSection: some View {
         let installed = VoiceSettings.englishVoices()
         Section {
-            Picker("iPhone voice", selection: $systemVoiceID) {
+            Picker("Installed voice", selection: $systemVoiceID) {
                 Text("Best installed").tag("")
                 ForEach(installed, id: \.identifier) { voice in
                     Text("\(voice.name) · \(VoiceSettings.qualityLabel(voice))\(voice.gender == .male ? " · male" : "")").tag(voice.identifier)
                 }
             }
         } header: {
-            Text("iPhone voice")
+            Text("Voice quality")
         } footer: {
             Text("For a natural voice, download a Premium one: iPhone Settings → Accessibility → Spoken Content → Voices → English – e.g. “Evan (Premium)” or “Nathan (Premium)”. George picks the best installed voice by itself.")
         }
@@ -317,7 +320,7 @@ struct ProfileSettingsSection: View {
         let settings = store.settings
         let currentYear = Calendar.current.component(.year, from: Date())
         Section {
-            Picker(selection: Binding(get: { settings.birthYear }, set: { settings.birthYear = $0; store.save() })) {
+            Picker(selection: Binding(get: { settings.birthYear }, set: { value in store.updateSettings { $0.birthYear = value } })) {
                 Text("Not set").tag(0)
                 ForEach((1930...(currentYear - 12)).reversed(), id: \.self) { year in
                     Text(verbatim: "\(year) · \(currentYear - year) years").tag(year)
@@ -348,13 +351,13 @@ struct ProfileSettingsSection: View {
                     Text(healthMessage).font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Picker(selection: Binding(get: { settings.experienceRaw }, set: { settings.experienceRaw = $0; store.save() })) {
+            Picker(selection: Binding(get: { settings.experienceRaw }, set: { value in store.updateSettings { $0.experienceRaw = value } })) {
                 Text("Not set").tag("")
                 ForEach(TrainingExperience.allCases) { Text($0.title).tag($0.rawValue) }
             } label: {
                 Label("Experience", systemImage: "chart.line.uptrend.xyaxis")
             }
-            Picker(selection: Binding(get: { settings.goalRaw }, set: { settings.goalRaw = $0; store.save() })) {
+            Picker(selection: Binding(get: { settings.goalRaw }, set: { value in store.updateSettings { $0.goalRaw = value } })) {
                 Text("Not set").tag("")
                 ForEach(TrainingGoal.allCases) { Text($0.title).tag($0.rawValue) }
             } label: {

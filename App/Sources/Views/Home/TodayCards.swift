@@ -46,11 +46,22 @@ struct MissedPlansCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // "Do today" moves the plan to today (Today's hero then offers Start); ▶ starts it right away.
             Button("Do today") {
-                live.requestStart(.session(session))
+                moveToToday(session)
             }
             .font(.caption.weight(.semibold))
             .buttonStyle(.glass)
+            Button {
+                live.requestStart(.session(session))
+            } label: {
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.semibold))
+                    .frame(width: 26, height: 26)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .accessibilityLabel("Start \(store.displayName(of: session)) now")
             Button("Skip") {
                 skip(session)
             }
@@ -68,6 +79,26 @@ struct MissedPlansCard: View {
         let calendar = store.calendar
         let day = String(format: "%02d.%02d", calendar.component(.day, from: date), calendar.component(.month, from: date))
         return "Missed · \(date.formatted(.dateTime.weekday(.abbreviated))) \(day) · \(store.displayName(of: session))"
+    }
+
+    /// Moves the missed plan to today (same time of day, an automatic title follows the date). Undo
+    /// puts it back on its day.
+    private func moveToToday(_ session: WorkoutSession) {
+        let name = store.displayName(of: session)
+        let calendar = store.calendar
+        let oldPlanned = session.plannedDate
+        let oldTitle = session.title
+        let previousDate = session.date
+        let day = store.plannedDay(of: session)
+        session.plannedDate = calendar.addingDays(calendar.daysBetween(day, Date()), to: day)
+        store.retitleIfAuto(session, previousDate: previousDate)
+        store.save()
+        Haptics.success()
+        toasts.show("Moved \(name) to today", symbol: "calendar") {
+            session.plannedDate = oldPlanned
+            session.title = oldTitle
+            store.save()
+        }
     }
 
     private func skip(_ session: WorkoutSession) {
@@ -182,6 +213,7 @@ struct RescueSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .macSheet(width: 520, height: 560)
     }
 
     private func start(_ routine: Routine) {

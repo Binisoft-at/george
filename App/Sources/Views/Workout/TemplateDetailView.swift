@@ -42,6 +42,19 @@ private struct TemplateDocument: View {
     @State private var showPlan = false
     @State private var showDetails = false
     @State private var showReorder = false
+    /// Whether this device can read and edit the stored workout (see `StoredContent`).
+    @State private var readState: StoredContent.ReadState = .readable
+    /// On screen (not covered by a pushed screen): only then it's what ⌘↩ starts.
+    @State private var isShown = false
+
+    /// ⌘↩ (Workout menu): "Start UPPER" while this template is shown – not on the tour's practice page.
+    private var startCommand: StartCommand? {
+        guard practice == nil else { return nil }
+        let name = template.name.isEmpty ? "Template" : template.name
+        return StartCommand(title: "Start \(name)", isEnabled: readState.isEditable) {
+            store.requestStart(template, live: live, toasts: toasts)
+        }
+    }
 
     var body: some View {
         List {
@@ -51,7 +64,12 @@ private struct TemplateDocument: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
             }
-            WorkoutEditorSections(content: $content, mode: .template, defaultKind: template.kind, state: editor)
+            if readState.isEditable {
+                WorkoutEditorSections(content: $content, mode: .template, defaultKind: template.kind, state: editor)
+            } else {
+                // "Can't read this workout" / "Update George on this device to edit" – never an empty editor.
+                ReadOnlyContentSection(state: readState, content: content)
+            }
             MuscleTargetsSection(content: content, kind: template.kind)
             Section("Notes") {
                 TextField("Goals, cues, progression rules…", text: $template.notes, axis: .vertical)
@@ -66,6 +84,9 @@ private struct TemplateDocument: View {
         .navigationTitle(template.name.isEmpty ? "Template" : template.name)
         .inlineTitle()
         .toolbar { toolbarItems }
+        .focusedSceneValue(\.startTarget, isShown ? startCommand : nil)
+        .onAppear { isShown = true }
+        .onDisappear { isShown = false }
         .sheet(isPresented: $shareRoutine) {
             RoutineShareSheet(template: template)
         }
@@ -82,7 +103,7 @@ private struct TemplateDocument: View {
             if newData != loadedData { load() }
         }
         .onChange(of: content) { _, newContent in
-            guard newContent != template.content else { return }
+            guard readState.isEditable, newContent != template.content else { return }
             template.content = newContent
             loadedData = template.contentData
             store.save()
@@ -107,7 +128,8 @@ private struct TemplateDocument: View {
                         Button("Plan") {
                             let session = store.makeSession(from: template, date: planDate, start: false)
                             showPlan = false
-                            router.open(.session(session.id))
+                            // On top of the template (with Back on the Mac).
+                            router.push(.session(session.id))
                         }
                     }
                 }
@@ -119,6 +141,7 @@ private struct TemplateDocument: View {
     private func load() {
         content = template.content
         loadedData = template.contentData
+        readState = template.contentReadState
     }
 
     private var headerSection: some View {
@@ -155,7 +178,8 @@ private struct TemplateDocument: View {
     }
 
     private var detailsSummary: String {
-        var parts = [template.kind.displayName, template.program?.name ?? "No program"]
+        // "Gym – Strength Block", not "Gym · Gym – Strength Block".
+        var parts = HeaderSummary.kindAndProgram(kind: template.kind.displayName, program: template.program?.name)
         if !template.scheduleDays.isEmpty { parts.append(DateLabel.weekdayNames(template.scheduleDays)) }
         if template.priority != .none { parts.append(template.priority.displayName) }
         return parts.joined(separator: " · ")
@@ -237,7 +261,7 @@ private struct TemplateDocument: View {
                 }
                 .buttonStyle(.glassProminent)
                 .tint(.accentColor)
-                .keyboardShortcut(.return, modifiers: .command)
+                // ⌘↩ is the Workout menu's item ("Start UPPER" while this is shown).
                 Button {
                     planDate = Date()
                     showPlan = true
@@ -249,6 +273,7 @@ private struct TemplateDocument: View {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Plan for a day")
+                .help("Plan for a day")
                 Button {
                     logPast = template
                 } label: {
@@ -259,7 +284,10 @@ private struct TemplateDocument: View {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Log a past workout")
+                .help("Log a past workout")
             }
+            // A workout this device can't read (or a newer George wrote) isn't started or copied here.
+            .disabled(!readState.isEditable)
             .padding(.horizontal)
             .padding(.bottom, 8)
             .frame(maxWidth: 560)
@@ -294,7 +322,8 @@ private struct TemplateDocument: View {
             Section("History · \(history.count)") {
                 ForEach(history.prefix(10)) { session in
                     Button {
-                        router.open(.session(session.id))
+                        // On top of the template, with Back – the list keeps the template selected.
+                        router.push(.session(session.id))
                     } label: {
                         SessionRow(session: session)
                     }
@@ -313,8 +342,9 @@ private struct TemplateDocument: View {
                 Image(systemName: "square.and.arrow.up")
             }
             .accessibilityLabel("Share routine")
+            .help("Share routine")
             Menu {
-                if content.blocks.count > 1 {
+                if readState.isEditable && content.blocks.count > 1 {
                     Button {
                         showReorder = true
                     } label: {
@@ -326,6 +356,7 @@ private struct TemplateDocument: View {
             } label: {
                 Image(systemName: "ellipsis")
             }
+            .help("More")
         }
     }
 }

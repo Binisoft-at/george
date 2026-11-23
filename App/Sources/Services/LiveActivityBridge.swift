@@ -175,10 +175,18 @@ final class LiveActivityBridge {
 
         var holdStart: Date?
         var holdEnd: Date?
+        var holdSide: Int?
         if !state.isPaused, restEnd == nil, isTimed, let started = state.setStartedAt,
            let seconds = state.timedSetSeconds, seconds > 0 {
-            holdStart = started
-            holdEnd = started.addingTimeInterval(Double(seconds))
+            if let side = state.holdSide(at: Date()) {
+                // "30 s each side": the side that's running counts down (the app updates at the switch).
+                holdStart = side.start
+                holdEnd = side.end
+                holdSide = side.number
+            } else {
+                holdStart = started
+                holdEnd = started.addingTimeInterval(Double(seconds))
+            }
         }
 
         // Same rule as LiveWorkoutController.primaryIsStart: Start while the set waits (Start button
@@ -199,7 +207,8 @@ final class LiveActivityBridge {
             holdStartedAt: holdStart,
             holdEndsAt: holdEnd,
             isPaused: state.isPaused,
-            primaryIsStart: primaryIsStart
+            primaryIsStart: primaryIsStart,
+            holdSide: holdSide
         )
     }
     #endif

@@ -85,7 +85,8 @@ struct LogActivitySheet: View {
                             choose(option)
                         } label: {
                             VStack(spacing: 4) {
-                                Image(systemName: option.symbol).font(.title3)
+                                // One height for every symbol: the tiles line up.
+                                Image(systemName: option.symbol).font(.title3).frame(height: 24)
                                 Text(option.title).font(.caption.weight(.semibold)).lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)

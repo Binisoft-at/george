@@ -54,6 +54,10 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
     /// When the set was started (the Start button, or the timer of a timed set).
     public var startedAt: Date?
     public var note: String?
+    /// True for a set George added during the workout itself – the drop set of "Can't finish? Lower
+    /// the weight" and warm-ups from "Add warm-up sets". Such sets are not saved back into the
+    /// template, and a new workout never starts with the tag. Nil (not stored) for planned sets.
+    public var addedLive: Bool?
 
     public init(
         id: UUID = UUID(), kind: SetKind = .working, targetReps: String? = nil, targetWeight: Double? = nil,
@@ -82,7 +86,7 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, kind, targetReps, targetWeight, targetLoad, targetSeconds, targetMeters, targetRPE
-        case reps, weight, seconds, meters, rpe, isDone, doneAt, startedAt, note
+        case reps, weight, seconds, meters, rpe, isDone, doneAt, startedAt, note, addedLive
     }
 
     public init(from decoder: Decoder) throws {
@@ -104,6 +108,7 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
         doneAt = try c.decodeIfPresent(Date.self, forKey: .doneAt)
         startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
         note = try c.decodeIfPresent(String.self, forKey: .note)
+        addedLive = try? c.decodeIfPresent(Bool.self, forKey: .addedLive)
     }
 
     /// Lower bound of the target reps ("8-12" -> 8, "AMRAP" -> nil).
@@ -136,10 +141,12 @@ public struct WorkoutSet: Codable, Hashable, Identifiable, Sendable {
         return copy
     }
 
-    /// Promote performed values to targets (used when saving a session back into a template).
+    /// Promote performed values to targets (used when saving a session back into a template). A rep
+    /// range ("8-12") and a rep target that was missed stay as planned.
     public func promotedToTarget() -> WorkoutSet {
         var copy = clearedCopy()
-        if let r = reps { copy.targetReps = String(r) }
+        copy.addedLive = nil
+        if let r = reps, !keepsTargetReps(over: r) { copy.targetReps = String(r) }
         if let w = weight { copy.targetWeight = w }
         if let s = seconds { copy.targetSeconds = s }
         if let m = meters { copy.targetMeters = m }
@@ -305,7 +312,11 @@ public struct WorkoutItem: Codable, Hashable, Identifiable, Sendable {
 
     /// A new set copied from the last set (targets only).
     public func makeNextSet() -> WorkoutSet {
-        if let last = sets.last { return last.clearedCopy() }
+        if let last = sets.last {
+            var next = last.clearedCopy()
+            next.addedLive = nil
+            return next
+        }
         switch mode {
         case .reps: return WorkoutSet(targetReps: "10")
         case .time: return WorkoutSet(targetSeconds: 30)
@@ -397,7 +408,9 @@ public struct WorkoutBlock: Codable, Hashable, Identifiable, Sendable {
         items = try c.decodeIfPresent([WorkoutItem].self, forKey: .items) ?? []
     }
 
-    public var roundCount: Int { rounds ?? (items.map(\.sets.count).max() ?? 0) }
+    /// Rounds of a superset/circuit: the planned number, else as many as its exercises fill (warm-ups,
+    /// drop sets and a swapped exercise's replacement don't add rounds – see `roundSlots`).
+    public var roundCount: Int { rounds ?? workingRoundCount }
 
     public var title: String {
         if items.count == 1 { return items[0].name }
@@ -410,11 +423,18 @@ public struct WorkoutBlock: Codable, Hashable, Identifiable, Sendable {
 /// Everything inside a workout: ordered blocks of exercises with their sets.
 /// Stored as JSON in templates and sessions so the whole structure syncs as one value.
 public struct WorkoutContent: Codable, Hashable, Sendable {
+    /// The format this build writes. Bump it whenever a field is added to the content (sets, items,
+    /// blocks): a device on an older build then refuses to overwrite it instead of silently dropping
+    /// the new field everywhere (see `StoredContent`). 1: the first format; 2: `roundOffset`.
+    public static let currentVersion = 2
+
+    /// The format the content was read from: `currentVersion` for anything this build understands
+    /// (older formats are read up to it), higher when it came from a newer George.
     public var version: Int
     public var blocks: [WorkoutBlock]
 
     public init(blocks: [WorkoutBlock] = []) {
-        self.version = 1
+        self.version = WorkoutContent.currentVersion
         self.blocks = blocks
     }
 
@@ -422,8 +442,15 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        let stored = (try? c.decodeIfPresent(Int.self, forKey: .version)) ?? 1
+        version = max(stored, WorkoutContent.currentVersion)
         blocks = try c.decodeIfPresent([WorkoutBlock].self, forKey: .blocks) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(version, forKey: .version)
+        try c.encode(blocks, forKey: .blocks)
     }
 
     public static let empty = WorkoutContent()
@@ -443,13 +470,26 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
         return d
     }()
 
+    /// Lenient read for lists and stats: empty content when there is nothing or it can't be read.
+    /// Never write the result back over the stored data – see `StoredContent.write(_:over:)`.
     public static func decode(_ data: Data?) -> WorkoutContent {
-        guard let data, !data.isEmpty else { return WorkoutContent() }
-        return (try? decoder.decode(WorkoutContent.self, from: data)) ?? WorkoutContent()
+        (try? decodeStrict(data)) ?? WorkoutContent()
     }
 
-    public func encoded() -> Data {
-        (try? WorkoutContent.encoder.encode(self)) ?? Data()
+    /// Strict read: no data or empty data is an empty workout; data that can't be read throws.
+    public static func decodeStrict(_ data: Data?) throws -> WorkoutContent {
+        guard let data, !data.isEmpty else { return WorkoutContent() }
+        return try decoder.decode(WorkoutContent.self, from: data)
+    }
+
+    /// The stored form. Throws when the content holds a number JSON can't carry (NaN, infinity).
+    public func encodedData() throws -> Data {
+        try WorkoutContent.encoder.encode(self)
+    }
+
+    /// The stored form, nil when it can't be encoded – never empty data that would erase a workout.
+    public func encoded() -> Data? {
+        try? encodedData()
     }
 
     // MARK: Queries
@@ -617,25 +657,12 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
         public var follower: Int
     }
 
-    /// The slots of a grouped block in the order they are done: round by round, each item's set
-    /// followed by its drop sets. Items that replaced a swapped exercise start at their `roundOffset`.
+    /// The slots of a grouped block in the order they are done: warm-ups first as a straight lead-in
+    /// (round -1, exercise by exercise), then round by round, each item's set followed by its drop
+    /// sets. Items that replaced a swapped exercise start at their `roundOffset`.
     public func roundSlots(ofBlock b: Int) -> [RoundSlot] {
         guard blocks.indices.contains(b) else { return [] }
-        var slots: [RoundSlot] = []
-        for (i, item) in blocks[b].items.enumerated() {
-            var round = (item.roundOffset ?? 0) - 1
-            var follower = 0
-            for (s, set) in item.sets.enumerated() {
-                if set.kind == .drop && s > 0 {
-                    follower += 1
-                } else {
-                    round += 1
-                    follower = 0
-                }
-                slots.append(RoundSlot(round: max(0, round), itemIndex: i, setIndex: s, follower: follower))
-            }
-        }
-        return slots.sorted { ($0.round, $0.itemIndex, $0.follower) < ($1.round, $1.itemIndex, $1.follower) }
+        return blocks[b].roundSlots()
     }
 
     /// Rows of a grouped block for the board: per round, the (item, set) pairs done in it.
@@ -704,6 +731,8 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
             // Rest only after the last set of a round.
             let slots = roundSlots(ofBlock: ref.blockIndex)
             guard let slot = slots.first(where: { $0.itemIndex == ref.itemIndex && $0.setIndex == ref.setIndex }) else { return nil }
+            // Warm-ups run as a lead-in before the first round: no round rest after them.
+            if slot.round < 0 { return nil }
             let lastInRound = slots.last { $0.round == slot.round }
             if lastInRound?.itemIndex == slot.itemIndex && lastInRound?.setIndex == slot.setIndex {
                 return block.restAfterRoundSeconds ?? item.restSeconds ?? defaultRest
@@ -958,39 +987,41 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
 
     // MARK: Derivations
 
-    /// A fresh copy for a new session: new ids, actuals cleared, targets kept.
+    /// A fresh copy for a new session: new ids, actuals cleared, targets kept. Answers that belong to
+    /// one workout (the fatigue question) and the "added during the workout" tag don't carry over.
+    /// A swapped exercise's `roundOffset` stays: its sets still continue the round of the one before.
     public func freshCopy() -> WorkoutContent {
         var copy = self
+        // A new record holds only what this build knows (fields of a newer George aren't in it).
+        copy.version = WorkoutContent.currentVersion
         for b in copy.blocks.indices {
             copy.blocks[b].id = UUID()
             for i in copy.blocks[b].items.indices {
                 copy.blocks[b].items[i].id = UUID()
-                copy.blocks[b].items[i].sets = copy.blocks[b].items[i].sets.map { $0.clearedCopy() }
-            }
-        }
-        return copy
-    }
-
-    /// Turn a performed session into a template: performed values become the new targets.
-    /// Sets that were never done keep their original targets.
-    public func asTemplate(promoteActuals: Bool = true) -> WorkoutContent {
-        var copy = self
-        for b in copy.blocks.indices {
-            copy.blocks[b].id = UUID()
-            for i in copy.blocks[b].items.indices {
-                copy.blocks[b].items[i].id = UUID()
+                copy.blocks[b].items[i].fatigue = nil
                 copy.blocks[b].items[i].sets = copy.blocks[b].items[i].sets.map {
-                    promoteActuals && $0.isDone ? $0.promotedToTarget() : $0.clearedCopy()
+                    var set = $0.clearedCopy()
+                    set.addedLive = nil
+                    return set
                 }
             }
         }
         return copy
     }
 
-    /// Clears all progress but keeps ids.
+    /// Turn a performed session into a template: performed values become the new targets (a rep range
+    /// and a target that was missed stay), sets added during the workout are left out, a swapped
+    /// exercise in a superset is saved as its replacement, and fatigue answers are cleared.
+    /// Sets that were never done keep their original targets. See `asTemplate(mode:base:)`.
+    public func asTemplate(promoteActuals: Bool = true) -> WorkoutContent {
+        templateCopy(promoteActuals: promoteActuals)
+    }
+
+    /// Clears all progress (ticks, numbers, fatigue answers) but keeps ids and the structure.
     public mutating func resetProgress() {
         for b in blocks.indices {
             for i in blocks[b].items.indices {
+                blocks[b].items[i].fatigue = nil
                 blocks[b].items[i].sets = blocks[b].items[i].sets.map { $0.clearedCopy(newID: false) }
             }
         }
@@ -1009,16 +1040,17 @@ public struct WorkoutContent: Codable, Hashable, Sendable {
     }
 
     /// Prefill targets from the last time each exercise was performed (progressive overload helper).
+    /// Sets are paired by role (`WorkoutSet.matchingPrevious`): warm-ups with warm-ups, working sets
+    /// with last time's working sets, drop sets with drop sets.
     public mutating func applyPrevious(_ lookup: (WorkoutItem) -> [WorkoutSet]?) {
         for b in blocks.indices {
             for i in blocks[b].items.indices {
-                guard let previous = lookup(blocks[b].items[i]), !previous.isEmpty else { continue }
-                for s in blocks[b].items[i].sets.indices {
-                    let prev = s < previous.count ? previous[s] : previous[previous.count - 1]
-                    guard prev.isDone else { continue }
-                    if blocks[b].items[i].sets[s].targetWeight == nil, let w = prev.weight, w > 0 {
-                        blocks[b].items[i].sets[s].targetWeight = w
-                    }
+                let item = blocks[b].items[i]
+                guard let previous = lookup(item), !previous.isEmpty else { continue }
+                for s in item.sets.indices where item.sets[s].targetWeight == nil {
+                    guard let prev = WorkoutSet.matchingPrevious(item.sets[s], in: item, previous: previous),
+                          let w = prev.weight, w > 0 else { continue }
+                    blocks[b].items[i].sets[s].targetWeight = w
                 }
             }
         }

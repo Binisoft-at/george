@@ -105,6 +105,11 @@ struct FinishCelebrationView: View {
     @State private var confetti = 0
     @State private var templateUpdated = false
     @State private var templateSaved = false
+    /// What "Update Template" would change: heavier loads only, and everything (sets, exercises).
+    @State private var loadLines: [String] = []
+    @State private var allLines: [String] = []
+    @State private var confirmAllChanges = false
+    @State private var templateUndo: (() -> Void)?
     @State private var recap: WorkoutRecap?
     @State private var skipped = false
 
@@ -283,33 +288,68 @@ struct FinishCelebrationView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// "You went heavier" saves only the heavier loads; "You changed this workout" saves sets and
+    /// exercises too. Drop sets and warm-ups added during the workout never go into the template.
+    private var offersLoads: Bool { !loadLines.isEmpty }
+
     /// Update the template (changes or heavier loads), or keep a template-less workout as one.
     @ViewBuilder
     private var templateCard: some View {
-        if summary.canUpdateTemplate && !templateUpdated {
+        if summary.canUpdateTemplate && !templateUpdated && (offersLoads || !allLines.isEmpty) {
+            let lines = offersLoads ? loadLines : allLines
             VStack(alignment: .leading, spacing: 8) {
-                Label(summary.loadChanges.isEmpty ? "You changed this workout" : "You went heavier", systemImage: "arrow.triangle.2.circlepath")
+                Label(offersLoads ? "You went heavier" : "You changed this workout", systemImage: "arrow.triangle.2.circlepath")
                     .font(.subheadline.weight(.bold))
-                ForEach(summary.loadChanges.prefix(4), id: \.self) { line in
+                ForEach(lines.prefix(4), id: \.self) { line in
                     Text(line).font(.caption.weight(.semibold)).foregroundStyle(BrandPalette.sky)
                 }
-                Text("Save the exercises, sets and loads you used back into “\(summary.templateName)” so next time starts from here?")
+                if lines.count > 4 {
+                    Text("and \(lines.count - 4) more").font(.caption).foregroundStyle(.white.opacity(0.75))
+                }
+                Text(offersLoads
+                     ? "Save these loads into “\(summary.templateName)”? Sets and reps stay as planned."
+                     : "Save these changes into “\(summary.templateName)” so next time starts from here?")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.75))
                 Button {
-                    if let session = store.session(id: summary.sessionID) {
-                        store.updateTemplate(from: session)
-                        templateUpdated = true
-                        Haptics.success()
-                    }
+                    updateTemplate(offersLoads ? .loads : .everything)
                 } label: {
-                    Label("Update Template", systemImage: "square.and.arrow.down")
+                    Label(offersLoads ? "Update Loads" : "Update Template", systemImage: "square.and.arrow.down")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.glass)
+                if offersLoads && !allLines.isEmpty {
+                    Button("Save All Changes…") { confirmAllChanges = true }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .buttonStyle(.plain)
+                }
             }
             .padding(16)
             .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .confirmationDialog("Save all changes?", isPresented: $confirmAllChanges, titleVisibility: .visible) {
+                Button("Save All Changes") { updateTemplate(.everything) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(allLines.prefix(6).joined(separator: "\n"))
+            }
+        } else if templateUpdated {
+            HStack {
+                Label("Template updated", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(BrandPalette.sky)
+                Spacer()
+                if let undo = templateUndo {
+                    Button("Undo") {
+                        undo()
+                        templateUndo = nil
+                        templateUpdated = false
+                        Haptics.tap()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.glass)
+                }
+            }
         } else if summary.canSaveAsTemplate && !templateSaved {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Keep this as a template?", systemImage: "square.on.square")
@@ -390,8 +430,9 @@ struct FinishCelebrationView: View {
             if recap.volumeKg > 0 {
                 statTile("Lifted", "scalemass.fill") { Format.volume(recap.volumeKg * $0, unit: recap.unit) }
             }
-            if recap.energyKcal > 0 {
-                statTile("Energy", "flame.fill") { "\(Int(recap.energyKcal * $0)) kcal" }
+            if let energy = recap.energy {
+                // "≈" marks George's estimate; Watch-measured energy shows as is.
+                statTile(energy.isMeasured ? "Energy" : "Energy (est.)", "flame.fill") { energy.text(scaled: $0) }
             }
             if let hr = recap.averageHeartRate {
                 statTile("Avg heart rate", "heart.fill") { "\(Int(hr * $0)) bpm" }
@@ -512,10 +553,24 @@ struct FinishCelebrationView: View {
 
     // MARK: Sequence
 
+    /// Saves the workout into its template and keeps an Undo on the card.
+    private func updateTemplate(_ mode: TemplateUpdateMode) {
+        guard let session = store.session(id: summary.sessionID) else { return }
+        templateUndo = store.updateTemplate(from: session, mode: mode)
+        templateUpdated = true
+        Haptics.success()
+    }
+
     private func play() async {
         if let session = store.session(id: summary.sessionID) {
             recap = WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health,
                                       records: summary.records, energyKcal: summary.energyKcal, averageHeartRate: summary.averageHeartRate)
+            if summary.canUpdateTemplate {
+                // The exact lines the update would write (heavier loads; all changes when the sets or
+                // exercises changed) – the card shows them before anything is saved.
+                loadLines = summary.loadChanges.isEmpty ? [] : store.templateChanges(from: session, mode: .loads)
+                allLines = store.sessionDiffersFromTemplate(session) ? store.templateChanges(from: session, mode: .everything) : []
+            }
         }
         let target = recap?.completion ?? 1
         guard animates else {

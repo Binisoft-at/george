@@ -27,8 +27,33 @@ final class GeorgeStore {
     /// Apple Health's latest body weight (kept on this device, set by the views that read Health).
     /// Energy estimates use it before the body weight from Settings.
     @ObservationIgnored var healthBodyMassKg: Double?
+    /// Measured calories from Apple Health by session (device-only `HealthMetrics`), cached per revision.
+    @ObservationIgnored var measuredEnergyCache: (revision: Int, values: [UUID: Double])?
+    /// The last save that failed (nil again after one that works). RootView shows it once as a toast.
+    private(set) var lastSaveError: String?
+    /// An iCloud import has finished on this device at least once (Welcome waits for it on a new device).
+    private(set) var cloudImportSeen = UserDefaults.standard.bool(forKey: Prefs.cloudImportSeen)
+    /// When the current iCloud sync error was first seen (the banner waits 15 minutes before it shows).
+    @ObservationIgnored var syncErrorSince: (message: String, since: Date)?
 
     func bump() { revision &+= 1 }
+
+    /// An iCloud import finished (CloudImportRefresher).
+    func noteCloudImport() {
+        guard !cloudImportSeen else { return }
+        cloudImportSeen = true
+        UserDefaults.standard.set(true, forKey: Prefs.cloudImportSeen)
+    }
+
+    private func recordSave(_ error: Error?) {
+        if let error {
+            AppLog.error("Save failed: \(error)", category: "store")
+            lastSaveError = error.localizedDescription
+        } else if lastSaveError != nil {
+            AppLog.info("Saving works again", category: "store")
+            lastSaveError = nil
+        }
+    }
 
     func save() {
         save(bumping: true)
@@ -39,8 +64,9 @@ final class GeorgeStore {
     func save(bumping: Bool) {
         do {
             if context.hasChanges { try context.save() }
+            recordSave(nil)
         } catch {
-            print("George save failed: \(error)")
+            recordSave(error)
         }
         if bumping { bump() }
     }
@@ -52,8 +78,9 @@ final class GeorgeStore {
         changes()
         do {
             if context.hasChanges { try context.save() }
+            recordSave(nil)
         } catch {
-            print("George save failed: \(error)")
+            recordSave(error)
         }
         manager?.enableUndoRegistration()
         if bumping { bump() }
@@ -67,8 +94,9 @@ final class GeorgeStore {
         if let cachedSettings, cachedSettings.modelContext != nil { return cachedSettings }
         let all = (try? context.fetch(FetchDescriptor<SyncedSettings>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []
         if let first = all.first {
-            // Sync can create duplicates on first launch of a second device: keep the oldest.
-            for extra in all.dropFirst() { context.delete(extra) }
+            // Sync can bring a second copy (a device that set up before its first sync): the oldest is
+            // the one every device keeps; `resolveDuplicates()` merges the others into it (never here,
+            // in a getter – the newer copy may hold the choices that count).
             cachedSettings = first
             return first
         }
@@ -76,6 +104,18 @@ final class GeorgeStore {
         context.insert(fresh)
         cachedSettings = fresh
         return fresh
+    }
+
+    /// Forgets the cached settings record (after duplicates were merged).
+    func forgetCachedSettings() { cachedSettings = nil }
+
+    /// Changes synced settings: stamps the change (so the latest choice wins when two devices made
+    /// a copy each before they synced) and saves.
+    func updateSettings(_ change: (SyncedSettings) -> Void) {
+        let current = settings
+        change(current)
+        current.updatedAt = Date()
+        save()
     }
 
     var calendar: Calendar { Calendar.training(firstWeekday: settings.weekStartsOn) }
@@ -131,11 +171,28 @@ final class GeorgeStore {
 
     var activeProgram: Program? {
         if let program = program(id: settings.activeProgramID), !program.isArchived { return program }
-        return fetchPrograms(includeArchived: false).first
+        // Without a choice: your own first program before the "Stretch & Yoga" routines folder.
+        let programs = fetchPrograms(includeArchived: false)
+        return programs.first { !isRoutineProgram($0) } ?? programs.first
+    }
+
+    /// The program George keeps ready-made routines in ("Stretch & Yoga", see `templateForRoutine`).
+    static let routineProgramName = "Stretch & Yoga"
+
+    func isRoutineProgram(_ program: Program) -> Bool {
+        program.name == Self.routineProgramName && program.kind == .stretch
     }
 
     var activeSession: WorkoutSession? {
-        fetchSessions().filter { $0.status == .active }.sorted { $0.date > $1.date }.first
+        activeSessions.first
+    }
+
+    /// Workouts marked in progress (here, on another device, or left so by accident), newest first.
+    /// Fetched by status – not every workout with its blob.
+    var activeSessions: [WorkoutSession] {
+        let active = SessionStatus.active.rawValue
+        let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.statusRaw == active })
+        return ((try? context.fetch(descriptor)) ?? []).sorted { $0.date > $1.date }
     }
 
     /// Performed sessions as plain records for statistics.
@@ -145,12 +202,20 @@ final class GeorgeStore {
 
     // MARK: Programs
 
+    /// `activate`: make it the active program (Today's Up next and Plan This Week follow it). nil
+    /// decides by itself: only your first own program becomes active – a new program never takes
+    /// over Today silently.
     @discardableResult
-    func createProgram(name: String, kind: WorkoutKind = .gym, colorHex: String? = nil, symbol: String? = nil) -> Program {
+    func createProgram(name: String, kind: WorkoutKind = .gym, colorHex: String? = nil, symbol: String? = nil, activate: Bool? = nil) -> Program {
+        let existing = fetchPrograms(includeArchived: false)
         let program = Program(name: name.isEmpty ? "New Program" : name, kind: kind, colorHex: colorHex, symbol: symbol)
         program.sortIndex = (fetchPrograms().map(\.sortIndex).max() ?? 0) + 1
         context.insert(program)
-        if settings.activeProgramID == nil { settings.activeProgramID = program.id }
+        let isFirstOwn = !isRoutineProgram(program) && !existing.contains { !isRoutineProgram($0) }
+        if activate ?? isFirstOwn {
+            settings.activeProgramID = program.id
+            settings.updatedAt = Date()
+        }
         save()
         return program
     }
@@ -162,13 +227,16 @@ final class GeorgeStore {
     }
 
     func delete(_ program: Program) {
-        if settings.activeProgramID == program.id { settings.activeProgramID = nil }
+        if settings.activeProgramID == program.id {
+            settings.activeProgramID = nil
+            settings.updatedAt = Date()
+        }
         context.delete(program)
         save()
     }
 
     func duplicate(_ program: Program) -> Program {
-        let copy = createProgram(name: program.name + " copy", kind: program.kind, colorHex: program.colorHex, symbol: program.symbol)
+        let copy = createProgram(name: program.name + " copy", kind: program.kind, colorHex: program.colorHex, symbol: program.symbol, activate: false)
         copy.notes = program.notes
         copy.subtitle = program.subtitle
         for template in program.orderedTemplates {
@@ -304,9 +372,9 @@ final class GeorgeStore {
     /// Log a workout after the fact (marks every set done). `bodyMassKg`: Apple Health's latest
     /// value when there is one – otherwise the one from Settings is used.
     @discardableResult
-    func logPastSession(from template: WorkoutTemplate, date: Date, minutes: Int, bodyMassKg: Double? = nil) -> WorkoutSession {
+    func logPastSession(from template: WorkoutTemplate, date: Date, minutes: Int, bodyMassKg: Double? = nil, exactTime: Bool = false) -> WorkoutSession {
         let session = makeSession(from: template, date: date, start: false)
-        markPerformed(session, date: date, minutes: minutes, bodyMassKg: bodyMassKg)
+        markPerformed(session, date: date, minutes: minutes, bodyMassKg: bodyMassKg, exactTime: exactTime)
         return session
     }
 
@@ -353,11 +421,14 @@ final class GeorgeStore {
         toasts.show("Deleted \u{201C}\(title)\u{201D}", symbol: "trash.fill", undo: undoLastChange())
     }
 
-    func trash(_ sessions: [WorkoutSession], toasts: ToastCenter) {
+    /// `keptRunning`: the selection held the workout running here, which was left out (it's discarded
+    /// in live mode) – the toast says so.
+    func trash(_ sessions: [WorkoutSession], toasts: ToastCenter, keptRunning: Bool = false) {
         guard !sessions.isEmpty else { return }
         for session in sessions { context.delete(session) }
         save()
-        toasts.show(sessions.count == 1 ? "Deleted 1 workout" : "Deleted \(sessions.count) workouts", symbol: "trash.fill", undo: undoLastChange())
+        let message = sessions.count == 1 ? "Deleted 1 workout" : "Deleted \(sessions.count) workouts"
+        toasts.show(keptRunning ? message + " · the running one stays" : message, symbol: "trash.fill", undo: undoLastChange())
     }
 
     func trash(_ template: WorkoutTemplate, toasts: ToastCenter) {
@@ -388,8 +459,23 @@ final class GeorgeStore {
     func setStatus(_ status: SessionStatus, for sessions: [WorkoutSession]) {
         for session in sessions {
             if status == .completed && !session.status.isPerformed && session.status != .active {
-                markPerformed(session, date: min(Date(), session.plannedDate ?? session.date), minutes: defaultMinutes(for: session), saving: false)
+                // A week-planned day (midnight) gets a real time; markPerformed makes it end by now.
+                markPerformed(session, date: session.plannedDate ?? session.date, minutes: defaultMinutes(for: session), saving: false)
                 continue
+            }
+            if session.status == .active && status != .active {
+                // Leaving "in progress" (ended elsewhere, or marked here): the clock stops where it is,
+                // instead of running on from `resumedAt` forever. Back to "planned" starts over.
+                let now = Date()
+                if status == .planned {
+                    session.accumulatedSeconds = 0
+                    session.startedAt = nil
+                    session.endedAt = nil
+                } else {
+                    session.accumulatedSeconds = session.elapsedSeconds(at: now)
+                    if status.isPerformed && session.endedAt == nil { session.endedAt = now }
+                }
+                session.resumedAt = nil
             }
             session.status = status
             if status == .completed && session.endedAt == nil {
@@ -403,9 +489,10 @@ final class GeorgeStore {
     /// A ready-made routine's template in the program "Stretch & Yoga" (created if needed, reused
     /// when it was added before). `created` tells whether it is new.
     func templateForRoutine(_ routine: Routine, catalog: ExerciseCatalog) -> (template: WorkoutTemplate, created: Bool) {
-        let programName = "Stretch & Yoga"
+        let programName = Self.routineProgramName
+        // Never made the active program: Up next and Plan This Week stay with your own program.
         let program = fetchPrograms(includeArchived: false).first { $0.name == programName }
-            ?? createProgram(name: programName, kind: .stretch, symbol: "figure.yoga")
+            ?? createProgram(name: programName, kind: .stretch, symbol: "figure.yoga", activate: false)
         if let existing = program.orderedTemplates.first(where: { $0.name == routine.name }) {
             return (existing, false)
         }
@@ -425,16 +512,36 @@ final class GeorgeStore {
         return template
     }
 
-    /// Push a session's edits back into the template it came from.
-    func updateTemplate(from session: WorkoutSession) {
-        guard let template = template(id: session.templateID) else { return }
-        template.content = session.content.asTemplate()
+    /// Push a session back into the template it came from: `.loads` raises only the weights (holds,
+    /// distances) of the matching working sets, `.everything` saves exercises, sets and numbers –
+    /// never the drop sets and warm-ups added just for that workout. Returns an undo that restores
+    /// the template as it was (nil when there is no template).
+    @discardableResult
+    func updateTemplate(from session: WorkoutSession, mode: TemplateUpdateMode = .everything) -> (() -> Void)? {
+        guard let template = template(id: session.templateID) else { return nil }
+        let before = template.content
+        template.content = session.content.asTemplate(mode: mode, base: before)
         save()
+        AppLog.info("Template updated (\(mode.rawValue))", category: "store")
+        return { [weak self, weak template] in
+            guard let self, let template else { return }
+            template.content = before
+            self.save()
+        }
     }
 
+    /// What `updateTemplate(from:mode:)` would change, as short lines ("Bench 4→3 sets",
+    /// "Row 50→52.5 kg"). Empty when the template already matches.
+    func templateChanges(from session: WorkoutSession, mode: TemplateUpdateMode) -> [String] {
+        guard let template = template(id: session.templateID) else { return [] }
+        return session.content.templateChanges(into: template.content, mode: mode, unit: unit)
+    }
+
+    /// Whether the session changed the template's exercises, groups or set counts – not counting
+    /// what was only added for that workout (a drop set after "Can't finish", live warm-ups).
     func sessionDiffersFromTemplate(_ session: WorkoutSession) -> Bool {
         guard let template = template(id: session.templateID) else { return false }
-        return session.content.structureDiffers(from: template.content)
+        return session.content.changesTemplateStructure(template.content)
     }
 
     // MARK: Suggestions
@@ -443,7 +550,8 @@ final class GeorgeStore {
     /// otherwise the next one in the program's rotation (the one after the most recently used).
     func suggestedTemplate(in program: Program?, on date: Date = Date()) -> WorkoutTemplate? {
         guard let program else { return nil }
-        let templates = program.orderedTemplates
+        // A template with nothing in it yet (just created) is no workout to suggest.
+        let templates = program.orderedTemplates.filter(\.isPlannable)
         guard !templates.isEmpty else { return nil }
         let weekday = calendar.component(.weekday, from: date)
         if let scheduled = templates.first(where: { $0.scheduleDays.contains(weekday) }) {
@@ -497,7 +605,7 @@ final class GeorgeStore {
         let startOfToday = calendar.startOfDay(for: Date())
         let endOfToday = calendar.addingDays(1, to: startOfToday)
         return fetchPlannedSessions()
-            .filter { plannedDay(of: $0) >= startOfToday && plannedDay(of: $0) < endOfToday }
+            .filter { plannedDay(of: $0) >= startOfToday && plannedDay(of: $0) < endOfToday && !isBlankPlan($0) }
             .sorted { $0.createdAt < $1.createdAt }
     }
 
@@ -506,8 +614,9 @@ final class GeorgeStore {
     func overdueSessions(limit: Int = 5) -> [WorkoutSession] {
         let startOfToday = calendar.startOfDay(for: Date())
         let earliest = calendar.addingDays(-7, to: startOfToday)
+        // An empty workout nobody filled in isn't "missed".
         return fetchPlannedSessions()
-            .filter { plannedDay(of: $0) >= earliest && plannedDay(of: $0) < startOfToday }
+            .filter { plannedDay(of: $0) >= earliest && plannedDay(of: $0) < startOfToday && !isBlankPlan($0) }
             .sorted { plannedDay(of: $0) > plannedDay(of: $1) }
             .prefix(limit)
             .map { $0 }
@@ -542,40 +651,40 @@ final class GeorgeStore {
 
     // MARK: Streak
 
-    func streakSummary(healthEntries: [ActivityEntry] = []) -> StreakSummary {
+    /// The days that count as training: performed George workouts that qualify and – with "Count
+    /// Apple Health workouts" on – Health workouts of at least the minimum. The streak, the Progress
+    /// days chart, the Today hero and Plan Week all use this one list (see `TrainingDays`).
+    func trainingEntries(healthEntries: [ActivityEntry] = []) -> [ActivityEntry] {
         let s = settings
-        let minimum = Double(s.minimumMinutes)
-        let rescueMinimum = Double(max(1, s.rescueMinutes))
-        var entries: [ActivityEntry] = []
-        for session in fetchSessions() where session.status.isPerformed {
-            let minutes = session.durationSeconds / 60
-            // Completed or not: the minimum minutes count (strength work logged without a time counts
-            // with 3 sets) – so a 2-minute routine is no training day, as Settings → Streak says.
-            let qualifies = StreakRules.qualifies(
-                minutes: minutes, doneSets: session.doneSetCount, isRescue: session.isRescue, kind: session.kind,
-                minimumMinutes: minimum, rescueMinutes: rescueMinimum
-            )
-            if qualifies {
-                entries.append(ActivityEntry(date: session.date, minutes: minutes, isRescue: session.isRescue, source: .george))
-            }
+        // Completed or not: the minimum minutes count (strength work logged without a time counts
+        // with 3 sets) – so a 2-minute routine is no training day, as Settings → Streak says.
+        let workouts = fetchSessions().filter { $0.status.isPerformed }.map { session in
+            TrainingDays.Workout(date: session.date, minutes: session.durationSeconds / 60, doneSets: session.doneSetCount,
+                                 isRescue: session.isRescue, kind: session.kind)
         }
-        if s.countHealthWorkouts {
-            entries.append(contentsOf: healthEntries.filter { $0.minutes >= minimum })
-        }
+        return TrainingDays.entries(workouts: workouts, health: healthEntries, countHealth: s.countHealthWorkouts,
+                                    minimumMinutes: Double(s.minimumMinutes), rescueMinutes: Double(max(1, s.rescueMinutes)))
+    }
+
+    /// The streak as of `now` (default: now). A past workout's recap passes its end, so it shows the
+    /// streak of that day, not today's.
+    func streakSummary(healthEntries: [ActivityEntry] = [], now: Date = Date()) -> StreakSummary {
         let excused = (try? context.fetch(FetchDescriptor<ExcusedWeek>())) ?? []
         return StreakEngine(calendar: calendar).evaluate(
-            entries: entries,
+            entries: trainingEntries(healthEntries: healthEntries),
             excusedWeeks: Set(excused.map(\.weekStart)),
-            config: s.streakConfig,
-            now: Date()
+            config: settings.streakConfig,
+            now: now
         )
     }
 
     func toggleExcused(weekStart: Date, reason: String = "Break") {
         let start = calendar.weekStart(for: weekStart)
         let all = (try? context.fetch(FetchDescriptor<ExcusedWeek>())) ?? []
-        if let existing = all.first(where: { calendar.weekStart(for: $0.weekStart) == start }) {
-            context.delete(existing)
+        // Two devices may each have marked the week before they synced: one tap clears every copy.
+        let matches = all.filter { calendar.weekStart(for: $0.weekStart) == start }
+        if !matches.isEmpty {
+            for match in matches { context.delete(match) }
         } else {
             context.insert(ExcusedWeek(weekStart: start, reason: reason))
         }
@@ -609,9 +718,16 @@ final class GeorgeStore {
         importProgramsWithUndo(imported, into: existing, replaceTemplates: replaceTemplates).programs
     }
 
+    /// What an import does to a program's notes (ImportView's preview).
+    func notesChange(for imported: ImportedProgram, into existing: Program?, replace: Bool) -> ProgramCSV.NotesChange {
+        guard let target = importTarget(for: imported, into: existing) else { return .unchanged }
+        return ProgramCSV.notesChange(existing: target.notes, imported: imported.notes, replace: replace)
+    }
+
     /// Imports and remembers what changed: new programs and templates are removed again by `undo`,
     /// replaced templates get their old content, notes and weekdays back. Without `replaceTemplates`,
-    /// a name that's taken gets a number ("UPPER (2)") – nothing of yours is overwritten.
+    /// a name that's taken gets a number ("UPPER (2)") and imported program notes go below yours –
+    /// nothing of yours is overwritten. ImportView writes a backup first.
     func importProgramsWithUndo(_ imported: [ImportedProgram], into existing: Program? = nil, replaceTemplates: Bool) -> ImportOutcome {
         struct TemplateBackup {
             let template: WorkoutTemplate
@@ -633,9 +749,12 @@ final class GeorgeStore {
                 program = createProgram(name: importedProgram.name, kind: kind, colorHex: importedProgram.colorHex)
                 createdPrograms.append(program)
             }
-            if !importedProgram.notes.isEmpty {
+            // Program notes: replaced only with "Replace templates"; otherwise added below yours.
+            let mergedNotes = ProgramCSV.mergedNotes(existing: program.notes, imported: importedProgram.notes, replace: replaceTemplates,
+                                                     dateText: Date().formatted(date: .abbreviated, time: .omitted))
+            if mergedNotes != program.notes {
                 programNotes.append((program, program.notes))
-                program.notes = importedProgram.notes
+                program.notes = mergedNotes
             }
             var taken = program.orderedTemplates.map(\.name)
             for workout in importedProgram.workouts {
@@ -647,7 +766,9 @@ final class GeorgeStore {
                     old.notes = workout.notes
                     old.scheduleDays = workout.scheduleDays
                     old.tags = workout.tags
-                    old.content = workout.content
+                    // An explicit replace: even a workout this device can't read (or a newer George
+                    // wrote) gets the imported one. The backup written before the import keeps the old.
+                    old.storeContent(workout.content, force: true)
                     continue
                 }
                 let name = ImportNaming.uniqueName(workout.name, taken: taken)
@@ -675,7 +796,8 @@ final class GeorgeStore {
                 backup.template.notes = backup.notes
                 backup.template.scheduleRaw = backup.scheduleRaw
                 backup.template.tagsRaw = backup.tagsRaw
-                backup.template.content = WorkoutContent.decode(backup.contentData)
+                // The bytes as they were – not re-encoded, so nothing a newer George added is lost.
+                backup.template.restoreContentData(backup.contentData)
             }
             for (program, notes) in programNotes where !createdPrograms.contains(where: { $0.id == program.id }) {
                 program.notes = notes
@@ -748,20 +870,27 @@ final class GeorgeStore {
         let workouts = program.orderedTemplates.enumerated().map { index, template in
             ProgramCSV.ExportWorkout(
                 name: template.name, subtitle: template.subtitle, kind: template.kind, order: index + 1,
-                scheduleDays: template.scheduleDays, notes: template.notes, content: template.content
+                scheduleDays: template.scheduleDays, notes: template.notes, tags: template.tags, content: template.content
             )
         }
-        return ProgramCSV.export(programName: program.name, workouts: workouts, unit: unit)
+        // Tags, pictures, the program's notes and color go along, so importing it back with
+        // "Replace templates" doesn't wipe them.
+        return ProgramCSV.export(programName: program.name, workouts: workouts, unit: unit,
+                                 programNotes: program.notes, programColor: program.colorHex)
     }
 
+    /// A readable log for Numbers or Excel (not a backup: it can't be imported back). Days are local
+    /// days; activities without sets (tennis, runs) get a row too. Energy is George's estimate –
+    /// measured calories stay on the device.
     func exportLogCSV(sessions: [WorkoutSession]) -> String {
         let log = sessions.filter { $0.status.isPerformed }.map { session in
             ProgramCSV.LogSession(
                 date: session.date, title: session.title, program: session.program?.name ?? "",
                 kind: session.kind, durationSeconds: session.durationSeconds,
-                status: session.status.rawValue, content: session.content
+                status: session.status.rawValue, content: session.content,
+                startedAt: session.startedAt, effort: session.effort, energyKcal: session.energyKcal, notes: session.notes
             )
         }
-        return ProgramCSV.exportLog(log, unit: unit)
+        return ProgramCSV.exportLog(log, unit: unit, timeZone: calendar.timeZone)
     }
 }

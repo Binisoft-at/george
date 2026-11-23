@@ -105,9 +105,7 @@ struct ExercisePickerSheet: View {
                 }
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 420, minHeight: 520)
-        #endif
+        .macSheet(width: 520, height: 640)
     }
 
     // MARK: Pieces

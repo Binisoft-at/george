@@ -54,14 +54,12 @@ struct NextWorkoutView: View {
 
     private var snapshot: WidgetSnapshot? { entry.snapshot }
 
-    /// "Today" for a session planned for the snapshot's day, "In progress" while one runs.
+    /// "Today" or "Missed · Tue" for a planned session as of this entry's day, "In progress" while
+    /// one runs, else "Up next".
     private var caption: String {
         if snapshot?.live != nil { return "In progress" }
-        guard let next = snapshot?.next else { return "Next workout" }
-        if next.isPlanned, let updated = snapshot?.updatedAt, Calendar.current.isDate(updated, inSameDayAs: entry.date) {
-            return "Today"
-        }
-        return "Up next"
+        guard let snapshot, let next = snapshot.next else { return "Next workout" }
+        return next.caption(on: entry.date, updatedAt: snapshot.updatedAt)
     }
 
     private var title: String {
@@ -113,7 +111,7 @@ struct NextWorkoutView: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(streak.weeks == 1 ? "1 week" : "\(streak.weeks) weeks")
                                 .font(.headline)
-                            Text("\(streak.doneDays) of \(streak.goal) this week")
+                            Text("\(streak.doneDays(on: entry.date)) of \(streak.goal) this week")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -181,8 +179,7 @@ struct StreakView: View {
 
     /// Days done this week (0 once the snapshot's week is over).
     private var doneDays: Int {
-        guard let streak else { return 0 }
-        return streak.todayIndex(on: entry.date) == nil ? 0 : streak.doneDays
+        streak?.doneDays(on: entry.date) ?? 0
     }
 
     var body: some View {

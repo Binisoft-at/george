@@ -7,6 +7,7 @@ import GeorgeCore
 struct SessionRow: View {
     let session: WorkoutSession
     var showProgram = false
+    @Environment(GeorgeStore.self) private var store
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -26,11 +27,18 @@ struct SessionRow: View {
                 HStack(spacing: 6) {
                     Text(DateLabel.short(session.date))
                         .foregroundStyle(.primary.opacity(0.8))
-                    Text(detailLine)
+                    Text(showsSubtitleLine ? session.summaryLine : detailLine)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 .font(.subheadline)
+                // A planned workout's focus ("CHEST + BACK + SHOULDERS") on a line of its own – not cut short.
+                if showsSubtitleLine {
+                    Text(session.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
                 if showProgram, let program = session.program {
                     Label(program.name, systemImage: "folder")
                         .font(.caption)
@@ -52,12 +60,17 @@ struct SessionRow: View {
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
+        // The separator runs from the row's edge (with the icon), not from the title.
+        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
     }
+
+    private var showsSubtitleLine: Bool { session.status == .planned && !session.subtitle.isEmpty }
 
     private var detailLine: String {
         if !session.subtitle.isEmpty && session.status == .planned { return session.subtitle }
         if session.status == .completed { return completedLine }
-        if session.status.isPerformed || session.status == .active { return session.summaryLine }
+        if session.status.isPerformed { return session.summaryLine(energy: store.displayEnergy(for: session)) }
+        if session.status == .active { return session.summaryLine }
         if !session.subtitle.isEmpty { return session.subtitle }
         if !session.notes.isEmpty { return session.notes.components(separatedBy: .newlines).first ?? "" }
         return session.summaryLine
@@ -67,7 +80,8 @@ struct SessionRow: View {
     private var completedLine: String {
         var parts: [String] = []
         if session.durationSeconds > 0 { parts.append(Format.minutes(session.durationSeconds)) }
-        if session.energyKcal > 0 { parts.append("\(Int(session.energyKcal)) kcal") }
+        // Measured on this device when the Watch recorded it, else George's estimate ("≈").
+        if let energy = store.displayEnergy(for: session) { parts.append(energy.text) }
         if parts.isEmpty && session.setCount > 0 { parts.append("\(session.setCount) sets") }
         return parts.isEmpty ? session.kind.displayName : parts.joined(separator: " · ")
     }
@@ -106,7 +120,10 @@ struct SessionRow: View {
 struct TemplateRow: View {
     let template: WorkoutTemplate
     var showProgram = false
+    /// The row selected in the Mac list: its ▶︎ shows (otherwise only on hover).
+    var isSelected = false
     var onStart: (() -> Void)? = nil
+    @State private var isHovering = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -141,11 +158,32 @@ struct TemplateRow: View {
                     }
                 }
                 .font(.caption)
+                #if os(macOS)
+                // Tertiary is too faint on the Mac's list background.
+                .foregroundStyle(.secondary)
+                #else
                 .foregroundStyle(.tertiary)
+                #endif
                 .lineLimit(1)
             }
             Spacer(minLength: 4)
             if let onStart {
+                #if os(macOS)
+                // Mac: a small ▶︎ on the row under the pointer or the selected one – not a loud
+                // button on every row.
+                Button(action: onStart) {
+                    Image(systemName: "play.fill")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .opacity(isHovering || isSelected ? 1 : 0)
+                .allowsHitTesting(isHovering || isSelected)
+                .accessibilityLabel("Start \(template.name)")
+                .help("Start \(template.name)")
+                #else
                 Button(action: onStart) {
                     Image(systemName: "play.fill")
                         .font(.body.weight(.semibold))
@@ -155,10 +193,16 @@ struct TemplateRow: View {
                 .buttonBorderShape(.circle)
                 .tint(Color(hex: template.displayColorHex))
                 .accessibilityLabel("Start \(template.name)")
+                #endif
             }
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
+        #if os(macOS)
+        .onHover { isHovering = $0 }
+        #endif
+        // The separator runs from the row's edge (with the icon), not from the title.
+        .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
     }
 }
 
@@ -198,20 +242,30 @@ struct SessionMenuItems: View {
             Label("Plan Again…", systemImage: "calendar.badge.plus")
         }
         Divider()
-        Menu {
-            ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
-                Button {
-                    if status == .completed && !session.status.isPerformed, let onLogPast {
-                        onLogPast(session)
-                    } else {
-                        store.setStatus(status, for: [session])
-                    }
-                } label: {
-                    Label(status.displayName, systemImage: status.symbol)
-                }
+        if isRunningHere {
+            // The running workout ends in live mode (effort, Apple Health), not by a status change.
+            Button {
+                live.isPresented = true
+                live.finishRequest = true
+            } label: {
+                Label("Finish Workout…", systemImage: "flag.checkered")
             }
-        } label: {
-            Label("Mark As", systemImage: "checkmark.circle")
+        } else {
+            Menu {
+                ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
+                    Button {
+                        if status == .completed && !session.status.isPerformed, let onLogPast {
+                            onLogPast(session)
+                        } else {
+                            store.setStatus(status, for: [session])
+                        }
+                    } label: {
+                        Label(status.displayName, systemImage: status.symbol)
+                    }
+                }
+            } label: {
+                Label("Mark As", systemImage: "checkmark.circle")
+            }
         }
         Menu {
             ForEach(Priority.allCases) { priority in
@@ -256,13 +310,26 @@ struct SessionMenuItems: View {
             Label("Save as Template", systemImage: "square.on.square")
         }
         Divider()
-        Button(role: .destructive) {
-            router.close(.session(session.id))
-            if live.session?.id == session.id { live.discard() } else { store.trash(session, toasts: toasts) }
-        } label: {
-            Label("Delete", systemImage: "trash")
+        if isRunningHere {
+            // Live mode asks first (and keeps a continued workout's saved part).
+            Button(role: .destructive) {
+                live.isPresented = true
+                live.discardRequest = true
+            } label: {
+                Label("Discard Workout…", systemImage: "trash")
+            }
+        } else {
+            Button(role: .destructive) {
+                router.close(.session(session.id))
+                store.trash(session, toasts: toasts)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
+
+    /// The workout live mode is running on this device right now.
+    private var isRunningHere: Bool { live.session?.id == session.id }
 }
 
 struct TemplateMenuItems: View {
@@ -352,29 +419,43 @@ struct LogPastWorkoutSheet: View {
     var onDone: (() -> Void)? = nil
     @Environment(GeorgeStore.self) private var store
     @Environment(HealthKitManager.self) private var health
+    @Environment(ExerciseLibrary.self) private var library
     @Environment(Router.self) private var router
     @Environment(\.dismiss) private var dismiss
+    /// When it started; the workout always ends by now.
     @State private var date: Date
     @State private var minutes: Int
+    @State private var saveToHealth = false
+    /// The usual length and time of day come from the store, once, when the sheet opens.
+    @State private var didLoad = false
 
+    /// "I did UPPER but forgot to track it": started a workout's length ago, so it ends now.
     init(template: WorkoutTemplate, onDone: (() -> Void)? = nil) {
         self.template = template
         self.session = nil
         self.onDone = onDone
         let estimated = template.estimatedMinutes
-        _date = State(initialValue: Date())
-        _minutes = State(initialValue: estimated > 0 ? max(5, Int((Double(estimated) / 5).rounded()) * 5) : 40)
+        let minutes = estimated > 0 ? max(5, Int((Double(estimated) / 5).rounded()) * 5) : 40
+        _minutes = State(initialValue: minutes)
+        _date = State(initialValue: Date().addingTimeInterval(-Double(minutes * 60)))
     }
 
-    /// Prefilled with the planned day and the session's planned length.
+    /// Prefilled with the planned day (at the usual time when it was planned for a whole day) and the
+    /// session's usual length.
     init(session: WorkoutSession, onDone: (() -> Void)? = nil) {
         self.template = nil
         self.session = session
         self.onDone = onDone
-        let planned = session.plannedDate ?? session.date
-        _date = State(initialValue: min(planned, Date()))
-        _minutes = State(initialValue: max(5, min(240, GeorgeStore.defaultMinutes(for: session))))
+        let minutes = max(5, min(240, GeorgeStore.defaultMinutes(for: session)))
+        _minutes = State(initialValue: minutes)
+        _date = State(initialValue: PastLog.clamped(session.plannedDate ?? session.date, minutes: minutes, now: Date()))
     }
+
+    /// The latest start that still ends by now.
+    private var latestStart: Date { Date().addingTimeInterval(-Double(minutes * 60)) }
+
+    /// Apple Health gets it unless it's there already (a workout continued from a saved one).
+    private var canSaveToHealth: Bool { health.isAvailable && session?.healthWorkoutID == nil }
 
     private var name: String {
         template?.name ?? session.map { $0.templateName.isEmpty ? $0.title : $0.templateName } ?? "Workout"
@@ -383,13 +464,27 @@ struct LogPastWorkoutSheet: View {
     var body: some View {
         Form {
             Section {
-                DatePicker("When", selection: $date, in: ...Date())
+                DatePicker("Started", selection: $date, in: ...latestStart, displayedComponents: [.date, .hourAndMinute])
                 Stepper("Duration: \(Format.minutes(Double(minutes * 60)))", value: $minutes, in: 5...240, step: 5)
             } footer: {
                 Text("All sets of “\(name)” are marked as done with their planned numbers. You can edit them afterwards.")
             }
+            if canSaveToHealth {
+                Section {
+                    Toggle(isOn: $saveToHealth) {
+                        Label("Save to Apple Health", systemImage: "heart.text.square.fill")
+                    }
+                } footer: {
+                    Text("Leave it off when your watch already recorded this workout – otherwise it counts twice in Fitness.")
+                }
+            }
         }
         .formStyle(.grouped)
+        .onAppear(perform: loadDefaults)
+        // A longer workout must still end by now: the start moves back.
+        .onChange(of: minutes) { _, newMinutes in
+            date = PastLog.clamped(date, minutes: newMinutes, now: Date())
+        }
         .navigationTitle(session == nil ? "Log Past Workout" : "Mark as Done")
         .inlineTitle()
         .toolbar {
@@ -403,16 +498,33 @@ struct LogPastWorkoutSheet: View {
         }
     }
 
+    /// The usual length (median of the last times) and, for a day planned without a time, the usual
+    /// time of day – filled in once, before anything is changed.
+    private func loadDefaults() {
+        guard !didLoad else { return }
+        didLoad = true
+        saveToHealth = canSaveToHealth && store.settings.saveToHealth
+        if let template {
+            minutes = store.defaultMinutes(for: template)
+            date = Date().addingTimeInterval(-Double(minutes * 60))
+        } else if let session {
+            minutes = max(5, min(240, store.defaultMinutes(for: session)))
+            date = store.pastLogStart(for: session.plannedDate ?? session.date, minutes: minutes)
+        }
+    }
+
     private func log() {
+        let start = PastLog.clamped(date, minutes: minutes, now: Date())
         let logged: WorkoutSession
         if let session {
-            store.markPerformed(session, date: date, minutes: minutes, bodyMassKg: health.latestBodyMassKg)
+            store.markPerformed(session, date: start, minutes: minutes, bodyMassKg: health.latestBodyMassKg, exactTime: true)
             logged = session
         } else if let template {
-            logged = store.logPastSession(from: template, date: date, minutes: minutes, bodyMassKg: health.latestBodyMassKg)
+            logged = store.logPastSession(from: template, date: start, minutes: minutes, bodyMassKg: health.latestBodyMassKg, exactTime: true)
         } else {
             return
         }
+        if saveToHealth && canSaveToHealth { saveToAppleHealth(logged) }
         Haptics.success()
         if let onDone {
             onDone()
@@ -420,6 +532,27 @@ struct LogPastWorkoutSheet: View {
         } else {
             if session == nil { router.open(.session(logged.id)) }
             dismiss()
+        }
+    }
+
+    /// Like a finished workout: rings, Fitness and apps like Bevel see it (the link is kept, so it
+    /// isn't saved twice).
+    private func saveToAppleHealth(_ logged: WorkoutSession) {
+        guard let start = logged.startedAt, let end = logged.endedAt else { return }
+        let content = logged.content
+        let done = content.allItems.filter { $0.completedSets > 0 }
+        let request = HealthKitManager.SaveRequest(
+            sessionID: logged.id, title: logged.title, kind: logged.kind, start: start, end: end,
+            activeSeconds: logged.accumulatedSeconds, energyKcal: logged.energyKcal, effort: logged.effort,
+            exercises: done.map(\.name),
+            muscles: Array(Set(done.flatMap { library.muscles(for: $0) })).sorted(),
+            completedSets: content.completedSets, volumeKg: content.volumeKg
+        )
+        Task {
+            if let workoutID = await health.saveWorkout(request) {
+                logged.healthWorkoutID = workoutID.uuidString
+                store.save()
+            }
         }
     }
 }

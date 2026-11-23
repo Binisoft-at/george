@@ -67,21 +67,60 @@ extension GeorgeStore {
 
     // MARK: Done, but not logged
 
-    /// A sensible length for a session that's logged afterwards: what it took, else its planned length.
+    /// A sensible length for a session that's logged afterwards: what it took, else how long its
+    /// template usually takes (median of the last times), else its planned length plus set-up time.
     func defaultMinutes(for session: WorkoutSession) -> Int {
-        Self.defaultMinutes(for: session)
+        if session.durationSeconds > 0 { return Self.defaultMinutes(for: session) }
+        let content = session.content
+        return PastLog.defaultMinutes(recentDurations: recentDurations(ofTemplate: session.templateID, excluding: session.id),
+                                      estimatedSeconds: content.estimatedSeconds(), exerciseCount: content.exerciseCount)
+    }
+
+    /// The same for a new workout from `template` (Log Past Workout).
+    func defaultMinutes(for template: WorkoutTemplate) -> Int {
+        let content = template.content
+        return PastLog.defaultMinutes(recentDurations: recentDurations(ofTemplate: template.id),
+                                      estimatedSeconds: content.estimatedSeconds(), exerciseCount: content.exerciseCount)
     }
 
     static func defaultMinutes(for session: WorkoutSession) -> Int {
         if session.durationSeconds > 0 { return max(5, Int((session.durationSeconds / 60).rounded())) }
-        let estimated = Double(session.content.estimatedSeconds()) / 60
-        guard estimated > 0 else { return 40 }
-        return max(5, Int((estimated / 5).rounded()) * 5)
+        let content = session.content
+        return PastLog.defaultMinutes(recentDurations: [], estimatedSeconds: content.estimatedSeconds(), exerciseCount: content.exerciseCount)
+    }
+
+    /// How long the template's last performed workouts took (seconds, the most recent first).
+    func recentDurations(ofTemplate templateID: UUID?, excluding sessionID: UUID? = nil) -> [Double] {
+        guard let templateID else { return [] }
+        return fetchSessions()
+            .filter { $0.templateID == templateID && $0.id != sessionID && $0.status.isPerformed && $0.durationSeconds > 0 }
+            .sorted { $0.date > $1.date }
+            .prefix(5)
+            .map(\.durationSeconds)
+    }
+
+    /// When the last performed workout started (its time of day becomes a bare day's start).
+    func lastPerformedStart() -> Date? {
+        let cal = calendar
+        return fetchSessions()
+            .filter { $0.status.isPerformed }
+            .compactMap(\.startedAt)
+            .filter { !PastLog.isBareDay($0, calendar: cal) }
+            .max()
+    }
+
+    /// The start for logging a workout of `minutes` afterwards on `planned`: a bare day (week plans
+    /// sit at midnight) gets the usual time of day, and the workout ends by now.
+    func pastLogStart(for planned: Date, minutes: Int) -> Date {
+        PastLog.start(for: planned, minutes: minutes, usualStart: lastPerformedStart(), now: Date(), calendar: calendar)
     }
 
     /// "I did it but didn't log it": every set ticked with its planned numbers, the time and length set,
     /// energy estimated. `bodyMassKg`: Apple Health's latest value when there is one.
-    func markPerformed(_ session: WorkoutSession, date: Date, minutes: Int, bodyMassKg: Double? = nil, saving: Bool = true) {
+    /// `exactTime`: `date` is a start someone picked (the Log sheet) – otherwise a bare day (week plans
+    /// sit at midnight) gets the usual time of day, and either way the workout ends by now.
+    func markPerformed(_ session: WorkoutSession, date requested: Date, minutes: Int, bodyMassKg: Double? = nil, exactTime: Bool = false, saving: Bool = true) {
+        let date = exactTime ? requested : pastLogStart(for: requested, minutes: minutes)
         let previousDate = session.date
         let seconds = Double(max(1, minutes) * 60)
         var content = session.content
@@ -180,7 +219,7 @@ extension GeorgeStore {
 
     func nextUp(after day: Date = Date()) -> NextUp? {
         let start = calendar.startOfDay(for: day)
-        let planned = fetchPlannedSessions()
+        let planned = fetchPlannedSessions().filter { !isBlankPlan($0) }
         let program = activeProgram
         let templates = program?.orderedTemplates ?? []
         for offset in 1...7 {
@@ -223,7 +262,8 @@ extension GeorgeStore {
         } else {
             let entries = fetchEnergy().map { EnergyEntry(date: $0.date, level: $0.level) }
             let insights = EnergyAnalysis.analyze(entries: entries, calendar: calendar)
-            let next: Date? = insights.cycle?.nextLow
+            // Only a clear rhythm turns into advice on Today and in Plan Week (a weak one stays in Insights).
+            let next: Date? = insights.cycle.flatMap { $0.strength >= 0.5 ? $0.nextLow : nil }
             low = next.map { calendar.startOfDay(for: $0) }
             lowEnergyCache = (revision: revision, day: today, value: low)
         }
@@ -233,29 +273,44 @@ extension GeorgeStore {
 
     // MARK: Plan the week
 
-    /// Workouts for the next `days` days: templates on their weekdays, otherwise the rotation spread
-    /// over the weekly goal. Days that already have a workout are left free; the expected low-energy
-    /// day is marked.
-    func proposeWeek(from day: Date = Date(), days: Int = 7) -> [PlannedDay] {
+    /// Workouts for the next `days` days: templates on their weekdays, the others spread over what's
+    /// left of the weekly goal (days trained and days already planned count). Days that already have a
+    /// workout are left free; the expected low-energy day is marked.
+    func proposeWeek(from day: Date = Date(), days: Int = 7, healthEntries: [ActivityEntry] = []) -> [PlannedDay] {
         guard let program = activeProgram else { return [] }
-        let templates = program.orderedTemplates
+        // Templates with nothing in them yet aren't planned.
+        let templates = program.orderedTemplates.filter(\.isPlannable)
         guard !templates.isEmpty else { return [] }
         let start = calendar.startOfDay(for: day)
         let end = calendar.addingDays(days, to: start)
+        let weekStart = calendar.weekStart(for: start)
+        // Busy days from the start of this week (and yesterday): the plan keeps rest days next to them.
+        let busyFrom = min(weekStart, calendar.addingDays(-1, to: start))
+        // Planned days count toward their week's goal – this week's and next week's in full.
+        let plannedUntil = calendar.addingWeeks(1, to: calendar.weekStart(for: calendar.addingDays(-1, to: end)))
         let sessions = fetchSessions().filter { $0.status != .skipped }
         var busy = Set<Date>()
+        var plannedDays = Set<Date>()
         for session in sessions {
             let date = calendar.startOfDay(for: session.status == .planned ? plannedDay(of: session) : session.date)
-            if date >= start && date < end { busy.insert(date) }
+            if date >= busyFrom && date < end { busy.insert(date) }
+            if session.status == .planned, !isBlankPlan(session), date >= start, date < plannedUntil { plannedDays.insert(date) }
         }
-        let weekStart = calendar.weekStart(for: start)
-        let trained = Set(sessions.filter { $0.status.isPerformed && calendar.weekStart(for: $0.date) == weekStart }
-            .map { calendar.startOfDay(for: $0.date) }).count
+        // Days that count for the streak (a too-short routine doesn't, a counted Health workout does).
+        let entries = trainingEntries(healthEntries: healthEntries)
+        var trained = TrainingDays.days(inWeekStarting: weekStart, entries: entries, calendar: calendar)
+        // A rescue workout counts double for the streak (once a week), so here too.
+        if trained > 0, settings.rescueCountsDouble,
+           entries.contains(where: { $0.isRescue && calendar.weekStart(for: $0.date) == weekStart }) {
+            trained += 1
+        }
+        // A planned workout on a day that already counts adds no day.
+        plannedDays.subtract(entries.map { calendar.startOfDay(for: $0.date) })
         let suggestion = suggestedTemplate(in: program, on: start)
         let rotationStart = suggestion.flatMap { s in templates.firstIndex { $0.id == s.id } } ?? 0
         return WeekPlanner.propose(
             templates: templates.map { PlannableTemplate(id: $0.id, name: $0.name, scheduleDays: $0.scheduleDays) },
-            rotationStart: rotationStart, weeklyGoal: settings.weeklyGoal, trainedThisWeek: trained,
+            rotationStart: rotationStart, weeklyGoal: settings.weeklyGoal, trainedThisWeek: trained, plannedDays: plannedDays,
             busyDays: busy, lowEnergyDay: expectedLowEnergyDay(within: days), from: start, days: days, calendar: calendar
         )
     }
@@ -287,7 +342,7 @@ extension GeorgeStore {
 
     func dayMarks(for week: CurrentWeek) -> [Date: DayMark] {
         let today = calendar.startOfDay(for: Date())
-        let planned = fetchPlannedSessions()
+        let planned = fetchPlannedSessions().filter { !isBlankPlan($0) }
         let templates = activeProgram?.orderedTemplates ?? []
         func initial(_ name: String) -> String {
             name.trimmingCharacters(in: .whitespacesAndNewlines).first.map { String($0).uppercased() } ?? "•"
@@ -312,7 +367,7 @@ extension GeorgeStore {
         let end = calendar.addingDays(days, to: start)
         let trainedToday = !performedToday().isEmpty
         var result: [Date: String] = [:]
-        for session in fetchPlannedSessions().sorted(by: { $0.createdAt < $1.createdAt }) {
+        for session in fetchPlannedSessions().sorted(by: { $0.createdAt < $1.createdAt }) where !isBlankPlan(session) {
             let day = calendar.startOfDay(for: plannedDay(of: session))
             guard day >= start, day < end, result[day] == nil else { continue }
             result[day] = displayName(of: session)
@@ -342,7 +397,8 @@ extension GeorgeStore {
             if !custom.imageURL.isEmpty { item.imageURL = custom.imageURL }
         }
         if let last = PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: self) {
-            let working = last.filter { $0.isDone && $0.kind != .warmup }.map { $0.promotedToTarget() }
+            // Not the drop set of a "Can't finish" or other sets added just for that workout.
+            let working = last.filter { $0.isDone && $0.kind != .warmup && $0.addedLive != true }.map { $0.promotedToTarget() }
             if !working.isEmpty { item.sets = working }
         }
         return item

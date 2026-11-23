@@ -72,6 +72,7 @@ struct ExerciseLibraryView: View {
                 } label: {
                     Image(systemName: muscle == nil ? "figure.arms.open" : "figure.arms.open.circle.fill")
                 }
+                .help("Filter by muscle")
             }
         }
         .overlay {
@@ -126,7 +127,8 @@ struct ExerciseDetailView: View {
         }
     }
 
-    private var userEntry: UserExercise? { userExercises.first { $0.key == exerciseID } }
+    /// Two devices' copies (before they're merged): the one with notes or links, then the newest.
+    private var userEntry: UserExercise? { UserExercise.preferred(userExercises, key: exerciseID) }
 
     private var resolved: LibraryExercise? {
         if let found = library.exercise(id: exerciseID) { return found }
@@ -268,11 +270,13 @@ struct ExerciseDetailView: View {
                 Button {
                     let entry = ensureUserEntry(for: exercise)
                     entry.isFavorite.toggle()
+                    entry.updatedAt = Date()
                     store.save()
                 } label: {
                     Image(systemName: userEntry?.isFavorite == true ? "star.fill" : "star")
                 }
                 .tint(.yellow)
+                .help(userEntry?.isFavorite == true ? "Remove from favorites" : "Add to favorites")
             }
         }
         .sheet(item: Binding(get: { playing.map { URLItem(url: $0) } }, set: { playing = $0?.url })) { item in
@@ -449,7 +453,7 @@ struct ExerciseProgressChart: View {
     /// "96 kg", "80 kg × 3", "4.2k kg", "45 reps", "1:30".
     private func text(_ sample: ProgressSample, metric: ProgressMetric) -> String {
         switch metric {
-        case .oneRepMax: return Format.weight((sample.value * 2).rounded() / 2, unit: unit)
+        case .oneRepMax: return Format.estimate(sample.value, unit: unit)
         case .topSet: return Format.weight(sample.value, unit: unit) + (sample.reps.map { " × \($0)" } ?? "")
         case .volume: return Format.volume(sample.value, unit: unit)
         case .reps: return "\(Int(sample.value)) reps"
@@ -523,6 +527,7 @@ struct ExerciseHistorySheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .macSheet(width: 520, height: 600)
         .task(id: "\(exerciseKey)#\(store.revision)") {
             history = StatsEngine.history(of: exerciseKey, in: SessionHistory.shared.records(store))
         }

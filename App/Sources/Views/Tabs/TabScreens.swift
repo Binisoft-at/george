@@ -259,6 +259,7 @@ struct ActiveProgramCard: View {
             let templates = program.orderedTemplates
             if templates.isEmpty {
                 Button {
+                    router.newTemplateProgramID = program.id
                     router.request(.newTemplate)
                 } label: {
                     Label("Add the first template", systemImage: "plus")
@@ -266,15 +267,19 @@ struct ActiveProgramCard: View {
                 }
                 .buttonStyle(.glass)
             } else {
+                // Two and a half cards fit: the half one says the row scrolls; nothing spills over
+                // the card's edge.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(templates) { template in
                             TemplateCard(template: template)
+                                .containerRelativeFrame(.horizontal, count: 5, span: 2, spacing: 10)
                         }
                     }
+                    .scrollTargetLayout()
                     .padding(.vertical, 2)
                 }
-                .scrollClipDisabled()
+                .scrollTargetBehavior(.viewAligned)
                 Button {
                     showPlanWeek = true
                 } label: {
@@ -329,7 +334,8 @@ struct TemplateCard: View {
                 .lineLimit(2, reservesSpace: true)
         }
         .padding(12)
-        .frame(width: 168, alignment: .leading)
+        // The width comes from the row (two and a half cards per row).
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .onTapGesture { router.open(.template(template.id)) }

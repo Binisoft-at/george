@@ -81,6 +81,8 @@ struct MuscularLoadCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
+                // Mac: other sports from Apple Health aren't here (load and freshness can be lower).
+                MacHealthNote(topic: .load)
             }
             .padding(16)
             .contentShape(Rectangle())
@@ -230,7 +232,7 @@ struct MuscularLoadDetailView: View {
             } header: {
                 Text("What the statuses mean")
             } footer: {
-                Text("Load counts hard sets: warm-ups ¼, drop sets ¾, sets to failure 1.1, scaled by RPE (or the workout's effort rating). Muscles a move trains secondarily count half. Stretching and yoga barely add load. With “Count other sports in muscle recovery” on in Settings, Apple Health workouts such as tennis or runs add load by duration and effort. Sleep, heart rate and cardio fitness aren't part of it.")
+                Text("Load weighs every set: a working set counts 1, warm-ups ¼, drop sets ¾, sets to failure 1.1, scaled by RPE (or the workout's effort rating). Muscles a move trains secondarily count half. Stretching and yoga barely add load. With “Count other sports in muscle recovery” on in Settings, Apple Health workouts such as tennis or runs add load by duration and effort. Sleep, heart rate and cardio fitness aren't part of it.")
             }
 
             OptimalForYouSection(profile: store.profile, focus: loadFocus(store.profile))

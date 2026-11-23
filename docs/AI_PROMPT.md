@@ -9,7 +9,7 @@ program,workout,workout_subtitle,workout_type,workout_order,schedule,section,gro
 - section: a heading such as WARM-UP, MAIN, CORE, FINISHER, COOL-DOWN.
 - Supersets/circuits: give consecutive rows the same group letter (A, B, …), set group_style (superset/circuit/emom/amrap/interval) and rounds on the first row of the group, rest_after_round in seconds. Leave group empty for straight sets.
 - sets: number. reps: a number, a range like 8-12, AMRAP, or a per-set list in quotes like "15,12,10".
-- weight in kg (or set unit to lb); for bands leave weight empty and describe resistance in load (e.g. light band, red band).
+- weight in kg (or set unit to lb), decimals with a dot (62.5); for bands leave weight empty and describe resistance in load (e.g. light band, red band).
 - Timed exercises (planks, stretches, yoga holds, cardio): put seconds in duration (e.g. 45s or 2 min) and leave reps empty.
 - rest: seconds of rest after each set. per_side: yes for unilateral exercises.
 - set_type: warmup for warm-up sets (put them on a separate row right before the working-set row of the same exercise), otherwise leave empty.

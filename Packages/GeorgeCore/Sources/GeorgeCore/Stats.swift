@@ -42,6 +42,7 @@ public struct ExercisePoint: Identifiable, Hashable, Sendable {
     public var bestReps: Int?
     public var bestSeconds: Int?
     public var estimatedOneRepMax: Double?
+    /// Working volume (no warm-ups, × 2 for each-side moves).
     public var volume: Double
     public var sets: [WorkoutSet]
 }
@@ -78,7 +79,7 @@ public struct PersonalRecord: Identifiable, Hashable, Sendable {
     public func detail(unit: WeightUnit = .kg) -> String {
         switch metric {
         case .weight: return Format.weight(value, unit: unit)
-        case .oneRepMax: return "e1RM " + Format.weight(value, unit: unit)
+        case .oneRepMax: return "e1RM " + Format.estimate(value, unit: unit)
         case .reps: return "\(Int(value)) reps"
         case .duration: return Format.clock(Int(value))
         case .volume: return Format.volume(value, unit: unit)
@@ -102,7 +103,8 @@ public struct ExerciseComparison: Hashable, Sendable, Identifiable {
     public func change(unit: WeightUnit = .kg) -> String {
         switch measure {
         case .oneRepMax:
-            return "\(Format.number((unit.fromKilograms(before) * 2).rounded() / 2)) → \(Format.weight((now * 2).rounded() / 2, unit: unit))"
+            // Both sides rounded the same way, in the display unit.
+            return "\(Format.number(Format.estimateValue(before, unit: unit))) → \(Format.estimate(now, unit: unit))"
         case .reps: return "\(Int(before)) → \(Int(now)) reps"
         case .seconds: return "\(Format.clock(Int(before))) → \(Format.clock(Int(now)))"
         }
@@ -160,7 +162,12 @@ public enum StatsEngine {
         return weight * (1 + Double(reps) / 30)
     }
 
-    public static func weekly(_ sessions: [SessionRecord], calendar: Calendar = .training(), weeks: Int = 12, now: Date = Date()) -> [WeekStat] {
+    /// Per-week numbers. Sets and volume are working sets only (`WorkoutContent.workingSets`,
+    /// `workingVolumeKg`). Pass `trainingDays` (the streak's qualifying entries, see `TrainingDays`)
+    /// so workout days match the streak – a too-short routine doesn't count, an Apple Health workout
+    /// does when it counts for the streak; without them every performed session's day counts.
+    public static func weekly(_ sessions: [SessionRecord], calendar: Calendar = .training(), weeks: Int = 12, now: Date = Date(),
+                              trainingDays: [ActivityEntry]? = nil) -> [WeekStat] {
         let current = calendar.weekStart(for: now)
         var stats: [Date: WeekStat] = [:]
         for offset in 0..<max(1, weeks) {
@@ -173,11 +180,16 @@ public enum StatsEngine {
             guard var stat = stats[start] else { continue }
             stat.sessions += 1
             stat.minutes += session.durationSeconds / 60
-            stat.volumeKg += session.content.volumeKg
-            stat.sets += session.content.completedSets
+            stat.volumeKg += session.content.workingVolumeKg
+            stat.sets += session.content.workingSets
             stat.energyKcal += session.energyKcal
             stats[start] = stat
-            days[start, default: []].insert(calendar.startOfDay(for: session.date))
+            if trainingDays == nil { days[start, default: []].insert(calendar.startOfDay(for: session.date)) }
+        }
+        for entry in trainingDays ?? [] where entry.date <= now.addingTimeInterval(60) {
+            let start = calendar.weekStart(for: entry.date)
+            guard stats[start] != nil else { continue }
+            days[start, default: []].insert(calendar.startOfDay(for: entry.date))
         }
         for (start, set) in days { stats[start]?.workoutDays = set.count }
         return stats.values.sorted { $0.weekStart < $1.weekStart }
@@ -195,7 +207,8 @@ public enum StatsEngine {
             let bestReps = done.compactMap(\.effectiveReps).max()
             let bestSeconds = done.compactMap(\.effectiveSeconds).max()
             let orm = done.map { oneRepMax(weight: $0.effectiveWeight ?? 0, reps: $0.effectiveReps ?? 0) }.max()
-            let volume = done.reduce(0.0) { $0 + Double($1.effectiveReps ?? 0) * ($1.effectiveWeight ?? 0) }
+            // Working volume, × 2 for each-side moves – the same number the finish screen shows.
+            let volume = items.reduce(0.0) { $0 + $1.workingVolumeKg }
             points.append(ExercisePoint(
                 sessionID: session.id, date: session.date, bestWeight: bestWeight, bestReps: bestReps,
                 bestSeconds: bestSeconds, estimatedOneRepMax: (orm ?? 0) > 0 ? orm : nil, volume: volume, sets: done
@@ -223,6 +236,8 @@ public enum StatsEngine {
         }
         for session in sessions {
             for item in session.content.allItems {
+                // A longer stretch or yoga hold is no record; strength holds (plank) are.
+                let holdCounts = MuscleEngine.countsAsHardSets(item.kind ?? session.kind)
                 for set in item.sets where set.isDone {
                     if let w = set.effectiveWeight, w > 0 {
                         consider(PersonalRecord(exerciseKey: item.exerciseKey, exerciseName: item.name, metric: .weight, value: w, date: session.date))
@@ -233,7 +248,8 @@ public enum StatsEngine {
                     if let r = set.effectiveReps, r > 0, (set.effectiveWeight ?? 0) <= 0 {
                         consider(PersonalRecord(exerciseKey: item.exerciseKey, exerciseName: item.name, metric: .reps, value: Double(r), date: session.date))
                     }
-                    if item.mode == .time, let s = set.effectiveSeconds, s > 0 {
+                    // Only a measured hold (not the planned time) of a strength move.
+                    if item.mode == .time, holdCounts, set.seconds != nil, let s = set.effectiveSeconds, s > 0 {
                         consider(PersonalRecord(exerciseKey: item.exerciseKey, exerciseName: item.name, metric: .duration, value: Double(s), date: session.date))
                     }
                 }
@@ -308,7 +324,7 @@ public enum StatsEngine {
         }
         guard !comparisons.isEmpty else { return nil }
         return SessionComparison(previousDate: previous.date, exercises: comparisons,
-                                 volumeDelta: session.content.volumeKg - previous.content.volumeKg)
+                                 volumeDelta: session.content.workingVolumeKg - previous.content.workingVolumeKg)
     }
 
     /// The trend of one exercise since a date (one point per session, oldest first).
@@ -418,15 +434,31 @@ public extension StatsEngine {
         for session in sessions where session.date >= interval.start && session.date < interval.end {
             totals.workouts += 1
             totals.seconds += session.durationSeconds
-            totals.sets += session.content.completedSets
-            totals.volumeKg += session.content.volumeKg
+            // Working sets and volume (no warm-ups; each-side moves count both sides).
+            totals.sets += session.content.workingSets
+            totals.volumeKg += session.content.workingVolumeKg
         }
         return totals
     }
 
     /// All-time records that were set since a date – one per exercise (the most meaningful), newest first.
+    /// Uses the finish screen's rule (`newRecords`): a record beats an earlier best, so the first time
+    /// an exercise is done is never one. One pass, oldest first, with a running best per record.
     static func recordsSet(in sessions: [SessionRecord], since: Date) -> [PersonalRecord] {
-        collapsedPerExercise(personalRecords(in: sessions).filter { $0.date >= since && $0.metric != .volume })
+        var best: [String: Double] = [:]
+        var found: [String: PersonalRecord] = [:]
+        for session in sessions.sorted(by: { $0.date < $1.date }) {
+            for record in personalRecords(in: [session]) where record.metric != .volume {
+                guard let old = best[record.id] else {
+                    best[record.id] = record.value
+                    continue
+                }
+                guard record.value > old + 0.0001 else { continue }
+                best[record.id] = record.value
+                if session.date >= since { found[record.id] = record }
+            }
+        }
+        return collapsedPerExercise(Array(found.values))
     }
 
     /// Minutes per type in an interval: George workouts by kind, Apple Health workouts by sport.

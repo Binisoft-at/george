@@ -23,7 +23,7 @@ struct CoachBar: View {
             content(at: context.date)
         }
         .background {
-            // ␣ starts or completes the current set on a keyboard (Mac, iPad).
+            // ␣ starts or completes the current set on a keyboard (Mac, iPad); paused, it resumes.
             Button("") { live.primaryAction() }
                 .keyboardShortcut(.space, modifiers: [])
                 .opacity(0)
@@ -337,9 +337,10 @@ struct TimedSetDial: View {
                             .font(.title3.weight(.bold))
                             .monospacedDigit()
                         Button {
-                            live.startSet()
+                            // Paused: carries on (a paused hold continues where it stopped).
+                            if live.isPaused { live.resume() } else { live.startSet() }
                         } label: {
-                            Label("Start timer", systemImage: "play.fill")
+                            Label(live.isPaused ? "Resume" : "Start timer", systemImage: "play.fill")
                                 .font(.subheadline.weight(.semibold))
                                 .frame(minHeight: 44)
                         }
@@ -493,6 +494,7 @@ struct LivePanelSheet: View {
                 }
             }
         }
+        .macSheet(width: 520, height: 720)
     }
 
     private var title: String {
@@ -581,7 +583,7 @@ struct LivePanelSheet: View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
             stat("Time", Format.clock(Int(live.elapsed(at: date))), "clock")
             stat("Sets", "\(live.content.completedSets) of \(live.content.totalSets)", "checklist")
-            if live.content.volumeKg > 0 { stat("Volume", Format.volume(live.content.volumeKg, unit: live.unit), "scalemass") }
+            if live.content.workingVolumeKg > 0 { stat("Volume", Format.volume(live.content.workingVolumeKg, unit: live.unit), "scalemass") }
             if let hr = live.heartRate { stat("Heart rate", "\(Int(hr)) bpm", "heart.fill") }
         }
     }

@@ -47,8 +47,13 @@ final class HealthKitManager {
     private(set) var workoutsVersion = 0
     /// The same workouts as streak entries.
     private(set) var externalWorkouts: [ActivityEntry] = []
-    /// Effort scores already read, per Health workout (nil = none recorded).
+    /// Effort scores already read, per Health workout (nil = none recorded). Kept on this device
+    /// (UserDefaults), so a refresh only asks Health about new workouts.
     @ObservationIgnored private var effortCache: [UUID: Int?] = [:]
+    @ObservationIgnored private var effortCacheLoaded = false
+    /// When `refresh()` last ran, and the one still running (see `refreshIfStale`).
+    @ObservationIgnored private var lastRefreshAt: Date?
+    @ObservationIgnored private var runningRefresh: Task<Void, Never>?
     private(set) var latestBodyMassKg: Double?
     private(set) var lastError: String?
     private(set) var isAuthorizedToShare = false
@@ -110,10 +115,26 @@ final class HealthKitManager {
         #endif
     }
 
+    /// `refresh()` unless it ran less than `interval` ago (coming back to the app); waits for one that
+    /// is still running instead of starting a second.
+    func refreshIfStale(olderThan interval: TimeInterval = 10 * 60) async {
+        if let runningRefresh {
+            await runningRefresh.value
+            return
+        }
+        if let lastRefreshAt, Date().timeIntervalSince(lastRefreshAt) < interval { return }
+        let task = Task { await self.refresh() }
+        runningRefresh = task
+        await task.value
+        runningRefresh = nil
+    }
+
     /// Loads external workouts (last ~26 weeks) and the latest body mass.
     func refresh() async {
         #if os(iOS)
         guard isAvailable else { return }
+        lastRefreshAt = Date()
+        loadEffortCacheIfNeeded()
         isAuthorizedToShare = healthStore.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
         let since = Calendar.current.date(byAdding: .day, value: -182, to: Date()) ?? Date()
         let ownPrefix = Bundle.main.bundleIdentifier ?? "george"
@@ -128,9 +149,12 @@ final class HealthKitManager {
                 .filter { !Self.isFromGeorge($0, ownPrefix: ownPrefix) }
             // Effort only matters for recent workouts (muscle load looks back 6 weeks).
             let effortCutoff = Date().addingTimeInterval(-42 * 86_400)
+            var effortsChanged = false
             for workout in workouts.prefix(80) where workout.startDate >= effortCutoff && effortCache[workout.uuid] == nil {
                 effortCache[workout.uuid] = .some(await effort(of: workout))
+                effortsChanged = true
             }
+            if effortsChanged { saveEffortCache(keeping: Set(workouts.map(\.uuid))) }
             let mapped = workouts.map { workout -> ExternalWorkout in
                 let sport = Self.sport(for: workout.workoutActivityType)
                 let energy = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
@@ -157,6 +181,28 @@ final class HealthKitManager {
             // Body mass is optional.
         }
         #endif
+    }
+
+    private static let effortCacheKey = "health.effortCache"
+
+    /// Effort scores read earlier (0 stands for "none recorded"). Health data stays on this device.
+    private func loadEffortCacheIfNeeded() {
+        guard !effortCacheLoaded else { return }
+        effortCacheLoaded = true
+        let stored = UserDefaults.standard.dictionary(forKey: Self.effortCacheKey) as? [String: Int] ?? [:]
+        for (key, value) in stored {
+            guard let id = UUID(uuidString: key), effortCache[id] == nil else { continue }
+            effortCache[id] = .some(value > 0 ? value : nil)
+        }
+    }
+
+    /// Saves the scores of the workouts still in Health's window (older ones are dropped).
+    private func saveEffortCache(keeping ids: Set<UUID>) {
+        var stored: [String: Int] = [:]
+        for (id, effort) in effortCache where ids.contains(id) {
+            stored[id.uuidString] = effort ?? 0
+        }
+        UserDefaults.standard.set(stored, forKey: Self.effortCacheKey)
     }
 
     /// Keeps the Health workouts and derives the streak entries from them.

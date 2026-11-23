@@ -9,25 +9,42 @@ struct LiveWorkoutView: View {
 
     @Environment(WatchConnector.self) private var connector
     @State private var page: Page = .metrics
+    /// The end sheet (effort, Save) – opened by Finish after the last set and by End on the controls page.
+    @State private var showingEnd = false
+    @State private var pendingFinish: PendingFinish?
 
     var body: some View {
         if let live = connector.live {
             let unit = connector.snapshot?.unit ?? .kg
             TabView(selection: $page) {
                 MetricsPage(live: live, unit: unit) {
-                    withAnimation { page = .controls }
+                    showingEnd = true
                 }
                 .tag(Page.metrics)
-                ExercisesPage(live: live)
+                ExercisesPage(live: live, unit: unit)
                     .tag(Page.exercises)
-                ControlsPage(live: live)
-                    .tag(Page.controls)
+                ControlsPage(live: live) {
+                    showingEnd = true
+                }
+                .tag(Page.controls)
             }
             .tabViewStyle(.verticalPage)
             .navigationTitle(live.title)
+            .sheet(isPresented: $showingEnd, onDismiss: commitFinish) {
+                EndWorkoutSheet(kind: live.kind) { effort in
+                    pendingFinish = PendingFinish(effort: effort)
+                }
+            }
         } else {
             ContentUnavailableView("No workout running", systemImage: "figure.cooldown")
         }
+    }
+
+    /// The finish command goes out once the sheet is gone, so the pages are not torn down under it.
+    private func commitFinish() {
+        guard let finish = pendingFinish else { return }
+        pendingFinish = nil
+        connector.perform(.finish(effort: finish.effort))
     }
 }
 
@@ -60,7 +77,7 @@ private struct MetricsPage: View {
         if let remaining = live.restRemaining(at: now) {
             RestLayout(live: live, remaining: remaining)
         } else if let remaining = live.holdRemaining(at: now) {
-            HoldLayout(live: live, remaining: remaining)
+            HoldLayout(live: live, remaining: remaining, date: now)
         } else {
             WorkingLayout(live: live, date: now, onLog: { logging = $0 }, onFinish: onFinish)
         }
@@ -113,9 +130,11 @@ private struct WorkingLayout: View {
                     .font(.headline)
                     .foregroundStyle(live.kind.tint)
             }
+            // The main action right under the set, so it never needs a scroll – the pace and any
+            // question or check-in come below it.
+            PrimaryButton(live: live, onFinish: onFinish)
             PaceLine(live: live, date: date)
             LivePrompts(live: live)
-            PrimaryButton(live: live, onFinish: onFinish)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -238,24 +257,34 @@ private struct UpNext: View {
     }
 }
 
-/// A running hold: the rest ring's style in green with the seconds left.
+/// A running hold: the rest ring's style in green with the seconds left. "30 s each side": the ring
+/// counts down the side that's running (the wrist buzzes at the switch).
 private struct HoldLayout: View {
     let live: WatchLiveState
     let remaining: TimeInterval
+    let date: Date
 
     var body: some View {
+        let side = live.holdSide(at: date)
         VStack(spacing: 6) {
-            CountdownRing(remaining: remaining, total: Double(live.timedSetSeconds ?? 0), tint: .green, caption: "HOLD")
-                .frame(width: 80, height: 80)
+            if let side {
+                CountdownRing(remaining: side.remaining(at: date), total: side.seconds, tint: .green, caption: "SIDE \(side.number)")
+                    .frame(width: 80, height: 80)
+            } else {
+                CountdownRing(remaining: remaining, total: Double(live.timedSetSeconds ?? 0), tint: .green, caption: "HOLD")
+                    .frame(width: 80, height: 80)
+            }
             if let due = live.due {
                 VStack(spacing: 0) {
                     Text(due.exercise.name)
                         .font(.headline)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text("Set \(due.number) of \(due.of)")
+                    Text(side.map { "Side \($0.number) of \($0.count) · set \(due.number)/\(due.of)" } ?? "Set \(due.number) of \(due.of)")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
             PrimaryButton(live: live)
@@ -265,8 +294,8 @@ private struct HoldLayout: View {
     }
 }
 
-/// The page's one primary action (Double Tap): Start while a set waits and the Start button is on,
-/// otherwise Done – or Finish once every set is done.
+/// The page's one primary action (Double Tap): Resume while paused, Start while a set waits and the
+/// Start button is on, otherwise Done – or Finish once every set is done.
 private struct PrimaryButton: View {
     let live: WatchLiveState
     var compact = false
@@ -274,7 +303,16 @@ private struct PrimaryButton: View {
     @Environment(WatchConnector.self) private var connector
 
     var body: some View {
-        if live.primaryIsStart {
+        if live.isPaused {
+            // Paused: carries on – never logs a set or starts one.
+            Button {
+                connector.perform(.resume)
+            } label: {
+                Label("Resume", systemImage: "play.fill")
+            }
+            .buttonStyle(CapsuleButtonStyle(fill: .yellow, foreground: .black))
+            .handGestureShortcut(.primaryAction)
+        } else if live.primaryIsStart {
             Button {
                 connector.perform(.startSet)
             } label: {
@@ -290,7 +328,10 @@ private struct PrimaryButton: View {
             .handGestureShortcut(.primaryAction)
         } else {
             Button {
-                connector.perform(.completeCurrentSet)
+                // The set shown here, by id: a reflex tap after the phone already logged it (end of a
+                // hold) changes nothing, and it never logs whatever set the phone has moved on to.
+                guard let due = live.due else { return }
+                connector.perform(.completeSet(id: due.set.id, reps: nil, weightKg: nil))
             } label: {
                 Label(compact ? "Done" : "Done set", systemImage: "checkmark")
             }
@@ -341,7 +382,9 @@ private struct DoneSetButton: View {
 
     var body: some View {
         Button {
-            connector.perform(.completeCurrentSet)
+            // By id, as on the metrics page.
+            guard let due = live.due else { return }
+            connector.perform(.completeSet(id: due.set.id, reps: nil, weightKg: nil))
         } label: {
             Label("Done set", systemImage: "checkmark")
         }
@@ -363,8 +406,12 @@ private struct SteerTarget {
 
 private struct ExercisesPage: View {
     let live: WatchLiveState
+    let unit: WeightUnit
     @Environment(WatchConnector.self) private var connector
     @State private var steering: SteerTarget?
+    /// A done set that was tapped: edit it or mark it not done (never unticked by a stray tap).
+    @State private var reviewing: SetLogTarget?
+    @State private var logging: SetLogTarget?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -402,6 +449,25 @@ private struct ExercisesPage: View {
         } message: { target in
             Text(target.label.isEmpty ? "Set \(target.index)" : "Set \(target.index) · \(target.label)")
         }
+        .confirmationDialog(
+            reviewing?.exerciseName ?? "",
+            isPresented: isReviewing,
+            titleVisibility: .visible,
+            presenting: reviewing
+        ) { target in
+            if Self.canEdit(target.workoutSet) {
+                Button("Edit reps/weight") { logging = target }
+            }
+            Button("Mark not done") { connector.perform(.undoSet(target.workoutSet.id)) }
+            Button("Cancel", role: .cancel) {}
+        } message: { target in
+            let done = target.workoutSet
+            Text(done.label.isEmpty ? "Set \(done.index) · done" : "Set \(done.index) · \(done.label) · done")
+        }
+        .sheet(item: $logging) { target in
+            SetLogSheet(target: target, unit: unit, kind: live.kind)
+                .environment(connector)
+        }
     }
 
     private var isSteering: Binding<Bool> {
@@ -413,13 +479,31 @@ private struct ExercisesPage: View {
         )
     }
 
-    /// Done sets toggle back; open sets of the exercise that's due toggle done; open sets of
-    /// another exercise ask whether to do them now or log them.
+    private var isReviewing: Binding<Bool> {
+        Binding(
+            get: { reviewing != nil },
+            set: { isPresented in
+                if !isPresented { reviewing = nil }
+            }
+        )
+    }
+
+    /// Reps or a weight to change (holds and distances have nothing to edit here).
+    private static func canEdit(_ workoutSet: WatchSet) -> Bool {
+        workoutSet.isTimed != true && (workoutSet.reps != nil || workoutSet.targetReps != nil || workoutSet.weightKg != nil)
+    }
+
+    /// Open sets of the exercise that's due are logged (by id); open sets of another exercise ask
+    /// whether to do them now or log them; a done set asks before anything changes.
     private func tap(_ workoutSet: WatchSet, of exercise: WatchExercise) {
-        if !workoutSet.isDone, let due = live.due, due.exercise.id != exercise.id {
+        if workoutSet.isDone {
+            let number = (exercise.sets.firstIndex(where: { $0.id == workoutSet.id }) ?? 0) + 1
+            reviewing = SetLogTarget(exerciseName: exercise.name, workoutSet: workoutSet, number: number,
+                                     setCount: exercise.sets.count, isCurrent: false)
+        } else if let due = live.due, due.exercise.id != exercise.id {
             steering = SteerTarget(setID: workoutSet.id, exerciseName: exercise.name, index: workoutSet.index, label: workoutSet.label)
         } else {
-            connector.perform(.toggleSet(workoutSet.id))
+            connector.perform(.completeSet(id: workoutSet.id, reps: nil, weightKg: nil))
         }
     }
 
@@ -572,11 +656,11 @@ private struct SetPill: View {
 
 private struct ControlsPage: View {
     let live: WatchLiveState
+    /// Opens the end sheet (it belongs to the whole live view, so Finish can open it too).
+    let onEnd: () -> Void
     @Environment(WatchConnector.self) private var connector
     @Environment(WorkoutManager.self) private var workout
-    @State private var showingEnd = false
     @State private var confirmingDiscard = false
-    @State private var pendingFinish: PendingFinish?
 
     var body: some View {
         let isMuted = live.voiceMuted == true
@@ -585,7 +669,7 @@ private struct ControlsPage: View {
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
                     ControlButton(title: "End", systemImage: "xmark", tint: .red) {
-                        showingEnd = true
+                        onEnd()
                     }
                     ControlButton(
                         title: live.isPaused ? "Resume" : "Pause",
@@ -627,11 +711,6 @@ private struct ControlsPage: View {
             .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
-        .sheet(isPresented: $showingEnd, onDismiss: commitFinish) {
-            EndWorkoutSheet(kind: live.kind) { effort in
-                pendingFinish = PendingFinish(effort: effort)
-            }
-        }
         .confirmationDialog("Discard workout?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
             Button("Discard", role: .destructive) {
                 connector.perform(.discard)
@@ -655,13 +734,6 @@ private struct ControlsPage: View {
         case .idle:
             Label("Not recording to Health", systemImage: "heart.slash")
         }
-    }
-
-    /// The finish command goes out once the sheet is gone, so the pages are not torn down under it.
-    private func commitFinish() {
-        guard let finish = pendingFinish else { return }
-        pendingFinish = nil
-        connector.perform(.finish(effort: finish.effort))
     }
 }
 
@@ -722,14 +794,18 @@ private struct EndWorkoutSheet: View {
                     .font(.footnote)
                     .foregroundStyle(kind.tint)
 
-                HStack(spacing: 6) {
-                    Button("Skip") { end(with: nil) }
-                        .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
-                    Button("Save") { end(with: effort) }
-                        .buttonStyle(CapsuleButtonStyle(fill: kind.tint, foreground: kind.onTint))
-                }
+                Button("Save") { end(with: effort) }
+                    .buttonStyle(CapsuleButtonStyle(fill: kind.tint, foreground: kind.onTint))
+                    .handGestureShortcut(.primaryAction)
+                Button("Save without rating") { end(with: nil) }
+                    .buttonStyle(CapsuleButtonStyle(fill: Color.white.opacity(0.18), foreground: .white))
             }
             .navigationTitle("End workout")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
         }
     }
 

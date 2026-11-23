@@ -68,7 +68,8 @@ struct AddToMenuItems: View {
 
     private func item() -> WorkoutItem {
         let key = exercise.id
-        let custom = (try? modelContext.fetch(FetchDescriptor<UserExercise>(predicate: #Predicate { $0.key == key })))?.first
+        let copies = (try? modelContext.fetch(FetchDescriptor<UserExercise>(predicate: #Predicate { $0.key == key }))) ?? []
+        let custom = UserExercise.preferred(copies, key: key)
         return store.prefilledItem(from: exercise, custom: custom)
     }
 

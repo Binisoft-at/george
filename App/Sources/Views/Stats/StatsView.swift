@@ -45,11 +45,17 @@ struct StatsView: View {
         var sessionCount: Int
         var healthVersion: Int
         var weekStartsOn: Int
+        /// What counts as a training day (Settings → Streak).
+        var weeklyGoal: Int
+        var minimumMinutes: Int
+        var countHealthWorkouts: Bool
     }
 
     var body: some View {
         let key = ModelKey(range: range, engine: muscleAnalytics.engineKey, sessionCount: sessions.count,
-                           healthVersion: health.workoutsVersion, weekStartsOn: store.calendar.firstWeekday)
+                           healthVersion: health.workoutsVersion, weekStartsOn: store.calendar.firstWeekday,
+                           weeklyGoal: store.settings.weeklyGoal, minimumMinutes: store.settings.minimumMinutes,
+                           countHealthWorkouts: store.settings.countHealthWorkouts)
         let unit = store.unit
         let target = store.profile.weeklySets
 
@@ -69,19 +75,24 @@ struct StatsView: View {
                 recordsSection(model, unit: unit)
 
                 Section {
-                    WorkoutDaysChart(weeks: model.weeks, goal: store.settings.weeklyGoal, selection: $selectedWeek)
+                    WorkoutDaysChart(weeks: model.weeks, goals: model.goals, selection: $selectedWeek)
                         .frame(height: 200)
                         .padding(.vertical, 8)
                 } header: {
                     Text("Workout days per week")
                 } footer: {
-                    Text("Dashed line: your weekly goal of \(store.settings.weeklyGoal) days.")
+                    let mac = MacHealth.streakMissesWorkouts(store)
+                    Text("Days that count for your streak (at least \(store.settings.minimumMinutes) min\(store.settings.countHealthWorkouts && !mac ? ", Apple Health workouts included" : "")). Dashed line: your weekly goal of that week." + (mac ? " " + MacHealth.note : ""))
                 }
 
-                Section("Active minutes per week") {
+                Section {
                     MinutesChart(weeks: model.weeks)
                         .frame(height: 180)
                         .padding(.vertical, 8)
+                } header: {
+                    Text("Active minutes per week")
+                } footer: {
+                    Text("George workouts only – Apple Health time is in Time by type.")
                 }
 
                 if !model.muscles.isEmpty {
@@ -93,7 +104,7 @@ struct StatsView: View {
                     } header: {
                         Text("Hard sets per muscle and week")
                     } footer: {
-                        Text("Average per week in this range. Dashed lines: your target \(target.lowerBound)–\(target.upperBound) (\(store.profile.headline)) – ↓ below, ✓ in target, ↑ above. Secondary muscles count half a set; stretching, yoga and other sports don't count.")
+                        Text("\(model.muscleAverageText). Dashed lines: your target \(target.lowerBound)–\(target.upperBound) (\(store.profile.headline)) – ↓ below, ✓ in target, ↑ above. Secondary muscles count half a set; stretching, yoga and other sports don't count.")
                     }
                 }
 
@@ -125,7 +136,9 @@ struct StatsView: View {
             let records = SessionHistory.shared.records(store)
             let input = ProgressModel.Input(
                 records: records, external: health.healthWorkouts, engine: muscleAnalytics.engine,
-                calendar: store.calendar, weeks: range.weeks, now: Date()
+                calendar: store.calendar, weeks: range.weeks, now: Date(),
+                trainingDays: store.trainingEntries(healthEntries: health.externalWorkouts),
+                streakConfig: store.settings.streakConfig
             )
             let built = await Task.detached(priority: .userInitiated) { ProgressModel.build(input) }.value
             guard !Task.isCancelled else { return }
@@ -138,20 +151,33 @@ struct StatsView: View {
     private func tiles(_ model: ProgressModel, unit: WeightUnit) -> some View {
         let now = model.current
         let before = model.previous
-        let period = "prev. \(range.title)"
+        // No "vs prev." against a period with no history; one that was only partly logged is marked.
+        let coverage = model.previousCoverage
+        let compares = coverage != .noHistory
+        let partial = coverage == .partial
         return Section {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                 StatTile(title: "Workouts", value: "\(now.workouts)", symbol: "figure.strengthtraining.functional",
-                         delta: StatDelta(Double(now.workouts - before.workouts), period: period) { "\(Int($0))" })
+                         delta: compares ? StatDelta(Double(now.workouts - before.workouts), partial: partial, format: { "\(Int($0))" }) : nil)
                 StatTile(title: "Active time", value: Format.minutes(now.seconds), symbol: "clock",
-                         delta: StatDelta(now.seconds - before.seconds, period: period, threshold: 60) { Format.minutes($0) })
-                StatTile(title: "Sets", value: "\(now.sets)", symbol: "checklist",
-                         delta: StatDelta(Double(now.sets - before.sets), period: period) { "\(Int($0))" })
+                         delta: compares ? StatDelta(now.seconds - before.seconds, partial: partial, threshold: 60, format: { Format.minutes($0) }) : nil)
+                // Done sets without warm-ups (stretches and holds included) – not the hard sets of Muscles.
+                StatTile(title: "Working sets", value: "\(now.sets)", symbol: "checklist",
+                         delta: compares ? StatDelta(Double(now.sets - before.sets), partial: partial, format: { "\(Int($0))" }) : nil)
                 StatTile(title: "Volume", value: Format.volume(now.volumeKg, unit: unit), symbol: "scalemass",
-                         delta: StatDelta(now.volumeKg - before.volumeKg, period: period, threshold: 1) { Format.volume($0, unit: unit) })
+                         delta: compares ? StatDelta(now.volumeKg - before.volumeKg, partial: partial, threshold: 1, format: { Format.volume($0, unit: unit) }) : nil)
             }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
+        } footer: {
+            switch coverage {
+            case .noHistory:
+                Text("First \(range.title) – comparisons start next period.")
+            case .partial:
+                Text("Compared with the \(range.title) before, which is only partly logged. Working sets leave out warm-ups.")
+            case .complete:
+                Text("Compared with the \(range.title) before. Working sets leave out warm-ups.")
+            }
         }
     }
 
@@ -165,7 +191,7 @@ struct StatsView: View {
             }
             ForEach(model.lifts) { trend in
                 Button {
-                    if !trend.exerciseKey.hasPrefix("name:") { router.open(.exercise(trend.exerciseKey)) }
+                    if !trend.exerciseKey.hasPrefix("name:") { router.push(.exercise(trend.exerciseKey)) }
                 } label: {
                     LiftTrendRow(trend: trend, unit: unit)
                 }
@@ -187,7 +213,7 @@ struct StatsView: View {
                 ForEach(Array(model.records.prefix(15))) { record in
                     Button {
                         if !record.exerciseKey.hasPrefix("name:") {
-                            router.open(.exercise(record.exerciseKey))
+                            router.push(.exercise(record.exerciseKey))
                         }
                     } label: {
                         HStack {
@@ -224,12 +250,21 @@ struct ProgressModel: Sendable {
         var calendar: Calendar
         var weeks: Int
         var now: Date
+        /// The streak's training days (`GeorgeStore.trainingEntries`), so the days chart matches it.
+        var trainingDays: [ActivityEntry]
+        var streakConfig: StreakConfig
     }
 
     var weeks: [WeekStat]
+    /// Each week's goal (it can change over time).
+    var goals: [Date: Int]
     var current: PeriodTotals
     var previous: PeriodTotals
+    /// How much of the period before has history – no "vs prev." against nothing.
+    var previousCoverage: PeriodCoverage
     var muscles: [MuscleTotal]
+    /// "Average per week in this range" – or "… of the last 8 weeks with data" while history is shorter.
+    var muscleAverageText: String
     var types: [TypeTime]
     var records: [PersonalRecord]
     var lifts: [ExerciseTrend]
@@ -245,11 +280,17 @@ struct ProgressModel: Sendable {
         // The period before, just as long (so a half-finished week compares fairly).
         let previous = DateInterval(start: calendar.addingWeeks(-input.weeks, to: start),
                                     end: calendar.addingWeeks(-input.weeks, to: end))
+        let weeks = StatsEngine.weekly(input.records, calendar: calendar, weeks: input.weeks, now: now, trainingDays: input.trainingDays)
         return ProgressModel(
-            weeks: StatsEngine.weekly(input.records, calendar: calendar, weeks: input.weeks, now: now),
+            weeks: weeks,
+            goals: Dictionary(weeks.map { ($0.weekStart, input.streakConfig.goal(forWeekStarting: $0.weekStart, calendar: calendar)) },
+                              uniquingKeysWith: { a, _ in a }),
             current: StatsEngine.totals(of: input.records, in: window),
             previous: StatsEngine.totals(of: input.records, in: previous),
-            muscles: input.engine.totals(in: window).filter { $0.sets > 0 }.sorted { $0.setsPerWeek > $1.setsPerWeek },
+            previousCoverage: StatsEngine.coverage(of: input.records, in: previous),
+            muscles: input.engine.totals(in: window, now: now).filter { $0.sets > 0 }.sorted { $0.setsPerWeek > $1.setsPerWeek },
+            muscleAverageText: MuscleEngine.averageCaption(weeksCovered: input.engine.weeksCovered(in: window, now: now),
+                                                           rangeWeeks: max(1, window.duration / (7 * 86_400))),
             types: StatsEngine.timeByType(input.records, external: input.external, in: window),
             records: StatsEngine.recordsSet(in: input.records, since: start),
             lifts: StatsEngine.topTrends(in: input.records, since: start, limit: 6),
@@ -258,18 +299,22 @@ struct ProgressModel: Sendable {
     }
 }
 
-/// "+3 vs prev. 12W" under a tile.
+/// "+3 vs prev." under a tile ("(partial)" when the period before was only partly logged).
 struct StatDelta {
     let text: String
     /// 1 more, -1 less, 0 about the same.
     let sign: Int
+    /// The period before was only partly logged: shown in secondary colour, never as a win.
+    let isPartial: Bool
 
-    init(_ change: Double, period: String, threshold: Double = 0.5, format: (Double) -> String) {
+    init(_ change: Double, partial: Bool = false, threshold: Double = 0.5, format: (Double) -> String) {
+        isPartial = partial
+        let suffix = partial ? " (partial)" : ""
         if abs(change) < threshold {
-            text = "Same as \(period)"
+            text = "Same as prev." + suffix
             sign = 0
         } else {
-            text = (change > 0 ? "+" : "−") + format(abs(change)) + " vs \(period)"
+            text = (change > 0 ? "+" : "−") + format(abs(change)) + " vs prev." + suffix
             sign = change > 0 ? 1 : -1
         }
     }
@@ -295,7 +340,7 @@ struct StatTile: View {
             if let delta {
                 Label(delta.text, systemImage: delta.sign > 0 ? "arrow.up.right" : (delta.sign < 0 ? "arrow.down.right" : "equal"))
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(delta.sign > 0 ? Tone.goodText : Color.secondary)
+                    .foregroundStyle(delta.sign > 0 && !delta.isPartial ? Tone.goodText : Color.secondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
@@ -354,20 +399,26 @@ struct LiftTrendRow: View {
 
     private func format(_ value: Double) -> String {
         switch trend.measure {
-        case .oneRepMax: return Format.weight((value * 2).rounded() / 2, unit: unit)
+        case .oneRepMax: return Format.estimate(value, unit: unit)
         case .reps: return "\(Int(value.rounded()))"
         case .seconds: return Format.clock(Int(value.rounded()))
         }
     }
 
     private var deltaText: (text: String, sign: Int) {
+        if trend.measure == .oneRepMax {
+            // The difference of the two numbers as shown (rounded in the display unit).
+            let shown = Format.estimateValue(trend.last, unit: unit) - Format.estimateValue(trend.first, unit: unit)
+            guard abs(shown) >= 0.25 else { return ("Same", 0) }
+            return ((shown > 0 ? "+" : "−") + "\(Format.number(abs(shown))) \(unit.rawValue)", shown > 0 ? 1 : -1)
+        }
         let delta = trend.delta
-        let threshold: Double = trend.measure == .oneRepMax ? 0.5 : 1
+        let threshold: Double = 1
         guard abs(delta) >= threshold else { return ("Same", 0) }
         let sign = delta > 0 ? "+" : "−"
         switch trend.measure {
         case .oneRepMax:
-            return (sign + Format.weight((abs(delta) * 2).rounded() / 2, unit: unit), delta > 0 ? 1 : -1)
+            return (sign + Format.estimate(abs(delta), unit: unit), delta > 0 ? 1 : -1)
         case .reps:
             return (sign + "\(Int(abs(delta).rounded())) reps", delta > 0 ? 1 : -1)
         case .seconds:
@@ -409,23 +460,43 @@ struct Sparkline: View {
 /// Bars of workout days per week with the goal as a dashed rule. Tap/drag to read a week.
 struct WorkoutDaysChart: View {
     let weeks: [WeekStat]
-    let goal: Int
+    /// Each week's own goal (`StreakConfig.goal(forWeekStarting:)`) – a week is measured against the
+    /// goal it had, like the streak history.
+    let goals: [Date: Int]
     @Binding var selection: Date?
 
+    private func goal(of week: WeekStat) -> Int { goals[week.weekStart] ?? 0 }
+
     var body: some View {
+        let distinctGoals = Set(weeks.map { goal(of: $0) })
         Chart {
             ForEach(weeks) { week in
+                let target = goal(of: week)
                 BarMark(
                     x: .value("Week", week.weekStart, unit: .weekOfYear),
                     y: .value("Days", week.workoutDays)
                 )
-                .foregroundStyle(week.workoutDays >= goal ? Tone.accent : Tone.accent.opacity(0.4))
+                .foregroundStyle(week.workoutDays >= target ? Tone.accent : Tone.accent.opacity(0.4))
                 .cornerRadius(4)
-                .accessibilityValue("\(week.workoutDays) days\(week.workoutDays >= goal ? ", goal reached" : "")")
+                .accessibilityValue("\(week.workoutDays) of \(target) days\(week.workoutDays >= target ? ", goal reached" : "")")
             }
-            RuleMark(y: .value("Goal", goal))
-                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                .foregroundStyle(Color.secondary)
+            if distinctGoals.count > 1 {
+                // The goal changed in this range: a step line, each week at its own goal.
+                ForEach(weeks) { week in
+                    LineMark(
+                        x: .value("Week", week.weekStart, unit: .weekOfYear),
+                        y: .value("Goal", goal(of: week)),
+                        series: .value("Series", "Goal")
+                    )
+                    .interpolationMethod(.stepCenter)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    .foregroundStyle(Color.secondary)
+                }
+            } else if let goal = distinctGoals.first {
+                RuleMark(y: .value("Goal", goal))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    .foregroundStyle(Color.secondary)
+            }
             if let selection, let week = weeks.first(where: { Calendar.current.isDate($0.weekStart, equalTo: selection, toGranularity: .weekOfYear) }) {
                 RuleMark(x: .value("Selected", week.weekStart, unit: .weekOfYear))
                     .foregroundStyle(Color.secondary.opacity(0.3))

@@ -14,8 +14,11 @@ struct ComplicationData: Codable, Hashable, Sendable {
         /// "Planned today", "6 exercises · 45 min".
         var detail: String
         var symbol: String
-        /// A session planned for today (not just the program's suggestion).
+        /// A session planned for today (not just the program's suggestion), as of `updatedAt`.
         var isToday: Bool
+        /// The day the session is planned for (nil for the suggestion). The complication says
+        /// "Today" or "Missed · Tue" from it as its timeline moves past midnight.
+        var plannedDay: Date? = nil
     }
 
     struct Live: Codable, Hashable, Sendable {
@@ -39,8 +42,11 @@ struct ComplicationData: Codable, Hashable, Sendable {
     var next: Next?
     var live: Live?
     var streakWeeks: Int
+    /// As counted on the phone (a rescue workout counts double) for the week from `weekStart`.
     var doneDays: Int
     var goal: Int
+    /// The week `doneDays` belongs to (nil from older phone versions).
+    var weekStart: Date? = nil
     var updatedAt: Date
 
     func hasSameContent(as other: ComplicationData?) -> Bool {
@@ -76,7 +82,8 @@ extension ComplicationData {
 
         var next: Next?
         if let today = snapshot?.upcoming.first(where: { Calendar.current.isDate($0.date, inSameDayAs: now) }) {
-            next = Next(title: today.title, detail: "Planned today", symbol: today.kind.symbol, isToday: true)
+            next = Next(title: today.title, detail: "Planned today", symbol: today.kind.symbol, isToday: true,
+                        plannedDay: Calendar.current.startOfDay(for: today.date))
         } else if let template = snapshot?.templates.first(where: \.isSuggested) ?? snapshot?.templates.first {
             var parts: [String] = []
             if template.exerciseCount > 0 { parts.append("\(template.exerciseCount) exercise\(template.exerciseCount == 1 ? "" : "s")") }
@@ -89,8 +96,30 @@ extension ComplicationData {
             streakWeeks: snapshot?.streak?.weeks ?? 0,
             doneDays: snapshot?.streak?.doneDays ?? 0,
             goal: snapshot?.streak?.goal ?? 0,
+            weekStart: snapshot?.streak?.weekStart,
             updatedAt: now
         )
+    }
+
+    /// Days done in the week that contains `date`: 0 once the snapshot's week is over (the
+    /// timeline's midnight entry on a Monday shows a new week, not last week's "3 of 3").
+    func doneDays(on date: Date, calendar: Calendar = .current) -> Int {
+        SnapshotTiming.doneDays(doneDays, weekStart: weekStart, on: date, calendar: calendar)
+    }
+}
+
+extension ComplicationData.Next {
+    /// "Today", "Missed · Tue" or "Next workout" as of `date` (a timeline entry after midnight).
+    func caption(on date: Date, updatedAt: Date, calendar: Calendar = .current) -> String {
+        guard let plannedDay else {
+            // Written by an older version: planned for the day it was written.
+            return isToday && calendar.isDate(updatedAt, inSameDayAs: date) ? "Today" : "Next workout"
+        }
+        switch SnapshotTiming.plan(plannedDay, on: date, calendar: calendar) {
+        case .today: return "Today"
+        case .missed(let day): return "Missed · \(day.formatted(.dateTime.weekday(.abbreviated)))"
+        case .later: return "Next workout"
+        }
     }
 }
 

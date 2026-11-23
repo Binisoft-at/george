@@ -11,6 +11,7 @@ struct LiveWorkoutView: View {
     @Environment(LiveWorkoutController.self) private var live
     @Environment(GeorgeStore.self) private var store
     @Environment(HealthKitManager.self) private var health
+    @Environment(ToastCenter.self) private var toasts
     @AppStorage(Prefs.motivation) private var motivationRaw = MotivationStyle.full.rawValue
     @State private var showFinish = false
     @State private var showEditor = false
@@ -54,16 +55,25 @@ struct LiveWorkoutView: View {
             swap: { itemID in swapItem = URLItemID(id: itemID) },
             history: { key, name in history = ExerciseHistoryRequest(exerciseKey: key, name: name) }
         ))
+        // Requests from outside (menu bar Finish/Discard, "Finish It First", the empty workout's Add).
         .onChange(of: live.requestAddExercise) { _, requested in
-            guard requested else { return }
-            live.requestAddExercise = false
-            showAdd = true
+            if requested { consumeRequests() }
         }
         .onChange(of: live.finishRequest) { _, requested in
-            guard requested else { return }
-            live.finishRequest = false
-            showFinish = true
+            if requested { consumeRequests() }
         }
+        .onChange(of: live.discardRequest) { _, requested in
+            if requested { consumeRequests() }
+        }
+        .task {
+            // Opened by such a request: the flag was set in the same tick as live mode itself, so the
+            // changes above never fire. Wait until the cover (or Mac sheet) is up, then open it.
+            guard live.finishRequest || live.discardRequest || live.requestAddExercise else { return }
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            consumeRequests()
+        }
+        // Delete Set / Remove Exercise with Undo, visible above live mode.
+        .toasts(toasts, bottomPadding: 140)
         .sheet(isPresented: $showCoachSettings) {
             CoachSettingsSheet()
         }
@@ -126,7 +136,9 @@ struct LiveWorkoutView: View {
             NavigationStack {
                 SetEditorSheet(
                     content: Binding(get: { live.content }, set: { live.replaceContent($0) }),
-                    itemID: request.itemID, setID: request.setID, mode: .session(isLive: true)
+                    itemID: request.itemID, setID: request.setID, mode: .session(isLive: true),
+                    // Done goes through the live tick (time, rest, pace, undo, records).
+                    onToggleDone: { (setID: UUID) in live.toggleSet(setID) }
                 )
             }
             .presentationDetents([.medium, .large])
@@ -134,17 +146,20 @@ struct LiveWorkoutView: View {
         .sheet(item: Binding(get: { tutorial.map { URLItem(url: $0) } }, set: { tutorial = $0?.url })) { item in
             LinkPlayerView(url: item.url)
         }
-        .confirmationDialog("Discard this workout?", isPresented: $confirmDiscard, titleVisibility: .visible) {
-            Button("Discard Workout", role: .destructive) { live.discard() }
+        .confirmationDialog(
+            live.discardKeepsSavedPart ? "Discard what you did since continuing?" : "Discard this workout?",
+            isPresented: $confirmDiscard, titleVisibility: .visible
+        ) {
+            Button("Discard Workout", role: .destructive) {
+                // Only a workout this Start made is deleted – with Undo.
+                if let undo = live.discard() {
+                    toasts.show("Workout discarded", symbol: "trash.fill", undo: undo)
+                }
+            }
         } message: {
-            Text("Nothing is saved and it won't count toward your streak.")
+            Text(live.discardKeepsSavedPart ? "The earlier sets stay saved." : "Nothing is saved and it won't count toward your streak.")
         }
         .onAppear { if !LaunchOptions.current.isDemo { live.requestNotificationPermission() } }
-        .onChange(of: live.discardRequest) { _, requested in
-            guard requested else { return }
-            live.discardRequest = false
-            confirmDiscard = true
-        }
         .background {
             // Keyboard: ←/→ look at the previous/next exercise, ⌥←/⌥→ move the plan's thread.
             Group {
@@ -155,6 +170,21 @@ struct LiveWorkoutView: View {
             }
             .opacity(0)
             .accessibilityHidden(true)
+        }
+    }
+
+    /// Opens what was asked for from outside live mode and clears the request, so the next one
+    /// (another Finish… from the menu bar) works again.
+    private func consumeRequests() {
+        if live.finishRequest {
+            live.finishRequest = false
+            showFinish = true
+        } else if live.discardRequest {
+            live.discardRequest = false
+            confirmDiscard = true
+        } else if live.requestAddExercise {
+            live.requestAddExercise = false
+            showAdd = true
         }
     }
 
@@ -223,6 +253,7 @@ struct LiveWorkoutView: View {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .accessibilityLabel("Add exercise")
+                .help("Add exercise")
 
                 menu
             }
@@ -230,7 +261,10 @@ struct LiveWorkoutView: View {
                 MomentumHeader(motivation: motivation) { showFinish = true }
             }
             #if os(iOS)
-            ExerciseStrip()
+            // iPad: the plan column on the left lists the exercises already – not a second time here.
+            if sizeClass != .regular {
+                ExerciseStrip()
+            }
             #endif
         }
         .padding(.horizontal)
@@ -275,6 +309,7 @@ struct LiveWorkoutView: View {
         }
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
+        .help("Workout options")
     }
 
     // MARK: Pager – one page per exercise, supersets as one page
@@ -529,7 +564,8 @@ struct LiveExerciseCard: View {
     private var userEntry: UserExercise? {
         let key = item.exerciseID ?? library.exercise(for: item)?.id
         guard let key else { return nil }
-        return userExercises.first { $0.key == key }
+        // Two devices' copies (before they're merged): the one with notes or links, then the newest.
+        return UserExercise.preferred(userExercises, key: key)
     }
 
     var body: some View {
@@ -809,9 +845,10 @@ struct LiveSetRow: View {
                 }
                 ValueTiles(item: item, set: set)
                 if let plates = plateText {
+                    // Orange when the plates at hand can't make up the weight ("≈ 60 kg").
                     Label(plates, systemImage: "circle.grid.2x1")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(platesExact ? Color.secondary : Color.orange)
                         .accessibilityLabel("Plates: \(plates)")
                 }
                 // While the set is being done (or always, without the Start button).
@@ -863,6 +900,12 @@ struct LiveSetRow: View {
         guard item.mode == .reps, let weight = set.effectiveWeight, weight > CoachPrefs.barKg,
               (item.equipment ?? "").lowercased().contains("barbell") || item.name.lowercased().contains("barbell") else { return nil }
         return PlateMath.text(totalKg: weight, barKg: CoachPrefs.barKg, plates: PlateSet.current.platesKg, unit: live.unit)
+    }
+
+    /// Whether the plates at hand make up the set's weight (false: the text ends in "≈ …").
+    private var platesExact: Bool {
+        guard let weight = set.effectiveWeight else { return true }
+        return PlateMath.load(totalKg: weight, barKg: CoachPrefs.barKg, plates: PlateSet.current.platesKg)?.isExact ?? true
     }
 
     private var primaryField: SetField {
@@ -1131,9 +1174,10 @@ struct SupersetCard: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            ForEach(Array(rounds.enumerated()), id: \.offset) { round, slots in
+            ForEach(Array(rounds.enumerated()), id: \.offset) { _, slots in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Round \(round + 1)")
+                    // Warm-ups come first as a lead-in (round -1), then the rounds.
+                    Text(roundTitle(slots))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 10) {
@@ -1203,13 +1247,21 @@ struct SupersetCard: View {
         }
     }
 
+    /// Rounds count working sets only: warm-ups are a lead-in, a drop set stays in its round, and an
+    /// exercise swapped mid-workout continues the rounds of the one it replaced.
     private var roundText: String {
-        let done = block.items.map(\.completedSets).min() ?? 0
         let total = block.maxSetCount
         if block.setCountsDiffer {
-            return block.items.map { "\($0.sets.count)" }.joined(separator: " · ") + " sets – tap Match sets to even them out"
+            return block.laneRoundCounts.map { String($0) }.joined(separator: " · ") + " sets – tap Match sets to even them out"
         }
-        return done >= total ? "All \(total) rounds done" : "Round \(done + 1) of \(total)"
+        guard let round = block.firstOpenRound else { return "All \(total) rounds done" }
+        if round == 0 && block.hasOpenWarmup { return "Warm-up, then \(total) rounds" }
+        return "Round \(min(round + 1, max(total, 1))) of \(total)"
+    }
+
+    private func roundTitle(_ slots: [WorkoutContent.RoundSlot]) -> String {
+        guard let round = slots.first?.round else { return "" }
+        return round < 0 ? "Warm-up" : "Round \(round + 1)"
     }
 
     private var currentItemInBlock: WorkoutItem? {
@@ -1560,6 +1612,7 @@ struct VoiceIntroBanner: View {
 /// Full editor over the running workout.
 struct LiveEditSheet: View {
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @State private var editor = EditorState()
     @State private var showReorder = false
@@ -1577,7 +1630,9 @@ struct LiveEditSheet: View {
                 )
             }
             .groupedList()
-            .workoutEditorSheets(content: binding, mode: .session(isLive: true), defaultKind: live.session?.kind ?? .gym, state: editor)
+            .workoutEditorSheets(content: binding, mode: .session(isLive: true), defaultKind: live.session?.kind ?? .gym, state: editor,
+                                 onToggleSet: { (setID: UUID) in live.toggleSet(setID) })
+            .toasts(toasts, bottomPadding: 24)
             .navigationTitle("Edit Workout")
             .inlineTitle()
             .toolbar {
@@ -1590,6 +1645,7 @@ struct LiveEditSheet: View {
                 ReorderBlocksSheet(content: binding)
             }
         }
+        .macSheet(width: 600, height: 700)
     }
 }
 

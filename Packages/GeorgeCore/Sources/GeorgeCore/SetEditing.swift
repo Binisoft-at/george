@@ -11,11 +11,15 @@ public enum NumberParser {
             .replacingOccurrences(of: ",", with: ".")
         let number = cleaned.prefix { $0.isNumber || $0 == "." }
         guard !number.isEmpty, number != ".", number.filter({ $0 == "." }).count <= 1 else { return nil }
-        return Double(number)
+        // A runaway digit string becomes infinity, which can't be stored (JSON has no infinity).
+        guard let value = Double(number), value.isFinite else { return nil }
+        return value
     }
 
     public static func int(_ text: String) -> Int? {
-        double(text).map { Int($0.rounded()) }
+        // Int(_:) traps beyond its range; nothing typed into a set is that big.
+        guard let value = double(text), value < 1_000_000_000 else { return nil }
+        return Int(value.rounded())
     }
 }
 
@@ -79,17 +83,159 @@ public extension WorkoutSet {
     }
 }
 
-public extension WorkoutBlock {
-    /// A superset or circuit whose exercises have different numbers of sets.
-    var setCountsDiffer: Bool {
-        items.count > 1 && Set(items.map(\.sets.count)).count > 1
+public extension WorkoutSet {
+    /// The set done last time that corresponds to `set` (one of `item`'s sets): warm-ups pair with
+    /// warm-ups, working and to-failure sets with last time's working sets (never a warm-up or a drop
+    /// set), drop sets with drop sets – the n-th of its kind with the n-th, the last one for sets
+    /// beyond what was done. Nil when last time had no done set of that kind.
+    static func matchingPrevious(_ set: WorkoutSet, in item: WorkoutItem, previous: [WorkoutSet]?) -> WorkoutSet? {
+        guard let previous, !previous.isEmpty, let index = item.sets.firstIndex(where: { $0.id == set.id }) else { return nil }
+        let role = set.pairingRole
+        let position = item.sets.prefix(upTo: index).filter { $0.pairingRole == role }.count
+        let candidates = previous.filter { $0.isDone && $0.pairingRole == role }
+        guard !candidates.isEmpty else { return nil }
+        return position < candidates.count ? candidates[position] : candidates[candidates.count - 1]
+    }
+}
+
+private extension WorkoutSet {
+    /// 0 warm-up, 1 working or to failure, 2 drop set.
+    var pairingRole: Int {
+        switch kind {
+        case .warmup: return 0
+        case .working, .failure: return 1
+        case .drop: return 2
+        }
+    }
+}
+
+public extension WorkoutItem {
+    /// Sets that take a round of a superset/circuit: warm-ups (a lead-in before the rounds) and drop
+    /// sets that follow a set (same round, no rest) don't count.
+    var roundSetCount: Int {
+        var count = 0
+        for set in sets where set.kind != .warmup {
+            if set.kind == .drop && count > 0 { continue }
+            count += 1
+        }
+        return count
     }
 
-    var maxSetCount: Int { items.map(\.sets.count).max() ?? 0 }
+    /// A set for one more round: a copy of the last working set (targets only) – never a warm-up or
+    /// a drop set.
+    func makeNextWorkingSet() -> WorkoutSet {
+        if let last = sets.last(where: { $0.kind == .working }) ?? sets.last(where: { $0.kind == .failure }) {
+            var next = last.clearedCopy()
+            next.addedLive = nil
+            return next
+        }
+        var next = makeNextSet()
+        next.kind = .working
+        return next
+    }
+}
+
+public extension WorkoutBlock {
+    /// The round after the last one item `i` fills: its `roundOffset` plus its round sets.
+    private func roundEnd(_ i: Int) -> Int { (items[i].roundOffset ?? 0) + items[i].roundSetCount }
+
+    /// Exercises that share one column of rounds (item indices, in order): an exercise and the ones
+    /// that replaced it mid-workout – an item whose `roundOffset` is the round the item right before
+    /// it stopped at continues that item's rounds.
+    var lanes: [[Int]] {
+        var result: [[Int]] = []
+        for i in items.indices {
+            if i > 0, !result.isEmpty, let offset = items[i].roundOffset, offset == roundEnd(i - 1) {
+                result[result.count - 1].append(i)
+            } else {
+                result.append([i])
+            }
+        }
+        return result
+    }
+
+    /// Rounds each lane fills, in order ("3 · 4 sets" when they differ).
+    var laneRoundCounts: [Int] { lanes.compactMap { $0.last.map(roundEnd) } }
+
+    /// Rounds the exercises fill, warm-ups and drop sets not counted.
+    var workingRoundCount: Int { laneRoundCounts.max() ?? 0 }
+
+    /// A superset or circuit whose exercises end on different rounds. A drop set, warm-ups or a
+    /// swapped exercise (its replacement continues the same rounds) are no difference.
+    var setCountsDiffer: Bool {
+        items.count > 1 && Set(laneRoundCounts).count > 1
+    }
+
+    /// The rounds "Match sets" evens every exercise out to.
+    var maxSetCount: Int { workingRoundCount }
+
+    /// The order a superset/circuit is done in: warm-ups first as a straight lead-in (round -1,
+    /// exercise by exercise), then round by round, each item's set followed by its drop sets. Items
+    /// that replaced a swapped exercise start at their `roundOffset`.
+    func roundSlots() -> [WorkoutContent.RoundSlot] {
+        var leadIn: [WorkoutContent.RoundSlot] = []
+        var slots: [WorkoutContent.RoundSlot] = []
+        for (i, item) in items.enumerated() {
+            var round = (item.roundOffset ?? 0) - 1
+            var follower = 0
+            var hasRoundSet = false
+            for (s, set) in item.sets.enumerated() {
+                if set.kind == .warmup {
+                    leadIn.append(WorkoutContent.RoundSlot(round: -1, itemIndex: i, setIndex: s, follower: 0))
+                    continue
+                }
+                if set.kind == .drop && hasRoundSet {
+                    follower += 1
+                } else {
+                    round += 1
+                    follower = 0
+                    hasRoundSet = true
+                }
+                slots.append(WorkoutContent.RoundSlot(round: max(0, round), itemIndex: i, setIndex: s, follower: follower))
+            }
+        }
+        return leadIn + slots.sorted { ($0.round, $0.itemIndex, $0.follower) < ($1.round, $1.itemIndex, $1.follower) }
+    }
+
+    /// The first round (0-based) that still has an open set; nil when every round is done.
+    /// Warm-ups don't count.
+    var firstOpenRound: Int? {
+        roundSlots()
+            .filter { $0.round >= 0 && !items[$0.itemIndex].sets[$0.setIndex].isDone }
+            .map(\.round)
+            .min()
+    }
+
+    /// Whether a warm-up of the lead-in is still open.
+    var hasOpenWarmup: Bool {
+        items.contains { $0.sets.contains { $0.kind == .warmup && !$0.isDone } }
+    }
+
+    /// Gives every exercise of a superset/circuit the same number of rounds – by default as many as
+    /// the longest. Only the last exercise of each lane changes (a swapped exercise's replacement,
+    /// never the one it replaced): missing rounds copy its last working set, extra open sets go, sets
+    /// already done always stay. Warm-ups and drop sets are not rounds and are never added.
+    mutating func matchRounds(to count: Int? = nil) {
+        let target = max(1, count ?? workingRoundCount)
+        for lane in lanes {
+            guard let i = lane.last else { continue }
+            var item = items[i]
+            let start = item.roundOffset ?? 0
+            while start + item.roundSetCount < target {
+                item.sets.append(item.makeNextWorkingSet())
+            }
+            while start + item.roundSetCount > target, item.sets.count > 1,
+                  let last = item.sets.last, !last.isDone, last.kind != .warmup {
+                item.sets.removeLast()
+            }
+            items[i] = item
+        }
+        if rounds != nil { rounds = target }
+    }
 }
 
 public extension WorkoutContent {
-    /// Supersets/circuits whose exercises have different numbers of sets.
+    /// Supersets/circuits whose exercises end on different rounds.
     var mismatchedGroupCount: Int { blocks.filter(\.setCountsDiffer).count }
 
     /// Copies a set's numbers to the following open sets of the same exercise ("same for the rest").
@@ -108,23 +254,13 @@ public extension WorkoutContent {
         blocks[ref.blockIndex].items[ref.itemIndex] = item
     }
 
-    /// Gives every exercise of a superset/circuit the same number of sets – by default as many as
-    /// the exercise with the most. Missing sets copy that exercise's last set; extra open sets go,
-    /// sets already done always stay.
+    /// Gives every exercise of a superset/circuit the same number of rounds – by default as many as
+    /// the longest (`WorkoutBlock.matchRounds`): missing rounds copy the exercise's last working set,
+    /// extra open sets go, sets already done always stay. Warm-ups, drop sets and a swapped exercise
+    /// (its replacement continues the rounds) are taken into account, not padded.
     mutating func matchSetCounts(blockID: UUID, to count: Int? = nil) {
         guard let b = blocks.firstIndex(where: { $0.id == blockID }) else { return }
-        let target = max(1, count ?? blocks[b].maxSetCount)
-        for i in blocks[b].items.indices {
-            var item = blocks[b].items[i]
-            while item.sets.count < target {
-                item.sets.append(item.makeNextSet())
-            }
-            while item.sets.count > target, let last = item.sets.last, !last.isDone {
-                item.sets.removeLast()
-            }
-            blocks[b].items[i] = item
-        }
-        if blocks[b].rounds != nil { blocks[b].rounds = target }
+        blocks[b].matchRounds(to: count)
     }
 }
 
@@ -148,6 +284,8 @@ public extension WorkoutContent {
 
         var drop = WorkoutSet(kind: .drop, targetWeight: max(0, newWeightKg))
         if let target { drop.targetReps = String(max(1, target - repsDone)) }
+        // A rescue for today only: never saved back into the template.
+        drop.addedLive = true
         item.sets.insert(drop, at: ref.setIndex + 1)
 
         if applyToRemaining {
@@ -189,11 +327,15 @@ public extension WorkoutContent {
             return copy
         }
         if old.done.isEmpty {
+            // Replaced before its first set: it keeps the round it was to start in (a replacement
+            // swapped again stays in its superset round).
+            new.roundOffset = old.roundOffset
             blocks[loc.block].items[loc.item] = new
         } else if blocks[loc.block].style.isGrouped && blocks[loc.block].items.count > 1 {
-            // In a superset the replacement takes over in the round the old exercise stopped at.
+            // In a superset the replacement takes over in the round the old exercise stopped at
+            // (warm-ups and drop sets don't take a round).
             blocks[loc.block].items[loc.item].sets = old.done
-            new.roundOffset = (old.roundOffset ?? 0) + old.done.filter { $0.kind != .drop }.count
+            new.roundOffset = (old.roundOffset ?? 0) + blocks[loc.block].items[loc.item].roundSetCount
             blocks[loc.block].items.insert(new, at: loc.item + 1)
         } else {
             // Straight sets: the replacement becomes its own block right after – never a fake superset.

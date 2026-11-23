@@ -175,8 +175,15 @@ final class CloudImportRefresher {
             guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                 as? NSPersistentCloudKitContainer.Event,
                   event.type == .import, event.endDate != nil, event.succeeded else { return }
-            MainActor.assumeIsolated { self?.scheduleBump() }
+            MainActor.assumeIsolated {
+                // Welcome on a new device waits for the first import before it offers a sample program.
+                self?.store.noteCloudImport()
+                self?.scheduleBump()
+            }
         }
+        // Copies two devices made before they synced (settings, exercise notes, break weeks): merged
+        // once at launch, then after every import.
+        Task { @MainActor [weak self] in self?.store.resolveDuplicates() }
     }
 
     deinit {
@@ -189,6 +196,7 @@ final class CloudImportRefresher {
             // Imports come in bursts; the main context also needs a moment to merge them.
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled, let self else { return }
+            self.store.resolveDuplicates()
             self.store.bump()
             AppLog.info("iCloud import – analytics refreshed", category: "sync")
         }
@@ -319,7 +327,7 @@ extension LoadPoint {
     var spokenSummary: String {
         showsRatio
             ? "\(percentOfUsual) % of your usual week, \(status.displayName.lowercased())"
-            : "\(Int(acute.rounded())) hard sets in 7 days, \(status.displayName.lowercased())"
+            : "\(Int(acuteSets.rounded())) sets in 7 days, \(status.displayName.lowercased())"
     }
 }
 

@@ -68,6 +68,8 @@ public enum LooseParse {
             let parts = text.split(separator: ":").map { Int($0.trimmingCharacters(in: .whitespaces)) }
             guard parts.allSatisfy({ $0 != nil }) else { return nil }
             let values = parts.compactMap { $0 }
+            // Absurd parts ("99999999999:00") would overflow the multiplication below.
+            guard values.allSatisfy({ (0..<1_000_000).contains($0) }) else { return nil }
             if values.count == 2 { return values[0] * 60 + values[1] }
             if values.count == 3 { return values[0] * 3600 + values[1] * 60 + values[2] }
             return nil
@@ -104,6 +106,8 @@ public enum LooseParse {
             }
         }
         guard flush(), matchedAny else { return nil }
+        // A runaway number ("999…9s") is no duration – and Int(_:) would trap on it.
+        guard total.isFinite, total >= 0, total < 1_000_000_000 else { return nil }
         return Int(total.rounded())
     }
 
@@ -113,7 +117,7 @@ public enum LooseParse {
         guard !text.isEmpty else { return nil }
         let numberPart = String(text.prefix { $0.isNumber || $0 == "." || $0 == "," }).replacingOccurrences(of: ",", with: ".")
         let unitPart = String(text.dropFirst(numberPart.count))
-        guard let value = Double(numberPart) else { return nil }
+        guard let value = Double(numberPart), value.isFinite else { return nil }
         switch unitPart {
         case "", "m", "meter", "meters", "metre", "metres": return value
         case "km", "k": return value * 1000
@@ -133,7 +137,37 @@ public enum LooseParse {
             .replacingOccurrences(of: "lb", with: "")
             .trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return nil }
-        return Double(text)
+        // "nan", "inf" and "1e999" are numbers to Double(_:), but they can't be stored (JSON has no
+        // NaN or infinity) – a plan with one of them must not lose the whole workout.
+        guard let value = Double(text), value.isFinite else { return nil }
+        return value
+    }
+
+    /// The digits after the comma when `raw` is one number written with a decimal comma – "62,5",
+    /// "61,25", "1,5 km", "62,5kg" – else nil ("15,12,10", "20,22.5", "abc").
+    public static func decimalCommaFractionDigits(_ raw: String) -> Int? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A unit may follow the number ("62,5 kg", "1,5km", "2,5 min").
+        let number = text.prefix { $0.isASCII && ($0.isNumber || $0 == ",") }
+        let rest = text.dropFirst(number.count).trimmingCharacters(in: .whitespaces)
+        guard rest.allSatisfy({ $0.isLetter || $0 == "'" }) else { return nil }
+        let parts = number.split(separator: ",", omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else { return nil }
+        return parts[1].count
+    }
+
+    /// Per-set values of a numeric cell (weight, rpe, distance, duration). With `decimalComma` (a
+    /// semicolon file written by Excel or Numbers in a comma locale) a comma is a decimal point and
+    /// values are separated by `/`, `|` or `;`; a cell with several commas ("15,12,10") is still a list.
+    /// Otherwise it splits like `list(_:)`.
+    public static func numberList(_ raw: String, decimalComma: Bool) -> [String] {
+        guard decimalComma else { return list(raw) }
+        let parts = raw.components(separatedBy: CharacterSet(charactersIn: "/;|"))
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return parts.flatMap { part -> [String] in
+            part.filter({ $0 == "," }).count > 1 ? list(part) : [part]
+        }
     }
 
     public static func bool(_ raw: String) -> Bool {

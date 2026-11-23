@@ -470,6 +470,8 @@ struct ValuePadSheet: View {
     @State private var field: SetField
     @State private var text = ""
     @State private var replaceOnType = true
+    /// Keyboard focus on the pad (Mac, iPad with keyboard): typing "80" goes straight in.
+    @FocusState private var padFocused: Bool
 
     init(request: ValuePadRequest) {
         self.request = request
@@ -492,9 +494,10 @@ struct ValuePadSheet: View {
                     }
                     display
                     if field == .weight, let plates = plates(item) {
-                        Label(plates, systemImage: "circle.grid.2x1")
+                        // Orange when the plates at hand can't make up the weight ("≈ 60 kg").
+                        Label(plates.text, systemImage: "circle.grid.2x1")
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(plates.exact ? Color.secondary : Color.orange)
                     }
                     suggestions(item, set)
                     keypad
@@ -516,10 +519,29 @@ struct ValuePadSheet: View {
                     .fontWeight(.semibold)
                 }
             }
-            .onAppear(perform: load)
-            // Hardware keyboard (Mac, iPad): digits, comma/point, delete, return.
-            .focusable()
+            .onAppear {
+                load()
+                padFocused = true
+            }
+            // Hardware keyboard (Mac, iPad): digits, comma/point, delete, return, Tab to the next
+            // value, Esc to close. The pad takes keyboard focus as it opens.
+            .focusable(interactions: .edit)
+            .focused($padFocused)
+            .defaultFocus($padFocused, true)
             .focusEffectDisabled()
+            .onKeyPress(.escape) {
+                commit()
+                dismiss()
+                return .handled
+            }
+            .onKeyPress(.tab, phases: .down) { press in
+                guard let item else { return .ignored }
+                let all = fields(for: item)
+                guard all.count > 1, let index = all.firstIndex(of: field) else { return .ignored }
+                let step = press.modifiers.contains(.shift) ? all.count - 1 : 1
+                switchField(to: all[(index + step) % all.count])
+                return .handled
+            }
             .onKeyPress(characters: .decimalDigits) { press in
                 self.press(press.characters)
                 return .handled
@@ -541,13 +563,16 @@ struct ValuePadSheet: View {
         }
     }
 
-    /// "20 + 15 per side" while typing a barbell weight.
-    private func plates(_ item: WorkoutItem) -> String? {
+    /// "20 + 15 per side" while typing a barbell weight; not exact when the plates at hand can't make
+    /// it up ("20 per side ≈ 60 kg").
+    private func plates(_ item: WorkoutItem) -> (text: String, exact: Bool)? {
         guard item.mode == .reps, (item.equipment ?? "").lowercased().contains("barbell") || item.name.lowercased().contains("barbell"),
               let value = NumberParser.double(text) else { return nil }
         let kg = live.unit.toKilograms(value)
         guard kg > CoachPrefs.barKg else { return nil }
-        return PlateMath.text(totalKg: kg, barKg: CoachPrefs.barKg, plates: PlateSet.current.platesKg, unit: live.unit)
+        let plates = PlateSet.current.platesKg
+        guard let label = PlateMath.text(totalKg: kg, barKg: CoachPrefs.barKg, plates: plates, unit: live.unit) else { return nil }
+        return (label, PlateMath.load(totalKg: kg, barKg: CoachPrefs.barKg, plates: plates)?.isExact ?? true)
     }
 
     // MARK: Parts
@@ -762,6 +787,8 @@ struct ValuePadSheet: View {
         commit()
         field = newField
         load()
+        // The segmented control may have taken focus: typing goes to the pad again.
+        padFocused = true
     }
 
     private func press(_ key: String) {
@@ -795,15 +822,11 @@ struct ValuePadSheet: View {
 }
 
 
-/// "Last time" for a set: the same working set last time (warm-ups matched with warm-ups), so a
-/// warm-up added today doesn't shift the comparison.
+/// "Last time" for a set: the same set last time, paired exactly like the prefill of a new workout
+/// (`WorkoutSet.matchingPrevious` in GeorgeCore) – warm-ups with warm-ups, working sets with working
+/// sets, drop sets with drop sets – so the chip and the planned weight never disagree.
 enum LastTime {
     static func matching(_ set: WorkoutSet, in item: WorkoutItem, previous: [WorkoutSet]?) -> WorkoutSet? {
-        guard let previous, !previous.isEmpty, let index = item.sets.firstIndex(where: { $0.id == set.id }) else { return nil }
-        let isWarmup = set.kind == .warmup
-        let position = item.sets.prefix(upTo: index).filter { ($0.kind == .warmup) == isWarmup }.count
-        let candidates = previous.filter { ($0.kind == .warmup) == isWarmup && $0.isDone }
-        guard !candidates.isEmpty else { return nil }
-        return position < candidates.count ? candidates[position] : candidates[candidates.count - 1]
+        WorkoutSet.matchingPrevious(set, in: item, previous: previous)
     }
 }

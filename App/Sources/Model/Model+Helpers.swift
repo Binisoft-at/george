@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import BinisoftKit
 import GeorgeCore
 
 extension Program {
@@ -32,16 +33,50 @@ extension WorkoutTemplate {
         set { kindRaw = newValue.rawValue; touch() }
     }
 
+    /// Reading never fails (empty when the data can't be read); writing never empties or strips the
+    /// stored workout – see `storeContent(_:force:)`.
     var content: WorkoutContent {
         get { WorkoutContent.decode(contentData) }
-        set {
-            contentData = newValue.encoded()
-            exerciseNames = newValue.allItems.map(\.name).joined(separator: " · ")
-            exerciseCount = newValue.exerciseCount
-            setCount = newValue.totalSets
-            estimatedMinutes = Int((Double(newValue.estimatedSeconds()) / 60).rounded())
-            touch()
+        set { storeContent(newValue) }
+    }
+
+    /// Whether this template's workout can be edited here (`StoredContent.ReadState`).
+    var contentReadState: StoredContent.ReadState { StoredContent.readState(of: contentData) }
+
+    /// Writes the workout unless that would lose data: stored data this build can't read, or that a
+    /// newer George wrote, stays as it is (logged; the screens show it read-only). `force`: an explicit
+    /// replace (import with "Replace templates", restore). Returns false when the stored data was kept.
+    @discardableResult
+    func storeContent(_ newValue: WorkoutContent, force: Bool = false) -> Bool {
+        switch StoredContent.write(newValue, over: contentData, force: force) {
+        case .write(let data):
+            contentData = data
+        case .repaired(let data, let removed):
+            AppLog.error("Template saved without \(removed) number(s) that can't be stored (NaN/infinity)", category: "store")
+            contentData = data
+        case .keep(let reason):
+            AppLog.error("Template not saved: \(reason.logText)", category: "store")
+            return false
         }
+        exerciseNames = newValue.allItems.map(\.name).joined(separator: " · ")
+        exerciseCount = newValue.exerciseCount
+        setCount = newValue.totalSets
+        estimatedMinutes = Int((Double(newValue.estimatedSeconds()) / 60).rounded())
+        touch()
+        return true
+    }
+
+    /// Puts stored data back exactly as it was (an import's Undo, a restore): bytes, not a re-encoding,
+    /// so fields of a newer George and data this build can't read survive.
+    func restoreContentData(_ data: Data?) {
+        contentData = data
+        if let content = try? WorkoutContent.decodeStrict(data) {
+            exerciseNames = content.allItems.map(\.name).joined(separator: " · ")
+            exerciseCount = content.exerciseCount
+            setCount = content.totalSets
+            estimatedMinutes = Int((Double(content.estimatedSeconds()) / 60).rounded())
+        }
+        touch()
     }
 
     var tags: [String] {
@@ -84,17 +119,51 @@ extension WorkoutSession {
         set { statusRaw = newValue.rawValue; touch() }
     }
 
+    /// Reading never fails (empty when the data can't be read); writing never empties or strips the
+    /// stored workout – see `storeContent(_:force:)`.
     var content: WorkoutContent {
         get { WorkoutContent.decode(contentData) }
-        set {
-            contentData = newValue.encoded()
-            exerciseNames = newValue.allItems.map(\.name).joined(separator: " · ")
-            exerciseCount = newValue.exerciseCount
-            setCount = newValue.totalSets
-            doneSetCount = newValue.completedSets
-            volumeKg = newValue.volumeKg
-            touch()
+        set { storeContent(newValue) }
+    }
+
+    /// Whether this workout can be edited and started here (`StoredContent.ReadState`).
+    var contentReadState: StoredContent.ReadState { StoredContent.readState(of: contentData) }
+
+    /// Writes the workout unless that would lose data: stored data this build can't read, or that a
+    /// newer George wrote, stays as it is (logged; the screens show it read-only and Start refuses).
+    /// `force`: an explicit replace (a restore). Returns false when the stored data was kept.
+    @discardableResult
+    func storeContent(_ newValue: WorkoutContent, force: Bool = false) -> Bool {
+        switch StoredContent.write(newValue, over: contentData, force: force) {
+        case .write(let data):
+            contentData = data
+        case .repaired(let data, let removed):
+            AppLog.error("Workout saved without \(removed) number(s) that can't be stored (NaN/infinity)", category: "store")
+            contentData = data
+        case .keep(let reason):
+            AppLog.error("Workout not saved: \(reason.logText)", category: "store")
+            return false
         }
+        exerciseNames = newValue.allItems.map(\.name).joined(separator: " · ")
+        exerciseCount = newValue.exerciseCount
+        setCount = newValue.totalSets
+        doneSetCount = newValue.completedSets
+        volumeKg = newValue.volumeKg
+        touch()
+        return true
+    }
+
+    /// Puts stored data back exactly as it was (a restore): bytes, not a re-encoding.
+    func restoreContentData(_ data: Data?) {
+        contentData = data
+        if let content = try? WorkoutContent.decodeStrict(data) {
+            exerciseNames = content.allItems.map(\.name).joined(separator: " · ")
+            exerciseCount = content.exerciseCount
+            setCount = content.totalSets
+            doneSetCount = content.completedSets
+            volumeKg = content.volumeKg
+        }
+        touch()
     }
 
     var tags: [String] {
@@ -132,7 +201,13 @@ extension WorkoutSession {
 
     func touch() { updatedAt = Date() }
 
+    /// With George's estimate for the calories ("≈"); views with the store pass
+    /// `store.displayEnergy(for:)` to `summaryLine(energy:)` (measured when this device has it).
     var summaryLine: String {
+        summaryLine(energy: EnergyDisplay.choose(measured: nil, estimated: energyKcal))
+    }
+
+    func summaryLine(energy: EnergyDisplay?) -> String {
         switch status {
         case .planned:
             return exerciseCount > 0 ? "\(exerciseCount) exercises · \(setCount) sets" : "Empty workout"
@@ -141,7 +216,7 @@ extension WorkoutSession {
         case .completed, .partial:
             var parts = ["\(doneSetCount)/\(setCount) sets"]
             if durationSeconds > 0 { parts.append(Format.minutes(durationSeconds)) }
-            if energyKcal > 0 { parts.append("\(Int(energyKcal)) kcal") }
+            if let energy { parts.append(energy.text) }
             return parts.joined(separator: " · ")
         case .skipped:
             return "Skipped"

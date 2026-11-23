@@ -122,41 +122,68 @@ public enum EnergyAnalysis {
                               daysLogged: daily.count, needMoreData: needMore)
     }
 
-    /// Autocorrelation of the daily series (gaps filled linearly) for lags 5…40 days; the strongest
-    /// lag counts as a cycle when r ≥ 0.3 and at least two full cycles are covered.
+    /// Autocorrelation of the daily series (gaps filled linearly) for lags 5…40 days, careful not to
+    /// see a rhythm in chance: the series is detrended first (a straight-line fit – a slow decline or
+    /// a step is no rhythm), at least 60 % of the days must be real check-ins, what's left after the
+    /// trend must vary by more than rounding (half a level), and a lag counts only when the series
+    /// covers it at least two and a half times and its correlation is a real peak – the highest
+    /// within a quarter of the lag either side, at least max(0.3, 2/√(n − lag)), below zero somewhere
+    /// before it (half a cycle) and still positive at twice the lag. The strongest such lag is the cycle.
     static func findCycle(daily: [(day: Date, value: Double)], calendar: Calendar) -> EnergyCycle? {
         guard let first = daily.first?.day, let last = daily.last?.day else { return nil }
         let length = calendar.daysBetween(first, last) + 1
-        guard length >= 14 else { return nil }
+        // The shortest lag, covered two and a half times.
+        guard length >= 13 else { return nil }
         var series = [Double?](repeating: nil, count: length)
         for d in daily { series[calendar.daysBetween(first, d.day)] = d.value }
-        let filled = interpolate(series)
-        let mean = filled.reduce(0, +) / Double(filled.count)
-        let centered = filled.map { $0 - mean }
-        let variance = centered.reduce(0) { $0 + $1 * $1 }
-        guard variance > 0 else { return nil }
+        let realDays = series.filter { $0 != nil }.count
+        guard Double(realDays) >= 0.6 * Double(length) else { return nil }
+        let detrended = detrend(interpolate(series))
+        let variance = detrended.reduce(0) { $0 + $1 * $1 }
+        // A decline in whole levels leaves a saw-tooth of ±0.5 around its line: that's rounding, no rhythm.
+        guard variance > 1e-9, (variance / Double(length)).squareRoot() >= 0.5 else { return nil }
 
+        // r for every lag (no n/(n − lag) boost: long lags with little overlap aren't inflated).
+        let correlation: [Double] = (0..<length).map { lag in
+            var sum = 0.0
+            for i in 0..<(length - lag) { sum += detrended[i] * detrended[i + lag] }
+            return sum / variance
+        }
+        let maxLag = min(40, length * 2 / 5)
         var bestLag = 0
         var bestR = 0.0
-        for lag in 5...min(40, length / 2) {
-            var sum = 0.0
-            for i in 0..<(length - lag) { sum += centered[i] * centered[i + lag] }
-            let r = sum / variance * Double(length) / Double(length - lag)
+        for lag in 5...max(5, maxLag) where lag <= maxLag {
+            let r = correlation[lag]
+            guard r >= max(0.3, 2 / Double(length - lag).squareRoot()) else { continue }
+            let reach = max(2, lag / 4)
+            let isPeak = !((lag - reach)...(lag + reach)).contains { $0 != lag && $0 < length && correlation[$0] > r }
+            guard isPeak, (1..<lag).contains(where: { correlation[$0] < 0 }) else { continue }
+            if 2 * lag < length && correlation[2 * lag] <= 0 { continue }
             if r > bestR {
                 bestR = r
                 bestLag = lag
             }
         }
-        guard bestLag > 0, bestR >= 0.3, length >= bestLag * 2 else { return nil }
+        guard bestLag > 0 else { return nil }
 
         // Last low point in the most recent cycle, projected forward.
-        let recentWindow = filled.suffix(bestLag)
+        let recentWindow = detrended.suffix(bestLag)
         var nextLow: Date?
         // Slice indices are positions in `filled`, i.e. days after `first`.
         if let lowIndex = recentWindow.indices.min(by: { recentWindow[$0] < recentWindow[$1] }) {
             nextLow = calendar.addingDays(lowIndex + bestLag, to: first)
         }
         return EnergyCycle(periodDays: bestLag, strength: min(1, bestR), nextLow: nextLow)
+    }
+
+    /// The series minus its straight-line fit.
+    static func detrend(_ values: [Double]) -> [Double] {
+        guard !values.isEmpty else { return [] }
+        let xs = values.indices.map(Double.init)
+        let mean = values.reduce(0, +) / Double(values.count)
+        let meanX = xs.reduce(0, +) / Double(xs.count)
+        let b = slope(xs: xs, ys: values) ?? 0
+        return values.enumerated().map { $0.element - (mean + b * (Double($0.offset) - meanX)) }
     }
 
     static func interpolate(_ series: [Double?]) -> [Double] {

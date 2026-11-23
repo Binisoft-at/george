@@ -11,7 +11,8 @@ struct SidebarView: View {
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @Query private var sessions: [WorkoutSession]
     @Query private var templates: [WorkoutTemplate]
-    @State private var showArchived = false
+    /// Kept per window – and over the switch between dashboards and lists, which builds the sidebar anew.
+    @SceneStorage("sidebar.showArchived") private var showArchived = false
     @State private var editingProgram: Program?
     @State private var programToDelete: Program?
 
@@ -74,6 +75,8 @@ struct SidebarView: View {
         .navigationTitle("George")
         #if os(macOS)
         .listStyle(.sidebar)
+        // "Synced 2 minutes ago", or what's wrong with saving or syncing (a tap opens Settings).
+        .safeAreaInset(edge: .bottom, spacing: 0) { SyncHealthBanner(isSidebarFooter: true) }
         #else
         .listStyle(.insetGrouped)
         #endif
@@ -85,6 +88,7 @@ struct SidebarView: View {
                 } label: {
                     Image(systemName: "gearshape")
                 }
+                .help("Settings")
             }
             #endif
             ToolbarItem(placement: .georgeTrailing) {
@@ -99,6 +103,7 @@ struct SidebarView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .help("Create")
             }
         }
         .sheet(item: $editingProgram) { program in
@@ -191,9 +196,11 @@ struct SidebarView: View {
                 if program.isPinned {
                     Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.secondary)
                 }
-                Text("\(program.allSessions.count + (program.templates?.count ?? 0))")
+                // Workouts, like every other count in the sidebar ("13 workouts · 3 templates" on hover).
+                Text("\(program.allSessions.count)")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .help(HeaderSummary.programCounts(workouts: program.allSessions.count, templates: program.templates?.count ?? 0))
             }
             .opacity(program.isArchived ? 0.5 : 1)
         }

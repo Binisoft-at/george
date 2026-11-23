@@ -74,8 +74,39 @@ final class Router {
     }
 
     // Mac
-    var sidebar: SidebarItem?
-    var detail: DetailItem?
+    /// The sidebar selection. A dashboard always opens clean; a list gets back the item it showed
+    /// last – never another list's item.
+    var sidebar: SidebarItem? {
+        get { sidebarSelection }
+        set {
+            guard newValue != sidebarSelection else { return }
+            sidebarSelection = newValue
+            detailPath = []
+            detail = newValue.flatMap { lastDetail[$0] }
+        }
+    }
+    /// The list's selection, shown in the detail column. Dashboards show opened items on `detailPath`.
+    var detail: DetailItem? {
+        get { detailSelection }
+        set {
+            guard newValue != detailSelection else { return }
+            detailSelection = newValue
+            detailPath = []
+            if let sidebar, !sidebar.isDashboard { lastDetail[sidebar] = newValue }
+        }
+    }
+    private var sidebarSelection: SidebarItem?
+    private var detailSelection: DetailItem?
+    /// Opened on top of the detail (a workout from a template's history, an exercise from a
+    /// workout, a dashboard's workout or muscle) – with Back.
+    var detailPath: [DetailItem] = []
+    /// What each list showed last.
+    @ObservationIgnored private var lastDetail: [SidebarItem: DetailItem] = [:]
+    /// Main windows open right now (Mac): Settings brings one up before it shows something there.
+    @ObservationIgnored var mainWindowCount = 0
+    /// A CSV opened from Finder, dropped on the window or shared from another app – the import
+    /// sheet loads it (also when it's open already).
+    var importURL: URL?
 
     // iPhone / iPad
     var tab: AppTab = .today
@@ -98,6 +129,10 @@ final class Router {
     var tour: TourRequest?
     /// A freshly created template whose exercise picker should open right away.
     var pickExercisesFor: UUID?
+    /// The program "New Template" in the create sheet preselects (nil: the active program).
+    var newTemplateProgramID: UUID?
+    /// "New Empty Workout" made a moment ago: left without adding anything, it goes again.
+    var draftSessionID: UUID?
 
     func request(_ request: Request) { pendingRequest = request }
 
@@ -105,7 +140,12 @@ final class Router {
     func open(_ item: DetailItem, in sidebarItem: SidebarItem? = nil) {
         #if os(macOS)
         if let sidebarItem { sidebar = sidebarItem }
-        detail = item
+        if sidebar?.isDashboard == true {
+            // A dashboard fills the window: the item opens on top of it, with Back.
+            if detailPath != [item] { detailPath = [item] }
+        } else {
+            detail = item
+        }
         #else
         if let sidebarItem { show(sidebarItem) }
         if paths[tab]?.last != .detail(item) {
@@ -114,9 +154,26 @@ final class Router {
         #endif
     }
 
+    /// A link inside a detail (a workout in a template's history, an exercise from a workout): on
+    /// the Mac it opens on top of the detail with Back, and the list keeps its selection. On
+    /// iPhone/iPad the same as `open`.
+    func push(_ item: DetailItem) {
+        #if os(macOS)
+        if sidebar?.isDashboard != true && detail == nil {
+            detail = item
+        } else if detailPath.last != item && !(detailPath.isEmpty && detail == item) {
+            detailPath.append(item)
+        }
+        #else
+        open(item)
+        #endif
+    }
+
     /// Stops showing an item (e.g. after deleting it).
     func close(_ item: DetailItem) {
         if detail == item { detail = nil }
+        detailPath.removeAll { $0 == item }
+        lastDetail = lastDetail.filter { $0.value != item }
         for key in Array(paths.keys) {
             paths[key]?.removeAll { $0 == .detail(item) }
         }
@@ -125,7 +182,8 @@ final class Router {
     /// Switches to a list screen: the sidebar selection on the Mac, the matching tab on iPhone/iPad.
     func show(_ item: SidebarItem) {
         #if os(macOS)
-        sidebar = item
+        // The same screen again (⌘1 on Today): back to its top.
+        if sidebar == item { detailPath = [] } else { sidebar = item }
         #else
         switch item {
         case .today: select(.today)
@@ -346,6 +404,26 @@ final class Router {
     }
 }
 
+/// What ⌘↩ (Workout → Start …) starts: the template or workout open in the detail, published by its
+/// screen while it is shown. Without one the menu starts the suggested workout.
+struct StartCommand {
+    /// "Start UPPER", "Continue W46: 2 UPPER - 10.11"
+    var title: String
+    var isEnabled = true
+    var perform: () -> Void
+}
+
+struct StartTargetKey: FocusedValueKey {
+    typealias Value = StartCommand
+}
+
+extension FocusedValues {
+    var startTarget: StartCommand? {
+        get { self[StartTargetKey.self] }
+        set { self[StartTargetKey.self] = newValue }
+    }
+}
+
 enum DemoSheet: Identifiable, Hashable {
     case voice
     case share(UUID)
@@ -436,11 +514,12 @@ struct SplitRootView: View {
                     SidebarView()
                         .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
                 } detail: {
-                    NavigationStack {
+                    // A tapped muscle or workout opens on top of the dashboard, with Back.
+                    NavigationStack(path: $router.detailPath) {
                         ScreenView(item: router.sidebar)
                             .frame(maxWidth: 980)
                             .frame(maxWidth: .infinity)
-                            .navigationDestination(item: $router.detail) { item in
+                            .navigationDestination(for: DetailItem.self) { item in
                                 DetailScreen(item: item)
                             }
                     }
@@ -454,25 +533,62 @@ struct SplitRootView: View {
                     ScreenView(item: router.sidebar)
                         .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
                 } detail: {
-                    NavigationStack {
-                        DetailScreen(item: router.detail)
+                    // The list's selection; links inside it (a template's history …) open on top, with Back.
+                    NavigationStack(path: $router.detailPath) {
+                        DetailScreen(item: router.detail, list: router.sidebar)
+                            .navigationDestination(for: DetailItem.self) { item in
+                                DetailScreen(item: item)
+                            }
                     }
                     .id(router.detail)
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
+            MacNowPlaying()
+        }
+        // A CSV dragged from Finder onto the window opens the import.
+        .dropDestination(for: URL.self) { (urls: [URL], _: CGPoint) -> Bool in
+            guard let csv = urls.first(where: { $0.pathExtension.lowercased() == "csv" }) else { return false }
+            router.importURL = csv
+            router.showImport = true
+            return true
+        }
+        .onAppear {
+            if router.sidebar == nil { router.sidebar = .today }
+            router.mainWindowCount += 1
+        }
+        .onDisappear {
+            router.mainWindowCount = max(0, router.mainWindowCount - 1)
+        }
+    }
+}
+
+/// The Mac's bar at the bottom: the workout running here (when live mode is closed), or a workout
+/// running on another device – read-only, with "Continue Here".
+private struct MacNowPlaying: View {
+    @Environment(GeorgeStore.self) private var store
+    @Environment(LiveWorkoutController.self) private var live
+
+    var body: some View {
+        // Synced changes (another device starting or ending a workout) bump the revision.
+        let _ = store.revision
+        let other = live.isActive ? nil : live.workoutOnOtherDevice
+        Group {
             if live.isActive && !live.isPresented {
                 MiniPlayerBar()
+                    .padding(.horizontal)
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let other {
+                OtherDevicePlayerBar(session: other)
                     .padding(.horizontal)
                     .padding(.bottom, 6)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.snappy, value: live.isActive && !live.isPresented)
-        .onAppear {
-            if router.sidebar == nil { router.sidebar = .today }
-        }
+        .animation(.snappy, value: other?.id)
     }
 }
 #else
@@ -568,6 +684,7 @@ struct RootPresentation: ViewModifier {
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
+    @Environment(ToastCenter.self) private var toasts
     @AppStorage(Prefs.didOnboard) private var didOnboard = false
     @AppStorage(Prefs.welcomeVersion) private var welcomeVersion = 0
 
@@ -652,30 +769,68 @@ struct RootPresentation: ViewModifier {
                 router.pendingRequest = nil
                 handle(request)
             }
-            // A Start while another workout runs: ask instead of ending it silently.
+            // A Start while another workout runs – here or on another device (synced): ask instead
+            // of ending it silently or running two at once.
             .confirmationDialog(
-                live.session.map { "“\($0.title)” is still running" } ?? "A workout is running",
-                isPresented: Binding(get: { live.pendingStart != nil }, set: { if !$0 { live.pendingStart = nil } }),
+                startDialogTitle,
+                isPresented: Binding(get: { live.pendingStart != nil }, set: { if !$0 { live.cancelPendingStart() } }),
                 titleVisibility: .visible,
                 presenting: live.pendingStart
             ) { target in
-                Button("Keep Going with \(live.session?.title ?? "It")") { live.keepCurrentWorkout() }
-                Button("Finish It First") { live.finishCurrentFirst() }
-                Button("Save It and Start \(target.title)") {
-                    Task { await live.finishCurrentAndStart() }
+                if let other = live.otherDeviceSession {
+                    // The workout and the start are taken from here, not from state the dialog's
+                    // dismissal may already have cleared.
+                    Button("Continue Here") { live.continueOtherDeviceWorkoutHere(other) }
+                    if !live.pendingStartIsOtherDeviceWorkout {
+                        Button("Start \(target.title) Anyway") { live.startAnyway(target, endingOn: other) }
+                    }
+                    Button("Cancel", role: .cancel) { live.cancelPendingStart() }
+                } else {
+                    Button("Keep Going with \(live.session?.title ?? "It")") { live.keepCurrentWorkout() }
+                    Button("Finish It First") { live.finishCurrentFirst() }
+                    Button("Save It and Start \(target.title)") {
+                        Task { await live.finishCurrentAndStart() }
+                    }
+                    Button("Cancel", role: .cancel) { live.cancelPendingStart() }
                 }
-                Button("Cancel", role: .cancel) { live.pendingStart = nil }
             } message: { target in
-                Text("Starting “\(target.title)” ends the running workout. Finishing first lets you rate it; saving keeps every set and the time so far.")
+                if let other = live.otherDeviceSession {
+                    Text(otherDeviceMessage(target: target, other: other))
+                } else {
+                    Text("Starting “\(target.title)” ends the running workout. Finishing first lets you rate it; saving keeps every set and the time so far.")
+                }
             }
             // The workout ended on another device (synced through iCloud): let go here.
             .onChange(of: store.revision) { _, _ in live.syncedStatusChanged() }
+            // A save failed (details in the App Log): said once, until saving works again.
+            .onChange(of: store.lastSaveError) { old, new in
+                if old == nil, new != nil { toasts.show("Couldn't save – see App Log", symbol: "exclamationmark.triangle.fill") }
+            }
+            // A start refused because the workout can't be read on this device (Today, Siri, Watch …).
+            .onChange(of: live.startRefusal) { _, message in
+                guard let message else { return }
+                toasts.show(message, symbol: "exclamationmark.triangle.fill")
+                live.startRefusal = nil
+            }
             .onOpenURL { url in
                 if url.pathExtension.lowercased() == "csv" {
-                    ImportView.pendingURL = url
+                    // The import sheet loads it – also when it's open already.
+                    router.importURL = url
                     router.showImport = true
                 }
             }
+    }
+
+    private var startDialogTitle: String {
+        if let other = live.otherDeviceSession { return "“\(other.title)” is running on another device" }
+        return live.session.map { "“\($0.title)” is still running" } ?? "A workout is running"
+    }
+
+    private func otherDeviceMessage(target: LiveWorkoutController.StartTarget, other: WorkoutSession) -> String {
+        if live.pendingStartIsOtherDeviceWorkout {
+            return "Continue it here to use this device from now on. Two devices running it would save over each other."
+        }
+        return "Starting “\(target.title)” here ends “\(other.title)” on the other device – the sets done there are kept, as stopped early."
     }
 
     private func handle(_ request: Router.Request) {
@@ -687,13 +842,16 @@ struct RootPresentation: ViewModifier {
         case .importCSV:
             router.showImport = true
         case .newTemplate:
-            let program = currentProgram ?? store.activeProgram
-            let template = store.createTemplate(in: program)
-            router.pickExercisesFor = template.id
-            router.open(.template(template.id))
+            // Name, type and program first (the create sheet), like Today's New Template: nothing
+            // empty lands in the rotation when you back out.
+            if let program = currentProgram { router.newTemplateProgramID = program.id }
+            router.createStep = .newTemplate
+            router.showCreate = true
         case .newSession:
             let program = currentProgram ?? store.activeProgram
             let session = store.makeEmptySession(program: program, start: false)
+            // Left empty, it's removed again (SessionDetailView).
+            router.draftSessionID = session.id
             router.open(.session(session.id))
         case .startSuggested:
             if live.isActive {
@@ -759,6 +917,8 @@ struct ScreenView: View {
 /// The selected workout, template, exercise or muscle.
 struct DetailScreen: View {
     let item: DetailItem?
+    /// The list next to it (Mac): the empty state says what to choose.
+    var list: SidebarItem? = nil
 
     var body: some View {
         switch item {
@@ -781,7 +941,18 @@ struct DetailScreen: View {
         case .muscularLoad:
             MuscularLoadDetailView(group: nil)
         case .none:
-            MessageView(title: "No Selection", systemImage: "square.text.square", message: "Choose a workout to see it here.")
+            MessageView(title: "No Selection", systemImage: "square.text.square", message: emptyMessage)
+        }
+    }
+
+    /// "Choose a template to see it here." – named after the list next to it.
+    private var emptyMessage: String {
+        switch list {
+        case .templates: return "Choose a template to see it here."
+        case .program: return "Choose a template or workout to see it here."
+        case .library: return "Choose an exercise to see it here."
+        case .routines: return "Choose a routine to see it here."
+        default: return "Choose a workout to see it here."
         }
     }
 }
@@ -789,15 +960,31 @@ struct DetailScreen: View {
 // MARK: - Navigation helpers
 
 /// A list that drives the Mac's detail column by selection and pushes on iPhone/iPad.
+///
+/// Mac: ⌘-click and ⇧-click select several rows (`selection`, for the list's bulk actions); one
+/// selected row is the detail column's item. On a dashboard, a row opens on top of it.
 struct NavList<Content: View>: View {
-    @ViewBuilder let content: () -> Content
+    private let content: () -> Content
+    private let selection: Binding<Set<DetailItem>>?
     @Environment(Router.self) private var router
+    @State private var ownSelection = Set<DetailItem>()
+
+    init(selection: Binding<Set<DetailItem>>? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.selection = selection
+        self.content = content
+    }
 
     var body: some View {
         #if os(macOS)
-        @Bindable var router = router
-        List(selection: $router.detail) {
+        List(selection: macSelection) {
             content()
+        }
+        // Opened from elsewhere (Today, a menu): a multi-selection that doesn't hold it ends.
+        .onChange(of: router.detail) { _, item in
+            let store = selection ?? $ownSelection
+            if store.wrappedValue.count > 1, let item, !store.wrappedValue.contains(item) {
+                store.wrappedValue = []
+            }
         }
         #else
         List {
@@ -805,6 +992,32 @@ struct NavList<Content: View>: View {
         }
         #endif
     }
+
+    #if os(macOS)
+    private var macSelection: Binding<Set<DetailItem>> {
+        let store = selection ?? $ownSelection
+        return Binding(
+            get: {
+                if router.sidebar?.isDashboard == true {
+                    // A dashboard's list: the row opened on top of it stays highlighted.
+                    return Set(router.detailPath.prefix(1))
+                }
+                // Several rows: the bulk selection; one row: the detail column's item (also when it
+                // was opened from elsewhere).
+                if store.wrappedValue.count > 1 { return store.wrappedValue }
+                return router.detail.map { Set([$0]) } ?? []
+            },
+            set: { newValue in
+                if router.sidebar?.isDashboard == true {
+                    if let item = newValue.first, newValue.count == 1 { router.open(item) }
+                    return
+                }
+                store.wrappedValue = newValue
+                if newValue.count <= 1 { router.detail = newValue.first }
+            }
+        )
+    }
+    #endif
 }
 
 /// A row that opens a detail item (selection on the Mac, push on iPhone/iPad).
@@ -819,7 +1032,10 @@ struct DetailLink<Label: View>: View {
 
     var body: some View {
         #if os(macOS)
-        NavigationLink(value: item, label: label)
+        // A selectable row of `NavList` (its selection opens the item) – not a link, so a click
+        // never pushes onto the detail column's stack as well.
+        label()
+            .tag(item)
         #else
         NavigationLink(value: Route.detail(item), label: label)
         #endif
@@ -961,6 +1177,8 @@ struct NowPlayingAccessory: View {
     }
 
     private var accessoryLabel: String {
+        // Paused: the button resumes (it never logs a set then).
+        if live.isPaused { return "Resume the workout" }
         guard let item = live.currentItem, let set = live.currentSet else { return "Set" }
         let what = "\(item.name), \(set.label(mode: item.mode, unit: live.unit))"
         return live.primaryIsStart ? "Start \(what)" : "Mark \(what) done"
@@ -1016,7 +1234,8 @@ struct MiniPlayerBar: View {
             HStack(spacing: 12) {
                 ZStack {
                     ProgressRing(progress: live.content.progress, tint: .accentColor, lineWidth: 4)
-                    Image(systemName: live.session?.kind.symbol ?? "figure.mixed.cardio")
+                    // Paused: the pause glyph, as on iPhone.
+                    Image(systemName: live.isPaused ? "pause.fill" : (live.session?.kind.symbol ?? "figure.mixed.cardio"))
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .frame(width: 34, height: 34)
@@ -1050,20 +1269,68 @@ struct MiniPlayerBar: View {
                 Button {
                     live.primaryAction()
                 } label: {
-                    Image(systemName: live.primaryIsStart ? "play.fill" : "checkmark")
+                    Image(systemName: live.isPaused || live.primaryIsStart ? "play.fill" : "checkmark")
                         .font(.body.weight(.bold))
                         .frame(width: 36, height: 36)
                 }
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.circle)
-                .disabled(live.currentSet == nil)
-                .accessibilityLabel(live.primaryIsStart ? "Start the set" : "Mark set done")
+                .disabled(live.currentSet == nil && !live.isPaused)
+                .accessibilityLabel(live.isPaused ? "Resume the workout" : (live.primaryIsStart ? "Start the set" : "Mark set done"))
+                .help(live.isPaused ? "Resume" : (live.primaryIsStart ? "Start the set" : "Mark set done"))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .floatingGlass(cornerRadius: 28, interactive: true)
+        .frame(maxWidth: 560)
+    }
+}
+
+/// The Mac's bar while a workout runs on another device (synced): read-only, with "Continue Here".
+/// Tapping it shows the workout (read-only while it runs there).
+struct OtherDevicePlayerBar: View {
+    let session: WorkoutSession
+    @Environment(LiveWorkoutController.self) private var live
+    @Environment(Router.self) private var router
+
+    var body: some View {
+        let content = session.content
+        HStack(spacing: 12) {
+            Button {
+                router.open(.session(session.id), in: .allSessions)
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        ProgressRing(progress: content.progress, tint: .secondary, lineWidth: 4)
+                        Image(systemName: session.resumedAt == nil ? "pause.fill" : "iphone.and.arrow.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 34, height: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Running on another device")
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        Text(RunningWorkout.progressLine(title: session.title, content: content))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Show this workout")
+            Button("Continue Here") { live.continueHere(session) }
+                .buttonStyle(.glass)
+                .help("Take this workout over on this Mac")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .floatingGlass(cornerRadius: 28, interactive: true)
         .frame(maxWidth: 560)
     }

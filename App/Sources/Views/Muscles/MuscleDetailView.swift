@@ -52,7 +52,7 @@ struct MuscleDetailView: View {
             } footer: {
                 Text(freshness.isCalibrating
                      ? "Calibrating: after three workouts that train your \(group.displayName.lowercased()) within six weeks, George sizes the estimate to your usual volume."
-                     : "Based on about \(Int(freshness.capacity.rounded())) hard sets per workout as your usual \(group.displayName.lowercased()) volume. Bigger muscles take longer to recover.")
+                     : "Sized to your usual \(group.displayName.lowercased()) workout from the last 6 weeks. Bigger muscles take longer to recover.")
             }
 
             Section("Recovery") {
@@ -136,15 +136,14 @@ struct MuscleDetailView: View {
         return "In your target range this week."
     }
 
-    /// One plain sentence on what to do with this muscle now.
+    /// One plain sentence on what to do with this muscle now – it follows the freshness estimate shown
+    /// at the top, so the two never disagree (the profile's recovery hours stay in the targets below).
     private func focusText(freshness: MuscleFreshness, profile: TrainingProfile) -> String {
-        let hours = profile.recoveryHours
-        guard let last = freshness.lastTrained else {
+        guard freshness.lastTrained != nil else {
             return "Your \(group.displayName.lowercased()) haven't been trained yet – start with \(profile.repRange.lowerBound)–\(profile.repRange.upperBound) reps."
         }
-        let since = Int(Date().timeIntervalSince(last) / 3600)
-        if since < hours.lowerBound {
-            return "Trained \(since) h ago. Give it \(hours.lowerBound)–\(hours.upperBound) h before the next hard session."
+        if freshness.status != .recovered {
+            return "\(freshness.readyText) – keep your \(group.displayName.lowercased()) light until then."
         }
         return "Recovered enough for a hard session: \(profile.repRange.lowerBound)–\(profile.repRange.upperBound) reps, \(profile.repsInReserve.lowerBound)–\(profile.repsInReserve.upperBound) left in the tank."
     }

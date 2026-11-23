@@ -12,6 +12,10 @@ struct SettingsView: View {
     @Environment(SyncMonitor.self) private var sync
     @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+    #endif
     @AppStorage(Prefs.showImages) private var showImages = true
     @AppStorage(Prefs.healthAsked) private var healthAsked = false
     @AppStorage(Prefs.barKg) private var barKg = 20.0
@@ -26,13 +30,13 @@ struct SettingsView: View {
         let settings = store.settings
         Form {
             Section {
-                Button("Hands-on Tour", systemImage: "graduationcap") { router.startTour() }
+                Button("Hands-on Tour", systemImage: "graduationcap") { inMainWindow { router.startTour() } }
                 Button("Welcome & Setup", systemImage: "hand.wave") {
                     #if os(iOS)
                     dismiss()
                     router.afterDismiss { router.showWelcome = true }
                     #else
-                    router.showWelcome = true
+                    inMainWindow { router.showWelcome = true }
                     #endif
                 }
                 Button(hintsReset ? "Hints Come Back at the Next Launch" : "Show Hints Again", systemImage: "lightbulb") {
@@ -52,19 +56,19 @@ struct SettingsView: View {
             }
 
             Section {
-                Picker("Units", selection: Binding(get: { settings.unit }, set: { settings.unit = $0; store.save() })) {
+                Picker("Units", selection: Binding(get: { settings.unit }, set: { value in store.updateSettings { $0.unit = value } })) {
                     Text("Kilograms").tag(WeightUnit.kg)
                     Text("Pounds").tag(WeightUnit.lb)
                 }
-                Picker("Week starts on", selection: Binding(get: { settings.weekStartsOn }, set: { settings.weekStartsOn = $0; store.save() })) {
+                Picker("Week starts on", selection: Binding(get: { settings.weekStartsOn }, set: { value in store.updateSettings { $0.weekStartsOn = value } })) {
                     Text("Monday").tag(2)
                     Text("Sunday").tag(1)
                     Text("Saturday").tag(7)
                 }
-                Toggle("Prefill weights from last time", isOn: Binding(get: { settings.prefillFromLastTime }, set: { settings.prefillFromLastTime = $0; store.save() }))
-                Toggle("Offer to update templates after edits", isOn: Binding(get: { settings.askToUpdateTemplate }, set: { settings.askToUpdateTemplate = $0; store.save() }))
+                Toggle("Prefill weights from last time", isOn: Binding(get: { settings.prefillFromLastTime }, set: { value in store.updateSettings { $0.prefillFromLastTime = value } }))
+                Toggle("Offer to update templates after edits", isOn: Binding(get: { settings.askToUpdateTemplate }, set: { value in store.updateSettings { $0.askToUpdateTemplate = value } }))
                 VStack(alignment: .leading, spacing: 6) {
-                    TextField("Naming pattern", text: Binding(get: { settings.namingPattern }, set: { settings.namingPattern = $0; store.save() }))
+                    TextField("Naming pattern", text: Binding(get: { settings.namingPattern }, set: { value in store.updateSettings { $0.namingPattern = value } }))
                         .font(.system(.body, design: .monospaced))
                     Text("Preview: \(SessionNamer(pattern: settings.namingPattern, calendar: store.calendar).title(templateName: "UPPER", date: Date(), indexInWeek: 2))")
                         .font(.caption)
@@ -111,10 +115,10 @@ struct SettingsView: View {
                     } label: {
                         Text(healthAsked ? "Review Apple Health Access" : "Connect Apple Health")
                     }
-                    Toggle("Save workouts to Apple Health", isOn: Binding(get: { settings.saveToHealth }, set: { settings.saveToHealth = $0; store.save() }))
+                    Toggle("Save workouts to Apple Health", isOn: Binding(get: { settings.saveToHealth }, set: { value in store.updateSettings { $0.saveToHealth = value } }))
                     LabeledContent("Other workouts found", value: "\(health.externalWorkouts.count) in 6 months")
                 } else {
-                    Text("Apple Health isn't available on this device. Workouts sync to your iPhone, which saves them to Health.")
+                    Text("Apple Health isn't available on this device. Your George workouts sync to your iPhone, which saves them to Health. Workouts from Apple Health (tennis, runs, other apps) stay on iPhone and Watch, so the streak, load and freshness here leave them out and can be lower.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -154,8 +158,12 @@ struct SettingsView: View {
 
             Section {
                 Button {
+                    #if os(macOS)
+                    inMainWindow { router.showImport = true }
+                    #else
                     router.showImport = true
                     dismiss()
+                    #endif
                 } label: {
                     Label("Import Program from CSV", systemImage: "square.and.arrow.down")
                 }
@@ -164,6 +172,8 @@ struct SettingsView: View {
                 } label: {
                     Label("Export Workout Log (CSV)", systemImage: "square.and.arrow.up")
                 }
+                // Export Full Backup…, Restore from Backup…, Last backup (BackupViews.swift).
+                BackupSettingsRows()
                 Menu {
                     ForEach(GeorgeStore.SampleProgram.allCases) { sample in
                         Button {
@@ -183,7 +193,7 @@ struct SettingsView: View {
             } header: {
                 Text("Import & Export")
             } footer: {
-                Text("The CSV export is also your backup: it opens in Numbers or Excel.")
+                Text("A full backup holds everything and can be restored – George also saves one each week and before every import. The workout log is a readable list for Numbers or Excel – it can't be imported back. Your data lives in iCloud.")
             }
 
             Section {
@@ -248,8 +258,8 @@ struct SettingsView: View {
                             get: { (settings.unit.fromKilograms(settings.bodyMassKg) * 10).rounded() / 10 },
                             set: { value in
                                 guard let value, value > 0 else { return }
-                                settings.bodyMassKg = min(250, max(30, settings.unit.toKilograms(value)))
-                                store.save()
+                                let kg = min(250, max(30, settings.unit.toKilograms(value)))
+                                store.updateSettings { $0.bodyMassKg = kg }
                             }
                         ),
                         width: 70
@@ -285,7 +295,22 @@ struct SettingsView: View {
         dismiss()
         router.afterDismiss { router.show(.program(program.id)) }
         #else
-        router.show(.program(program.id))
+        inMainWindow { router.show(.program(program.id)) }
+        #endif
+    }
+
+    /// Mac: Settings is a window of its own. The tour, Welcome, Import and a new sample program show
+    /// in the main window – so Settings closes and the main window comes forward first (it opens
+    /// again if it was closed), instead of everything appearing behind Settings or nowhere.
+    /// iPhone/iPad: runs right away (Settings is a sheet there; the action closes it where needed).
+    private func inMainWindow(_ action: @escaping @MainActor () -> Void) {
+        #if os(macOS)
+        let mainIsOpen = router.mainWindowCount > 0
+        dismissWindow()
+        if !mainIsOpen { openWindow(id: "main") }
+        router.afterDismiss(action)
+        #else
+        action()
         #endif
     }
 }
@@ -329,7 +354,9 @@ struct ProgramEditorSheet: View {
     @State private var colorHex = "#0A84FF"
     @State private var symbol = "folder.fill"
     @State private var notes = ""
-    @State private var makeActive = true
+    /// On for your first own program only: a new program doesn't take over Today by itself.
+    @State private var makeActive = false
+    @State private var didLoad = false
 
     var body: some View {
         Form {
@@ -346,6 +373,13 @@ struct ProgramEditorSheet: View {
                         TextField("Description", text: $subtitle)
                             .font(.subheadline)
                     }
+                }
+                if program == nil {
+                    Toggle("Make this my active program", isOn: $makeActive)
+                }
+            } footer: {
+                if program == nil {
+                    Text("Today's Up next and Plan This Week follow the active program.")
                 }
             }
             Section("Default type") {
@@ -382,9 +416,6 @@ struct ProgramEditorSheet: View {
                 TextField("Goals, schedule, equipment…", text: $notes, axis: .vertical)
                     .lineLimit(2...6)
             }
-            if program == nil {
-                Toggle("Make this my active program", isOn: $makeActive)
-            }
         }
         .formStyle(.grouped)
         .navigationTitle(program == nil ? "New Program" : "Edit Program")
@@ -397,6 +428,11 @@ struct ProgramEditorSheet: View {
             }
         }
         .onAppear {
+            if !didLoad {
+                didLoad = true
+                // Your first own program becomes active; the "Stretch & Yoga" routines folder doesn't count.
+                makeActive = !store.fetchPrograms(includeArchived: false).contains { !store.isRoutineProgram($0) }
+            }
             guard let program else { return }
             name = program.name
             subtitle = program.subtitle
@@ -419,10 +455,9 @@ struct ProgramEditorSheet: View {
             program.touch()
             store.save()
         } else {
-            let created = store.createProgram(name: trimmed, kind: kind, colorHex: colorHex, symbol: symbol)
+            let created = store.createProgram(name: trimmed, kind: kind, colorHex: colorHex, symbol: symbol, activate: makeActive)
             created.subtitle = subtitle
             created.notes = notes
-            if makeActive { store.setActive(created) }
             store.save()
             router.show(.program(created.id))
         }
@@ -440,6 +475,13 @@ enum GeorgeDataFacts {
             DataFact("arrow.left.arrow.right", "Thalia", "If you use Thalia, George leaves a small note in the shared folder on this device for each finished workout (when, which template, its name). Thalia reads it there; nothing from Apple Health is in it. Settings → Thalia turns it off."),
             DataFact("photo", "Exercise pictures", "The exercise library is built into the app. Its pictures load from the open-source library online and are cached; tutorial links open YouTube or the site you added."),
         ]), at: 1)
-        return sections
+        // The standard "Export" line promises a CSV of everything; George's CSV is a readable log.
+        return sections.map { (section: DataSection) -> DataSection in
+            guard section.facts.contains(where: { $0.title == "Export" }) else { return section }
+            return DataSection(section.title, section.facts.map { (fact: DataFact) -> DataFact in
+                guard fact.title == "Export" else { return fact }
+                return DataFact("square.and.arrow.up", "Export", "Settings → Import & Export saves your workout log as a CSV to read in Numbers or Excel. It can't be imported back – your workouts are kept on your devices and in iCloud. Export Full Backup saves everything in one file you can restore; George also keeps its last 8 backups on this device (weekly and before every import), outside iCloud.")
+            })
+        }
     }
 }

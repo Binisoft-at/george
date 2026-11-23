@@ -390,6 +390,7 @@ struct PlanWorkoutView: View {
 struct NewTemplateView: View {
     let onCreate: (WorkoutTemplate) -> Void
     @Environment(GeorgeStore.self) private var store
+    @Environment(Router.self) private var router
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @State private var name = ""
     @State private var focus = ""
@@ -452,8 +453,11 @@ struct NewTemplateView: View {
             }
         }
         .onAppear {
-            if programID == nil { programID = store.activeProgram?.id }
-            kind = store.activeProgram?.kind ?? .gym
+            // The program it was asked from (a program's template list or card), else the active one.
+            let preferred = store.program(id: router.newTemplateProgramID) ?? store.activeProgram
+            router.newTemplateProgramID = nil
+            if programID == nil { programID = preferred?.id }
+            kind = preferred?.kind ?? .gym
             nameFocused = true
         }
     }

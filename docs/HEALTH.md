@@ -36,6 +36,9 @@ rating you type in are your training log and sync normally.
 ## What George reads
 
 - **Workouts from other apps/devices** (e.g. a tennis session tracked on the Watch) — counted toward the weekly streak if ≥ the minimum length (Settings → Streak).
+  They are read on iPhone/iPad only and never synced: **on the Mac** (no HealthKit) the streak, muscular
+  load and freshness leave them out. The Mac says so under the streak and the load card, shows only
+  "x/y days logged in George" instead of "at risk"/rescue/save wording, and offers no rescue workout.
 - **Heart rate** during a session (average/max) when the watch app wasn't used but the Watch recorded HR anyway.
 - **Body mass** for calorie estimates.
 - **HRV, resting heart rate and sleep** (daily, last ~4 months) – today's values against your 30-day

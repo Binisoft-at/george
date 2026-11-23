@@ -40,9 +40,7 @@ struct ReorderBlocksSheet: View {
             }
         }
         .presentationDetents([.large])
-        #if os(macOS)
-        .frame(minWidth: 420, minHeight: 480)
-        #endif
+        .macSheet(width: 460, height: 560)
     }
 
     private func row(_ block: WorkoutBlock, index: Int) -> some View {

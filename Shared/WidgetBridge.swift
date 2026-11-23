@@ -13,9 +13,12 @@ struct WidgetSnapshot: Codable, Hashable {
         /// "6 exercises · 45 min".
         var detail: String
         var symbol: String
-        /// Planned for today (true) or the program's suggestion (false).
+        /// A planned session (true) or the program's suggestion (false).
         var isPlanned: Bool
         var programName: String
+        /// The day a planned session is planned for (nil for a suggestion and in older snapshots).
+        /// The widget says "Today" or "Missed · Tue" from it as its timeline moves on.
+        var plannedDay: Date? = nil
     }
 
     struct Streak: Codable, Hashable {
@@ -72,11 +75,34 @@ extension WidgetSnapshot.Streak {
         return (0..<7).contains(days) ? days : nil
     }
 
+    /// Days done in the week that contains `date`: the snapshot's count while its week runs, 0 once
+    /// it is over (the same rule as SnapshotTiming.doneDays in GeorgeCore, which this target can't use).
+    func doneDays(on date: Date, calendar: Calendar = .current) -> Int {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: weekStart), to: calendar.startOfDay(for: date)).day ?? 0
+        return days < 7 ? doneDays : 0
+    }
+
     /// One-letter weekday names in the order of `dots`.
     func letters(calendar: Calendar = .current) -> [String] {
         let symbols = calendar.veryShortWeekdaySymbols
         let first = calendar.component(.weekday, from: weekStart) - 1
         return (0..<7).map { symbols[(first + $0) % 7] }
+    }
+}
+
+extension WidgetSnapshot.Workout {
+    /// "Today", "Missed · Tue" or "Up next" as of `date` – a timeline entry at midnight must not call
+    /// yesterday's plan "Today" (the same rule as SnapshotTiming.plan in GeorgeCore).
+    func caption(on date: Date, updatedAt: Date, calendar: Calendar = .current) -> String {
+        guard isPlanned else { return "Up next" }
+        guard let plannedDay else {
+            // An older snapshot without the day: planned for the day it was written.
+            return calendar.isDate(updatedAt, inSameDayAs: date) ? "Today" : "Up next"
+        }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: plannedDay)).day ?? 0
+        if days == 0 { return "Today" }
+        if days < 0 { return "Missed · \(plannedDay.formatted(.dateTime.weekday(.abbreviated)))" }
+        return "Up next"
     }
 }
 

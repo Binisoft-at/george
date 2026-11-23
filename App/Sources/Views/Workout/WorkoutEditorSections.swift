@@ -19,10 +19,18 @@ struct WorkoutEditorSections: View {
     let mode: EditorMode
     let defaultKind: WorkoutKind
     var onToggleSet: ((UUID) -> Void)? = nil
+    /// Off for a finished workout until Edit is tapped: no ticks by tap, no swipe actions, no "+",
+    /// so scrolling through history can't change it.
+    var isEditing: Bool = true
 
     @Bindable var state: EditorState
+    /// A performed workout compares with the one before it ("Previous:"), never with itself or a
+    /// later one. Nil for the live workout and plans: the latest before now ("Last:").
+    var previousBefore: Date? = nil
+    var excludingSessionID: UUID? = nil
 
     @Environment(GeorgeStore.self) private var store
+    @Environment(ToastCenter.self) private var toasts
 
     var body: some View {
         ForEach(Array(content.blocks.enumerated()), id: \.element.id) { index, block in
@@ -36,6 +44,7 @@ struct WorkoutEditorSections: View {
                         withAnimation(.snappy) { content.matchSetCounts(blockID: block.id) }
                         Haptics.success()
                     }
+                    .disabled(!isEditing)
                     .listRowBackground(Color.accentColor.opacity(0.08))
                 }
                 ForEach(block.items) { item in
@@ -148,41 +157,54 @@ struct WorkoutEditorSections: View {
             },
             onEditSet: { setID in state.editingSet = SetEditRequest(setID: setID, itemID: item.id) },
             onAddSet: { content.addSet(to: item.id) },
-            onOpen: { state.editingItemID = item.id }
+            onOpen: { state.editingItemID = item.id },
+            checkable: isEditing,
+            previousLabel: excludingSessionID == nil ? "Last" : "Previous"
         )
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                content.removeItem(id: item.id)
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if isEditing {
+                Button(role: .destructive) {
+                    remove(item)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                Button {
+                    state.swapItemID = item.id
+                    state.showPicker = true
+                } label: {
+                    Label("Swap", systemImage: "arrow.triangle.swap")
+                }
+                .tint(.indigo)
             }
-            Button {
-                state.swapItemID = item.id
-                state.showPicker = true
-            } label: {
-                Label("Swap", systemImage: "arrow.triangle.swap")
-            }
-            .tint(.indigo)
         }
         .swipeActions(edge: .leading) {
-            Button {
-                content.addSet(to: item.id)
-            } label: {
-                Label("Set", systemImage: "plus")
-            }
-            .tint(.blue)
-            if mode.isSession {
+            if isEditing {
                 Button {
-                    content.setAllSets(of: item.id, done: !item.isComplete)
+                    content.addSet(to: item.id)
                 } label: {
-                    Label(item.isComplete ? "Undo" : "All Done", systemImage: "checkmark.circle")
+                    Label("Set", systemImage: "plus")
                 }
-                .tint(.green)
+                .tint(.blue)
+                if mode.isSession {
+                    Button {
+                        content.setAllSets(of: item.id, done: !item.isComplete)
+                    } label: {
+                        Label(item.isComplete ? "Undo" : "All Done", systemImage: "checkmark.circle")
+                    }
+                    .tint(.green)
+                }
             }
         }
         .contextMenu {
             itemMenu(item, in: block)
         }
+    }
+
+    /// Removes an exercise with all its sets; the toast's Undo puts the workout back as it was.
+    private func remove(_ item: WorkoutItem) {
+        let before = content
+        content.removeItem(id: item.id)
+        toasts.show("Removed \u{201C}\(item.name)\u{201D}", symbol: "trash.fill") { content = before }
     }
 
     @ViewBuilder
@@ -216,12 +238,13 @@ struct WorkoutEditorSections: View {
             state.tutorial = item.links.first.flatMap(URL.init(string:)) ?? TutorialLinks.youtubeSearch(for: item.name, kind: item.kind ?? defaultKind)
         } label: { Label("Watch Tutorial", systemImage: "play.rectangle") }
         Divider()
-        Button(role: .destructive) { content.removeItem(id: item.id) } label: { Label("Delete", systemImage: "trash") }
+        Button(role: .destructive) { remove(item) } label: { Label("Delete", systemImage: "trash") }
     }
 
     private func previousSets(for item: WorkoutItem) -> [WorkoutSet]? {
         guard mode.isSession, store.settings.prefillFromLastTime else { return nil }
-        return PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store)
+        return PreviousPerformanceCache.shared.sets(for: item.exerciseKey, store: store,
+                                                    before: previousBefore, excluding: excludingSessionID)
     }
 }
 
@@ -302,7 +325,7 @@ struct BlockHeaderRow: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .accessibilityHint("Gives every exercise in this group \(block.maxSetCount) sets")
+                .accessibilityHint("Gives every exercise in this group \(block.maxSetCount) working sets")
             }
             Menu {
                 Picker("Style", selection: Binding(get: { block.style }, set: { var b = block; b.style = $0; onChange(b) })) {
@@ -335,24 +358,22 @@ struct BlockHeaderRow: View {
         }
     }
 
+    /// Rounds count working sets: warm-ups, drop sets and a swapped exercise's replacement don't add one.
     private var detail: String {
         if block.setCountsDiffer {
-            return block.items.map { String($0.sets.count) }.joined(separator: " · ") + " sets"
+            return block.laneRoundCounts.map { String($0) }.joined(separator: " · ") + " sets"
         }
         var parts = ["\(block.roundCount) rounds"]
         if let rest = block.restAfterRoundSeconds, rest > 0 { parts.append("rest \(Format.shortDuration(rest))") }
         return parts.joined(separator: " · ")
     }
 
+    /// Every exercise gets `rounds` working sets (warm-ups and drop sets stay; sets already done are
+    /// never removed).
     private func applyRounds(_ rounds: Int) {
         var b = block
+        b.matchRounds(to: rounds)
         b.rounds = rounds
-        for i in b.items.indices {
-            var sets = b.items[i].sets
-            while sets.count < rounds { sets.append(b.items[i].makeNextSet()) }
-            if sets.count > rounds { sets = Array(sets.prefix(rounds)) }
-            b.items[i].sets = sets
-        }
         onChange(b)
     }
 }
@@ -388,6 +409,8 @@ struct WorkoutEditorSheets: ViewModifier {
     let mode: EditorMode
     let defaultKind: WorkoutKind
     @Bindable var state: EditorState
+    /// The live tick, so Done in the set and exercise editors counts like a tick in live mode.
+    var onToggleSet: ((UUID) -> Void)? = nil
 
     func body(content view: Content) -> some View {
         view
@@ -414,12 +437,12 @@ struct WorkoutEditorSheets: ViewModifier {
             }
             .sheet(item: Binding(get: { state.editingItemID.map { ItemID(id: $0) } }, set: { state.editingItemID = $0?.id })) { wrapper in
                 NavigationStack {
-                    ItemEditorSheet(content: $content, itemID: wrapper.id, mode: mode)
+                    ItemEditorSheet(content: $content, itemID: wrapper.id, mode: mode, onToggleDone: onToggleSet)
                 }
             }
             .sheet(item: $state.editingSet) { request in
                 NavigationStack {
-                    SetEditorSheet(content: $content, itemID: request.itemID, setID: request.setID, mode: mode)
+                    SetEditorSheet(content: $content, itemID: request.itemID, setID: request.setID, mode: mode, onToggleDone: onToggleSet)
                 }
                 .presentationDetents([.medium, .large])
             }
@@ -454,7 +477,8 @@ struct WorkoutEditorSheets: ViewModifier {
 }
 
 extension View {
-    func workoutEditorSheets(content: Binding<WorkoutContent>, mode: EditorMode, defaultKind: WorkoutKind, state: EditorState) -> some View {
-        modifier(WorkoutEditorSheets(content: content, mode: mode, defaultKind: defaultKind, state: state))
+    func workoutEditorSheets(content: Binding<WorkoutContent>, mode: EditorMode, defaultKind: WorkoutKind, state: EditorState,
+                             onToggleSet: ((UUID) -> Void)? = nil) -> some View {
+        modifier(WorkoutEditorSheets(content: content, mode: mode, defaultKind: defaultKind, state: state, onToggleSet: onToggleSet))
     }
 }

@@ -24,6 +24,22 @@ handbook workflows are synced from it – change them there, never here.
   delete with Undo toasts). The window's undo manager is attached to the context (⌘Z, shake).
 - The workout itself (`WorkoutContent`: blocks, exercises, sets) is a Codable value from GeorgeCore,
   stored as `contentData` on templates and sessions.
+- CloudKit can't keep records unique, so two devices may each create settings, an exercise's notes, a
+  break week or the "Stretch & Yoga" folder before they sync. `GeorgeStore.resolveDuplicates()`
+  (`GeorgeStore+Merge.swift`, rules in GeorgeCore `DuplicateMerge`) merges them at launch and after
+  every iCloud import, the same way on every device. Settings changes go through
+  `GeorgeStore.updateSettings` so the latest choice is known.
+- Failed saves go to the App Log and show once as a toast; `SyncHealthBanner` (Today on iPhone/iPad,
+  the Mac sidebar footer) says when nothing is saved or iCloud doesn't sync.
+- `contentData` is never emptied or stripped (GeorgeCore `StoredContent`): the model setters keep data
+  this build can't read or that a newer George wrote (`WorkoutContent.currentVersion`, bump it with
+  every new content field), and NaN/infinity never turn a workout into empty data. Such a workout
+  shows read-only ("Can't read this workout" / "Update George on this device to edit") and doesn't start.
+- Backups (`GeorgeStore+Backup.swift`, format in GeorgeCore `BackupArchive`): Settings → Import &
+  Export → Export Full Backup… / Restore from Backup…; automatic ones weekly and before every import
+  or restore in Documents/Backups (last 8, visible in Files). A restore merges by id: missing records
+  come back, changes made since stay unless asked for, records added since are never touched. Plain
+  files – no CloudKit schema change.
 - CloudKit schema: [`cloudkit/schema.ckdb`](../cloudkit/schema.ckdb).
 - Thalia exchange ([THALIA.md](THALIA.md)): `ThaliaSync` (App/Sources/Services/ThaliaExchange.swift)
   rebuilds the last 62 days of finished workouts from the synced store and writes changed day files

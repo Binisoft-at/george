@@ -154,7 +154,11 @@ public enum ReminderPlanner {
                             calendar: Calendar) -> [PlannedReminder] {
         let today = calendar.startOfDay(for: now)
         let minutes = max(0, min(24 * 60 - 1, minutesAfterMidnight))
-        func fire(on day: Date) -> Date { day.addingTimeInterval(Double(minutes * 60)) }
+        // The clock time on that day (17:30 stays 17:30 on a daylight-saving Sunday).
+        func fire(on day: Date) -> Date {
+            calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day)
+                ?? day.addingTimeInterval(Double(minutes * 60))
+        }
         func key(_ day: Date) -> String {
             let c = calendar.dateComponents([.year, .month, .day], from: day)
             return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)

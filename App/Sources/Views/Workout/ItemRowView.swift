@@ -15,6 +15,10 @@ struct ItemRowView: View {
     let onEditSet: (UUID) -> Void
     let onAddSet: () -> Void
     let onOpen: () -> Void
+    /// False for a finished workout until Edit: a tap on a set doesn't tick it and there's no "+".
+    var checkable: Bool = true
+    /// "Last" (live, plans) or "Previous" (a performed workout: the one before it).
+    var previousLabel: String = "Last"
 
     @Environment(GeorgeStore.self) private var store
     @Environment(ExerciseLibrary.self) private var library
@@ -75,10 +79,11 @@ struct ItemRowView: View {
                         index: item.displayIndex(of: set),
                         label: set.label(mode: item.mode, unit: store.unit, preferActual: mode.isSession),
                         isDone: set.isDone,
-                        checkable: mode.isSession,
+                        checkable: mode.isSession && checkable,
                         tint: tint
                     )
                     .onTapGesture {
+                        guard checkable else { return }
                         if mode.isSession { onToggleSet(set.id) } else { onEditSet(set.id) }
                     }
                     .onLongPressGesture(minimumDuration: 0.35) {
@@ -87,15 +92,17 @@ struct ItemRowView: View {
                     }
                     .sensoryFeedback(.success, trigger: set.isDone) { _, new in new }
                 }
-                Button(action: onAddSet) {
-                    Image(systemName: "plus")
-                        .font(.caption.weight(.bold))
-                        .frame(width: 30, height: 30)
-                        .foregroundStyle(.secondary)
-                        .background(Color.secondary.opacity(0.1), in: Capsule())
+                if checkable {
+                    Button(action: onAddSet) {
+                        Image(systemName: "plus")
+                            .font(.caption.weight(.bold))
+                            .frame(width: 30, height: 30)
+                            .foregroundStyle(.secondary)
+                            .background(Color.secondary.opacity(0.1), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add set")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add set")
             }
         }
         .padding(.vertical, 4)
@@ -115,7 +122,7 @@ struct ItemRowView: View {
         let done = previous.filter(\.isDone)
         guard !done.isEmpty else { return nil }
         let labels = done.prefix(4).map { $0.label(mode: item.mode, unit: store.unit) }
-        return "Last: " + labels.joined(separator: ", ") + (done.count > 4 ? "…" : "")
+        return previousLabel + ": " + labels.joined(separator: ", ") + (done.count > 4 ? "…" : "")
     }
 }
 

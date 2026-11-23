@@ -20,7 +20,7 @@ public enum ProgressMetric: String, CaseIterable, Sendable, Identifiable {
         switch self {
         case .oneRepMax: return "Estimated one-rep max of your best set – fair across rep ranges."
         case .topSet: return "Your heaviest set, whatever the reps."
-        case .volume: return "Reps × weight of the working sets."
+        case .volume: return "Reps × weight of the working sets (both sides for one-arm or one-leg moves)."
         case .reps: return "Total reps of the sessions without added weight."
         case .seconds: return "Your longest hold."
         }
@@ -109,9 +109,8 @@ public enum ExerciseProgress {
             guard let top else { return nil }
             return (value: top.effectiveWeight ?? 0, reps: top.effectiveReps)
         case .volume:
-            let working = weighted.filter { $0.kind != .warmup }
-            guard !working.isEmpty else { return nil }
-            return (value: working.reduce(0) { $0 + Double($1.effectiveReps ?? 0) * ($1.effectiveWeight ?? 0) }, reps: nil)
+            // The point's working volume (× 2 for each-side moves) – the finish screen's number.
+            return point.volume > 0 ? (value: point.volume, reps: nil) : nil
         case .reps:
             return bodyweightReps(point).map { (value: Double($0), reps: nil) }
         case .seconds:

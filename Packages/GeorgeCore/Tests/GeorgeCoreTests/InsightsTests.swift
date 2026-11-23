@@ -73,7 +73,9 @@ final class InsightsTests: XCTestCase {
         let old = session(calendar.addingDays(-60, to: day), sets: [(8, 100)])
         let recent = session(day, sets: [(8, 90), (8, 90)])
         let heavier = session(calendar.addingDays(2, to: day), sets: [(5, 105)], name: "Squat", muscles: ["quads"])
-        let all = [old, recent, heavier]
+        // A record beats an earlier best (v7): the first squat ever is none, this lighter one sets the bar.
+        let firstSquat = session(calendar.addingDays(-50, to: day), sets: [(5, 100)], name: "Squat", muscles: ["quads"])
+        let all = [old, firstSquat, recent, heavier]
         let interval = DateInterval(start: calendar.addingDays(-7, to: day), end: calendar.addingDays(7, to: day))
         let totals = StatsEngine.totals(of: all, in: interval)
         XCTAssertEqual(totals.workouts, 2)

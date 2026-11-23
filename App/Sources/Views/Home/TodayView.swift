@@ -19,10 +19,16 @@ struct TodayView: View {
         let _ = sessions.count + templates.count + store.revision
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
+                VStack(alignment: .leading, spacing: 0) {
+                    #if os(iOS)
+                    // Not saving or not syncing: says so at the top (the Mac shows it in the sidebar).
+                    SyncHealthBanner()
+                    #endif
+                    Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
 
                 UpNextCard()
                 MissedPlansCard()
@@ -63,6 +69,7 @@ struct TodayView: View {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Create")
+                .help("Create")
                 .popoverTip(GeorgeTips.CreateTip())
             }
         }

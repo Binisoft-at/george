@@ -8,7 +8,7 @@ extension GeorgeStore {
     func exportCSV(for template: WorkoutTemplate) -> String {
         let workout = ProgramCSV.ExportWorkout(
             name: template.name, subtitle: template.subtitle, kind: template.kind, order: 1,
-            scheduleDays: template.scheduleDays, notes: template.notes, content: template.content
+            scheduleDays: template.scheduleDays, notes: template.notes, tags: template.tags, content: template.content
         )
         return ProgramCSV.export(programName: template.program?.name ?? template.name, workouts: [workout], unit: unit)
     }

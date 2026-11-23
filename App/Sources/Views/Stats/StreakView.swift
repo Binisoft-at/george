@@ -29,11 +29,20 @@ struct StreakView: View {
                     Text(summary.currentWeeks == 1 ? "week streak" : "week streak")
                         .font(.headline)
                         .foregroundStyle(.secondary)
-                    Text(summary.headline)
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
+                    if summary.thisWeek.status == .onBreak {
+                        // A break week: calm, nothing to chase.
+                        Label(summary.headline, systemImage: "bed.double.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text(MacHealth.headline(summary, store: store))
+                            .font(.subheadline)
+                            .multilineTextAlignment(.center)
+                    }
                     WeekDotsView(week: summary.thisWeek, marks: store.dayMarks(for: summary.thisWeek))
                         .padding(.top, 6)
+                    MacHealthNote(topic: .streak)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -42,7 +51,8 @@ struct StreakView: View {
                 .listRowInsets(EdgeInsets())
             }
 
-            if summary.thisWeek.status == .rescueAvailable || summary.thisWeek.status == .tight || summary.thisWeek.status == .atRisk {
+            if (summary.thisWeek.status == .rescueAvailable || summary.thisWeek.status == .tight || summary.thisWeek.status == .atRisk)
+                && MacHealth.offersRescue(store) {
                 Section {
                     Button {
                         showRescue = true
@@ -67,7 +77,7 @@ struct StreakView: View {
                         Text("\(summary.credits) of \(summary.maxCredits)")
                             .font(.headline)
                         if let next = summary.weeksUntilNextCredit {
-                            Text("Next save in \(next) successful week\(next == 1 ? "" : "s")")
+                            Text(next == 0 ? "Next save when this week ends" : "Next save in \(next) successful week\(next == 1 ? "" : "s")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -185,22 +195,25 @@ struct StreakSettingsSection: View {
         Section {
             Stepper(
                 "Weekly goal: \(settings.weeklyGoal) day\(settings.weeklyGoal == 1 ? "" : "s")",
-                value: Binding(get: { settings.weeklyGoal }, set: { settings.setWeeklyGoal($0, calendar: store.calendar); store.save() }),
+                value: Binding(get: { settings.weeklyGoal }, set: { value in
+                    let calendar = store.calendar
+                    store.updateSettings { $0.setWeeklyGoal(value, calendar: calendar) }
+                }),
                 in: 1...7
             )
-            Toggle("Use saves automatically", isOn: Binding(get: { settings.autoUseSaves }, set: { settings.autoUseSaves = $0; store.save() }))
-            Toggle("Rescue workouts count double", isOn: Binding(get: { settings.rescueCountsDouble }, set: { settings.rescueCountsDouble = $0; store.save() }))
+            Toggle("Use saves automatically", isOn: Binding(get: { settings.autoUseSaves }, set: { value in store.updateSettings { $0.autoUseSaves = value } }))
+            Toggle("Rescue workouts count double", isOn: Binding(get: { settings.rescueCountsDouble }, set: { value in store.updateSettings { $0.rescueCountsDouble = value } }))
             Stepper(
                 "Rescue workout: \(settings.rescueMinutes) min",
-                value: Binding(get: { settings.rescueMinutes }, set: { settings.rescueMinutes = $0; store.save() }),
+                value: Binding(get: { settings.rescueMinutes }, set: { value in store.updateSettings { $0.rescueMinutes = value } }),
                 in: 5...30, step: 5
             )
             Stepper(
                 "Count workouts ≥ \(settings.minimumMinutes) min",
-                value: Binding(get: { settings.minimumMinutes }, set: { settings.minimumMinutes = $0; store.save() }),
+                value: Binding(get: { settings.minimumMinutes }, set: { value in store.updateSettings { $0.minimumMinutes = value } }),
                 in: 5...60, step: 5
             )
-            Toggle("Count other Apple Health workouts", isOn: Binding(get: { settings.countHealthWorkouts }, set: { settings.countHealthWorkouts = $0; store.save() }))
+            Toggle("Count other Apple Health workouts", isOn: Binding(get: { settings.countHealthWorkouts }, set: { value in store.updateSettings { $0.countHealthWorkouts = value } }))
         } header: {
             Text("Rules")
         } footer: {

@@ -182,6 +182,17 @@ extension View {
         self
         #endif
     }
+
+    /// Mac: a sheet opens at a usable size – sheets built on a List otherwise open tiny. Put it on
+    /// the sheet's root view. No effect on iPhone/iPad.
+    @ViewBuilder
+    func macSheet(width: CGFloat = 560, height: CGFloat = 640) -> some View {
+        #if os(macOS)
+        self.frame(minWidth: width, idealWidth: width, minHeight: height, idealHeight: height)
+        #else
+        self
+        #endif
+    }
 }
 
 extension ToolbarItemPlacement {

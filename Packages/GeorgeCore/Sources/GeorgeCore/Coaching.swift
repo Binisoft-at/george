@@ -254,9 +254,17 @@ public enum ProgressionAdvisor {
     }
 
     /// Tones a suggestion down for the day.
+    /// The sets last time is judged on: done working sets without drop sets (a drop set is lighter and
+    /// all-out by design), or all done working sets when there were only drop sets.
+    public static func judgedSets(_ lastSets: [WorkoutSet]) -> [WorkoutSet] {
+        let working = lastSets.filter { $0.isDone && $0.kind != .warmup }
+        let main = working.filter { $0.kind != .drop }
+        return main.isEmpty ? working : main
+    }
+
     public static func adjust(_ suggestion: ProgressionSuggestion, lastSets: [WorkoutSet], incrementKg: Double,
                               intensity: CoachIntensity, loadStatus: LoadStatus?) -> ProgressionSuggestion {
-        let working = lastSets.filter { $0.isDone && $0.kind != .warmup }
+        let working = judgedSets(lastSets)
         let top = working.max { ($0.effectiveWeight ?? 0, $0.effectiveReps ?? 0) < ($1.effectiveWeight ?? 0, $1.effectiveReps ?? 0) }
         let lastWeight = top?.effectiveWeight
         let lastReps = top?.effectiveReps
@@ -279,7 +287,7 @@ public enum ProgressionAdvisor {
 
     public static func suggest(lastSets: [WorkoutSet]?, mode: ExerciseMode, plan: WorkoutSet?, incrementKg: Double) -> ProgressionSuggestion? {
         guard mode == .reps, let lastSets else { return nil }
-        let working = lastSets.filter { $0.isDone && $0.kind != .warmup }
+        let working = judgedSets(lastSets)
         guard let top = working.max(by: { ($0.effectiveWeight ?? 0, $0.effectiveReps ?? 0) < ($1.effectiveWeight ?? 0, $1.effectiveReps ?? 0) }),
               let topReps = top.effectiveReps, topReps > 0 else { return nil }
         let weight = top.effectiveWeight ?? 0
@@ -318,14 +326,24 @@ public enum ProgressionAdvisor {
 }
 
 /// When to ask "how many more reps could you have done?" – smart and rare: after the last working
-/// set of an exercise with reps, only if that set has no RPE yet, at most a few times per workout.
+/// set of an exercise with reps (and the drop sets right after it), only if the set the answer
+/// belongs to has no RPE yet, at most a few times per workout.
 public enum EffortPrompt {
     public static let defaultLimit = 4
 
     public static func shouldAsk(after set: WorkoutSet, in item: WorkoutItem, askedSoFar: Int, limit: Int = defaultLimit) -> Bool {
-        guard askedSoFar < limit, item.mode == .reps, set.isDone, set.kind != .warmup, set.rpe == nil else { return false }
+        guard askedSoFar < limit, item.mode == .reps, set.isDone, set.kind != .warmup else { return false }
         let working = item.sets.filter { $0.kind != .warmup }
-        return working.last?.id == set.id
+        guard working.last?.id == set.id, let target = target(in: item), target.isDone, target.rpe == nil else { return false }
+        return true
+    }
+
+    /// The set an answer is stored on: the exercise's last working set that isn't a drop set (a drop
+    /// set is all-out by design and would read as "no reps left"); the last drop set only when there
+    /// is nothing else.
+    public static func target(in item: WorkoutItem) -> WorkoutSet? {
+        let working = item.sets.filter { $0.kind != .warmup }
+        return working.last { $0.kind != .drop } ?? working.last
     }
 
     /// RPE stored for an answer of `rir` reps in reserve (3 means "3 or more").

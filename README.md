@@ -62,7 +62,8 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
   (next workout, streak) and a watch complication.
 - **Apple Watch as a remote**: log the reps and weight you really did, lower the weight, do another
   exercise now, skip, mute, answer the coach's questions, energy check-in, a summary after saving;
-  the set is the hero, Double Tap for Start/Done, wrist taps for 3-2-1.
+  the set is the hero, Double Tap for Start/Done (Resume while paused), wrist taps for 3-2-1 and a
+  buzz to switch sides in per-side holds.
 - **Live mode you can trust**: nothing ends by accident, "now" stays put through edits, Undo after
   each tick, real pause, relaunch continues where you were, calm stretch/yoga flow with per-side
   holds, − / + steppers, auto-scroll, warm-up sets, plates per side, your exercise notes.

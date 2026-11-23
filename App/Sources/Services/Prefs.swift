@@ -70,6 +70,8 @@ enum Prefs {
     static let thaliaDeliver = "thaliaDeliver"
     /// When George last wrote a Thalia exchange file on this device.
     static let thaliaLastWritten = "thaliaLastWritten"
+    /// An iCloud import has finished on this device at least once (Welcome stops waiting for it).
+    static let cloudImportSeen = "george.cloudImportSeen"
 }
 
 /// Where the voice coach may speak.

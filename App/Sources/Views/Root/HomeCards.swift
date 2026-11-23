@@ -26,10 +26,19 @@ struct StreakCard: View {
                     Text("\(summary.currentWeeks) week\(summary.currentWeeks == 1 ? "" : "s")")
                         .font(.title3.weight(.bold))
                         .contentTransition(.numericText())
-                    Text(summary.headline)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                    if summary.thisWeek.status == .onBreak {
+                        // A break week: calm, nothing to chase.
+                        Label(summary.headline, systemImage: "bed.double.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    } else {
+                        // On the Mac (no Apple Health) no alarm the iPhone wouldn't raise.
+                        Text(MacHealth.headline(summary, store: store))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
                 Spacer()
                 SavesBadge(credits: summary.credits, max: summary.maxCredits)
@@ -37,7 +46,8 @@ struct StreakCard: View {
             WeekDotsView(week: summary.thisWeek, marks: store.dayMarks(for: summary.thisWeek)) { date, templateID in
                 plan(templateID, on: date)
             }
-            if summary.thisWeek.status == .rescueAvailable && !live.isActive {
+            MacHealthNote(topic: .streak)
+            if summary.thisWeek.status == .rescueAvailable && !live.isActive && MacHealth.offersRescue(store) {
                 Button {
                     showRescue = true
                 } label: {
@@ -185,7 +195,8 @@ struct UpNextCard: View {
         .padding(18)
         .card(padding: 0, cornerRadius: 28)
         .sheet(isPresented: $showPlanWeek) {
-            PlanWeekSheet()
+            // Only the energy hint opens it here: the low day starts out lighter.
+            PlanWeekSheet(preferLighter: true)
         }
     }
 
@@ -201,6 +212,18 @@ struct UpNextCard: View {
                 onOpen: { live.isPresented = true }
             ) {
                 live.isPresented = true
+            }
+        } else if let other = live.workoutOnOtherDevice {
+            // Running on another iPhone, iPad or Mac (synced): no second Start here – continue it here.
+            header("On another device", symbol: "iphone.and.arrow.forward", tint: .green)
+            hero(
+                title: other.title,
+                subtitle: "\(other.content.completedSets) of \(other.content.totalSets) sets done · running there now",
+                kind: other.kind, colorHex: other.colorHex,
+                buttonTitle: "Continue Here", symbol: "play.fill",
+                onOpen: { router.open(.session(other.id)) }
+            ) {
+                live.continueHere(other)
             }
         } else if let planned = store.plannedToday().first {
             header("Planned today", symbol: "calendar", tint: .accentColor)
@@ -315,6 +338,12 @@ struct UpNextCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Same rule as the streak and the week dots: a short routine is done, but no training day yet.
+        if !TrainingDays.isTrainingDay(Date(), in: store.trainingEntries(healthEntries: health.externalWorkouts), calendar: store.calendar) {
+            Label("Doesn't count toward your streak yet (min \(store.settings.minimumMinutes) min)", systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
         if let next {
             HStack(spacing: 10) {
                 Label(nextText(next), systemImage: "arrow.forward.circle")
@@ -380,8 +409,9 @@ struct UpNextCard: View {
         if session.durationSeconds > 0 { parts.append(Format.minutes(session.durationSeconds)) }
         if session.setCount > 0 {
             parts.append("\(session.doneSetCount)/\(session.setCount) sets")
-        } else if session.energyKcal > 0 {
-            parts.append("\(Int(session.energyKcal)) kcal")
+        } else if let energy = store.displayEnergy(for: session) {
+            // Measured when the Watch recorded it, else George's estimate ("≈").
+            parts.append(energy.text)
         }
         return parts.isEmpty ? session.kind.displayName : parts.joined(separator: " · ")
     }
@@ -401,6 +431,7 @@ struct UpNextCard: View {
     /// Why today is a rest day (nil: it isn't). Only when the week has room to spare.
     private func restReason(for suggestion: WorkoutTemplate) -> String? {
         let week = store.streakSummary(healthEntries: health.externalWorkouts).thisWeek
+        if week.status == .onBreak { return "Break week – your streak is safe. Rest as long as you need." }
         if week.neededDays == 0 {
             return "Weekly goal met – \(week.effectiveDays) of \(week.goal) days. Rest is part of the plan."
         }
@@ -436,7 +467,10 @@ struct UpNextCard: View {
             Button {
                 showPlanWeek = true
             } label: {
-                Label("Low energy expected \(store.shortDay(low)) – plan it lighter?", systemImage: "battery.25percent")
+                // A tendency, not a forecast: "Energy often dips around Wed – plan it lighter?"
+                let day = store.shortDay(low)
+                let when = day == "today" || day == "tomorrow" ? day : "around \(day)"
+                Label("Energy often dips \(when) – plan it lighter?", systemImage: "battery.25percent")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Tone.cautionText)
                     .multilineTextAlignment(.leading)
@@ -515,7 +549,7 @@ struct UpNextCard: View {
     }
 
     private func fresherAlternative(to suggestion: WorkoutTemplate, score: Double) -> (template: WorkoutTemplate, score: Double)? {
-        let others = (store.activeProgram?.orderedTemplates ?? []).filter { $0.id != suggestion.id }
+        let others = (store.activeProgram?.orderedTemplates ?? []).filter { $0.id != suggestion.id && $0.isPlannable }
         let scored = others.compactMap { template -> (template: WorkoutTemplate, score: Double)? in
             let content = template.content
             guard !muscles.plannedLoad(content, kind: template.kind).isEmpty else { return nil }
@@ -528,7 +562,8 @@ struct UpNextCard: View {
     /// Quick-start chips for the other templates of the active program.
     @ViewBuilder
     private func otherTemplates(excluding suggestion: WorkoutTemplate) -> some View {
-        let others = (store.activeProgram?.orderedTemplates ?? []).filter { $0.id != suggestion.id }
+        // Empty templates (just created) aren't offered as a quick start.
+        let others = (store.activeProgram?.orderedTemplates ?? []).filter { $0.id != suggestion.id && $0.isPlannable }
         if !others.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

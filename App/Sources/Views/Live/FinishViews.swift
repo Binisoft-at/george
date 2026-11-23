@@ -38,8 +38,9 @@ struct FinishWorkoutSheet: View {
                     HStack {
                         stat("Time", Format.minutes(live.elapsed()))
                         stat("Sets", "\(live.content.completedSets)/\(live.content.totalSets)")
-                        if live.content.volumeKg > 0 {
-                            stat("Volume", Format.volume(live.content.volumeKg, unit: live.unit))
+                        // Working volume – the number the finish screen and Progress show.
+                        if live.content.workingVolumeKg > 0 {
+                            stat("Volume", Format.volume(live.content.workingVolumeKg, unit: live.unit))
                         }
                     }
                     if live.content.totalSets > 0 && live.content.completedSets < live.content.totalSets {

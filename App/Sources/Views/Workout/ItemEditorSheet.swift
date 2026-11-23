@@ -8,10 +8,13 @@ struct ItemEditorSheet: View {
     @Binding var content: WorkoutContent
     let itemID: UUID
     let mode: EditorMode
+    /// The live tick (live mode): Done counts like a tick there. Nil: the set is ticked in the content.
+    var onToggleDone: ((UUID) -> Void)? = nil
 
     @Environment(GeorgeStore.self) private var store
     @Environment(ExerciseLibrary.self) private var library
     @Environment(Router.self) private var router
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @State private var newLink = ""
     @State private var showSwap = false
@@ -43,7 +46,8 @@ struct ItemEditorSheet: View {
                     }
                     Button {
                         dismiss()
-                        router.open(.exercise(exercise.id))
+                        // On top of the workout or template (with Back on the Mac).
+                        router.push(.exercise(exercise.id))
                     } label: {
                         Label("Open Exercise Details", systemImage: "info.circle")
                     }
@@ -51,14 +55,18 @@ struct ItemEditorSheet: View {
             }
             Section {
                 Button(role: .destructive) {
+                    let before = content
+                    let name = item.wrappedValue.name
                     content.removeItem(id: itemID)
                     dismiss()
+                    toasts.show("Removed \u{201C}\(name)\u{201D}", symbol: "trash.fill") { content = before }
                 } label: {
                     Label("Remove Exercise", systemImage: "trash")
                 }
             }
         }
         .formStyle(.grouped)
+        .toasts(toasts, bottomPadding: 16)
         .navigationTitle(item.wrappedValue.name.isEmpty ? "Exercise" : item.wrappedValue.name)
         .inlineTitle()
         .toolbar {
@@ -111,6 +119,14 @@ struct ItemEditorSheet: View {
         }
     }
 
+    /// Done on a set (workouts only): the live tick in live mode, otherwise a tick in the content
+    /// (with the time it was done and the planned numbers as logged ones).
+    private var toggleDone: ((UUID) -> Void)? {
+        guard mode.isSession else { return nil }
+        if let onToggleDone { return onToggleDone }
+        return { id in _ = content.toggleSet(id: id) }
+    }
+
     private var setsSection: some View {
         Section {
             if item.wrappedValue.sets.count > 1 {
@@ -125,11 +141,14 @@ struct ItemEditorSheet: View {
                     index: item.wrappedValue.displayIndex(of: set),
                     mode: item.wrappedValue.mode,
                     inSession: mode.isSession,
-                    unit: store.unit
+                    unit: store.unit,
+                    onToggleDone: toggleDone
                 )
             }
             .onDelete { offsets in
+                let before = content
                 item.wrappedValue.sets.remove(atOffsets: offsets)
+                toasts.show(offsets.count == 1 ? "Deleted set" : "Deleted \(offsets.count) sets", symbol: "trash.fill") { content = before }
             }
             .onMove { source, destination in
                 item.wrappedValue.sets.move(fromOffsets: source, toOffset: destination)
@@ -303,6 +322,8 @@ struct SetEditRow: View {
     let mode: ExerciseMode
     let inSession: Bool
     let unit: WeightUnit
+    /// Done as a real tick (live: time, rest, pace, undo, records). Nil: the toggle only flips the flag.
+    var onToggleDone: ((UUID) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -320,7 +341,7 @@ struct SetEditRow: View {
                 fields
                 if inSession {
                     Spacer(minLength: 0)
-                    Toggle("Done", isOn: $set.isDone)
+                    Toggle("Done", isOn: doneBinding)
                         .labelsHidden()
                         .toggleStyle(.button)
                         .tint(.green)
@@ -366,6 +387,15 @@ struct SetEditRow: View {
         Binding(get: { set.value(field, inSession: inSession) }, set: { set.setValue(field, $0, inSession: inSession) })
     }
 
+    /// The Done toggle: a tick through `onToggleDone` when there is one.
+    private var doneBinding: Binding<Bool> {
+        guard let onToggleDone else { return $set.isDone }
+        let id = set.id
+        return Binding(get: { set.isDone }, set: { newValue in
+            if newValue != set.isDone { onToggleDone(id) }
+        })
+    }
+
     /// Weight in the person's unit (stored in kilograms).
     private var weight: Binding<Double?> {
         Binding(
@@ -388,9 +418,19 @@ struct SetEditorSheet: View {
     let itemID: UUID
     let setID: UUID
     let mode: EditorMode
+    /// The live tick (live mode): Done counts like a tick there. Nil: the set is ticked in the content.
+    var onToggleDone: ((UUID) -> Void)? = nil
 
     @Environment(GeorgeStore.self) private var store
+    @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
+
+    /// Done on the set (workouts only): the live tick, or a tick in the content (time and numbers).
+    private var toggleDone: ((UUID) -> Void)? {
+        guard mode.isSession else { return nil }
+        if let onToggleDone { return onToggleDone }
+        return { id in _ = content.toggleSet(id: id) }
+    }
 
     var body: some View {
         if let item = content.item(id: itemID), let set = content.set(id: setID) {
@@ -401,7 +441,8 @@ struct SetEditorSheet: View {
                         index: item.displayIndex(of: set),
                         mode: item.mode,
                         inSession: mode.isSession,
-                        unit: store.unit
+                        unit: store.unit,
+                        onToggleDone: toggleDone
                     )
                 } header: {
                     Text(item.name)
@@ -423,8 +464,10 @@ struct SetEditorSheet: View {
                         Label("Duplicate Set", systemImage: "plus.square.on.square")
                     }
                     Button(role: .destructive) {
+                        let before = content
                         content.removeSet(id: setID)
                         dismiss()
+                        toasts.show("Deleted set", symbol: "trash.fill") { content = before }
                     } label: {
                         Label("Delete Set", systemImage: "trash")
                     }

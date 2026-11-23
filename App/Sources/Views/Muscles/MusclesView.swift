@@ -117,6 +117,7 @@ struct MusclesView: View {
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Reverse order")
+                    .help("Reverse order")
                 }
             } footer: {
                 Text(footer)
@@ -127,10 +128,12 @@ struct MusclesView: View {
         .onChange(of: metric) { _, newMetric in
             bucketFilter = nil
             sortAscending = newMetric == .freshness
+            // The day stepper only belongs to Freshness; other metrics always look at today.
+            dayOffset = 0
         }
         .task(id: key) {
             let input = MuscleValues.Input(
-                metric: metric, engine: analytics.engine, referenceDate: referenceDate, interval: interval,
+                metric: metric, engine: analytics.engine, referenceDate: metric == .freshness ? referenceDate : Date(), interval: interval,
                 target: target, unit: store.unit
             )
             let computed = await Task.detached(priority: .userInitiated) { MuscleValues.compute(input) }.value
@@ -255,7 +258,10 @@ struct MusclesView: View {
             return "Freshness estimates how recovered each muscle is from your logged sets (secondary muscles count half). It's calibrated after three recent workouts per muscle."
         case .sets:
             let target = store.profile.weeklySets
-            return "Hard sets per week against your target of \(target.lowerBound)–\(target.upperBound) per muscle (\(store.profile.headline); change it in Settings → Your Profile). Light blue: below, green: in target, amber: above. Secondary muscles count half a set; stretching, yoga and other sports don't count as sets."
+            // While the history is shorter than the range, the average is over the weeks with data.
+            let average = MuscleEngine.averageCaption(weeksCovered: analytics.engine.weeksCovered(in: interval),
+                                                      rangeWeeks: max(1, interval.duration / (7 * 86_400)))
+            return "Hard sets per week against your target of \(target.lowerBound)–\(target.upperBound) per muscle (\(store.profile.headline); change it in Settings → Your Profile). \(average). Light blue: below, green: in target, amber: above. Secondary muscles count half a set; stretching, yoga and other sports don't count as sets."
         case .volume:
             return "Volume = reps × weight. Band and bodyweight sets add sets and load, not kilograms."
         case .load:
@@ -346,10 +352,13 @@ enum MuscleValues {
             let totals = engine.totals(in: input.interval)
             let maxValue = max(0.1, totals.map(\.load).max() ?? 1)
             return totals.map { t in
+                // "Now" is today (the view passes Date() for every metric but Freshness).
                 let now = engine.loadSummary(group: t.group, days: 1, now: input.referenceDate).current
+                // The number is effort-weighted load (warm-ups ¼, yoga a little, other sports), not sets.
+                let amount = "Load \(Format.number((t.load * 10).rounded() / 10))"
                 let subtitle = now.showsRatio
-                    ? "\(Int(t.load.rounded())) hard sets · now \(now.status.displayName.lowercased()) (\(now.percentOfUsual) %)"
-                    : "\(Int(t.load.rounded())) hard sets · \(now.status.displayName.lowercased())"
+                    ? "\(amount) · now \(now.status.displayName.lowercased()) (\(now.percentOfUsual) %)"
+                    : "\(amount) · \(now.status.displayName.lowercased())"
                 return MuscleValue(
                     group: t.group, level: t.load / maxValue, color: MusclePalette.heat(t.load / maxValue),
                     title: t.group.displayName,

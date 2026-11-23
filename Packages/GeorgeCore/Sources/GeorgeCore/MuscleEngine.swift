@@ -555,8 +555,22 @@ public struct MuscleEngine: Sendable {
 
     // MARK: Totals
 
-    public func totals(in interval: DateInterval) -> [MuscleTotal] {
-        let weeks = max(1.0, interval.duration / (7 * 86_400))
+    /// The weeks of an interval that have history: from the week of the first logged set (or the
+    /// interval start, if later) to now (or the interval end, if earlier) – at least 1. So a 1-year
+    /// average over 8 weeks of training is divided by 8, not 52.
+    public func weeksCovered(in interval: DateInterval, now: Date = Date()) -> Double {
+        let end = min(interval.end, now)
+        var start = interval.start
+        if let first = events.first(where: { $0.sets > 0 }) {
+            start = max(start, calendar.weekStart(for: first.date))
+        }
+        return max(1, end.timeIntervalSince(start) / (7 * 86_400))
+    }
+
+    /// Per-muscle totals of an interval; `setsPerWeek` averages over the weeks with history
+    /// (`weeksCovered(in:now:)`).
+    public func totals(in interval: DateInterval, now: Date = Date()) -> [MuscleTotal] {
+        let weeks = weeksCovered(in: interval, now: now)
         var sets: [MuscleGroup: Double] = [:]
         var volume: [MuscleGroup: Double] = [:]
         var load: [MuscleGroup: Double] = [:]

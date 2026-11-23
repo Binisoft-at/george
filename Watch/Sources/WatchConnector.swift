@@ -49,12 +49,16 @@ extension WatchCommand {
         case .startTemplate, .startSession:
             // Never queued: starts go through `WatchConnector.requestStart`, which the user can cancel.
             return .bestEffort
-        case .pause, .resume, .skipRest, .finish, .discard,
-             .completeSet, .makeCurrent, .answerFeedback, .recordEnergy:
-            // Harmless twice: the phone ignores a repeat.
+        case .pause, .resume, .finish, .discard,
+             .completeSet, .undoSet, .dropWeight, .makeCurrent, .answerFeedback, .recordEnergy:
+            // Safe to deliver twice, so a failed sendMessage falls back to transferUserInfo: each names
+            // its set or question (the phone logs, unticks or drops a set only if it isn't already),
+            // asks for a state the phone then already has (paused, running, ended), or replaces the
+            // earlier answer (energy).
             return .guaranteed
         default:
-            // Toggles, "done set", drop sets and thread moves are not idempotent: never send them twice.
+            // Toggles, "done current set", Start, rest changes and thread moves act on whatever is
+            // current when they arrive, so a repeat would do something new: never sent twice.
             return .queued
         }
     }
@@ -194,8 +198,11 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         let now = Date()
         switch command {
         case .toggleSet(let id):
-            guard state.position(of: id) != nil else { return }
-            resumeIfPaused(&state, at: now)
+            guard let location = state.position(of: id) else { return }
+            // Logging a set carries on after a pause; unticking one doesn't (as on the phone).
+            if !state.exercises[location.exerciseIndex].sets[location.setIndex].isDone {
+                resumeIfPaused(&state, at: now)
+            }
             if state.toggleSet(id) == true {
                 Haptics.success()
             } else {
@@ -238,13 +245,21 @@ final class WatchConnector: NSObject, WCSessionDelegate {
             WorkoutManager.shared.endRecording(sessionID: state.sessionID, discard: true)
             return
         case .completeSet(let id, let reps, let weightKg):
-            guard state.position(of: id) != nil else { return }
-            resumeIfPaused(&state, at: now)
+            guard let location = state.position(of: id) else { return }
+            if !state.exercises[location.exerciseIndex].sets[location.setIndex].isDone {
+                resumeIfPaused(&state, at: now)
+            }
             if state.logSet(id, reps: reps, weightKg: weightKg) {
                 Haptics.success()
             } else {
                 Haptics.click()
             }
+        case .undoSet(let id):
+            // "Mark not done": only a set that is done; the workout stays paused if it is.
+            guard let location = state.position(of: id),
+                  state.exercises[location.exerciseIndex].sets[location.setIndex].isDone else { return }
+            state.toggleSet(id)
+            Haptics.click()
         case .dropWeight:
             // The phone inserts the drop set and makes it current; its next live state shows it.
             Haptics.click()
@@ -584,29 +599,47 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         WorkoutManager.shared.resume()
     }
 
-    /// The end of a rest or of a running hold, which the wrist counts down to.
+    /// The end of a rest or of a running hold, which the wrist counts down to – for a per-side hold
+    /// also the moment to switch sides.
     private struct CountdownAlarm: Equatable {
         enum Kind: Equatable { case rest, hold }
         let kind: Kind
         let endsAt: Date
+        /// Per-side holds: the end of side 1 (clicks, then a buzz to switch sides).
+        let switchSidesAt: Date?
 
         init?(_ state: WatchLiveState?) {
             guard let state, !state.isPaused else { return nil }
             if let restEndsAt = state.restEndsAt {
                 kind = .rest
                 endsAt = restEndsAt
+                switchSidesAt = nil
             } else if let holdEndsAt = state.holdEndsAt {
                 kind = .hold
                 endsAt = holdEndsAt
+                switchSidesAt = state.holdSwitchAt
             } else {
                 return nil
             }
         }
     }
 
+    /// Clicks at 3, 2 and 1 seconds before `date` (one that is already past is skipped).
+    private static func countdownClicks(before date: Date) async {
+        for secondsBefore in [3.0, 2.0, 1.0] {
+            let delay = date.addingTimeInterval(-secondsBefore).timeIntervalSinceNow
+            // Already past (the countdown was scheduled late): skip that click.
+            guard delay > -0.3 else { continue }
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled else { return }
+            Haptics.click()
+        }
+    }
+
     /// Clicks at 3, 2 and 1 seconds before a rest or hold ends, then a notification (rest) or a
     /// success (hold) – on the wrist, even with the wrist down, the voice off or music playing
-    /// (the workout session keeps the app running).
+    /// (the workout session keeps the app running). A per-side hold first counts down to the
+    /// switch and buzzes there.
     private func scheduleCountdownHaptics() {
         let alarm = CountdownAlarm(live)
         guard alarm != scheduledAlarm else { return }
@@ -615,14 +648,16 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         scheduledAlarm = alarm
         guard let alarm, alarm.endsAt > Date() else { return }
         alarmTask = Task { [weak self] in
-            for secondsBefore in [3.0, 2.0, 1.0] {
-                let delay = alarm.endsAt.addingTimeInterval(-secondsBefore).timeIntervalSinceNow
-                // Already past (the countdown was scheduled late): skip that click.
-                guard delay > -0.3 else { continue }
+            if let switchAt = alarm.switchSidesAt, switchAt > Date() {
+                await WatchConnector.countdownClicks(before: switchAt)
+                let delay = switchAt.timeIntervalSinceNow
                 if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-                guard !Task.isCancelled else { return }
-                Haptics.click()
+                guard !Task.isCancelled, self?.scheduledAlarm == alarm else { return }
+                // Switch sides.
+                Haptics.notify()
             }
+            await WatchConnector.countdownClicks(before: alarm.endsAt)
+            guard !Task.isCancelled else { return }
             let delay = alarm.endsAt.timeIntervalSinceNow
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             guard !Task.isCancelled, let self, self.scheduledAlarm == alarm else { return }
@@ -773,8 +808,8 @@ extension WatchLiveState {
 
     var hasOpenSet: Bool { firstOpenSet() != nil }
 
-    /// The energy check-in is offered until the first set is done.
-    var showsEnergyCheckIn: Bool { asksEnergy == true && completedSets == 0 }
+    /// The energy check-in is offered until the first set starts or is done.
+    var showsEnergyCheckIn: Bool { asksEnergy == true && completedSets == 0 && setStartedAt == nil }
 
     /// The coach's question while part of it is still unanswered.
     var openQuestion: WatchQuestion? {

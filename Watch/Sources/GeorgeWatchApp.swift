@@ -1,6 +1,7 @@
 import SwiftUI
 import WatchKit
 import HealthKit
+import WatchConnectivity
 
 @main
 struct GeorgeWatchApp: App {
@@ -18,6 +19,27 @@ struct GeorgeWatchApp: App {
                 .environment(WatchConnector.shared)
                 .environment(WorkoutManager.shared)
         }
+        // A context from the phone that arrives while the app isn't running: WatchConnectivity hands it
+        // to WatchConnector during this task, which rewrites the complication (new streak, new plan).
+        .backgroundTask(.watchConnectivity) {
+            await WatchBackgroundDelivery.receivePendingContent()
+        }
+    }
+}
+
+/// Keeps the app awake in the background until WatchConnectivity has delivered what's pending.
+enum WatchBackgroundDelivery {
+    static func receivePendingContent() async {
+        await MainActor.run { WatchConnector.shared.activate() }
+        let session = WCSession.default
+        // At most about 10 seconds: the system grants only a short time.
+        for _ in 0..<100 {
+            if session.activationState == .activated && !session.hasContentPending { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        // The delegate hops to the main actor before it writes the complication; let that run.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        await MainActor.run {}
     }
 }
 
