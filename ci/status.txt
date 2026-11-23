@@ -1,0 +1,3 @@
+run 39 (workflow_dispatch) commit c4b0c785ebc8797959762eedf930854d9ffcea63
+core-tests=success build=success
+details: https://github.com/Binisoft-at/george/actions/runs/45244448658

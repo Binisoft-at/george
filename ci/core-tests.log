@@ -1,0 +1,1383 @@
+Building for debugging...
+[0/15] Write sources
+[3/15] Write swift-version-24593BA9C3E375BF.txt
+[5/21] Compiling BinisoftKitCore SyncStatus.swift
+[6/22] Emitting module BinisoftKitCore
+[7/22] Compiling BinisoftKitCore AppEnvironment.swift
+[8/22] Compiling BinisoftKitCore AppLog.swift
+[9/22] Compiling BinisoftKitCore Import.swift
+[10/22] Compiling BinisoftKitCore Records.swift
+[11/22] Compiling BinisoftKitCore Tour.swift
+[12/23] Wrapping AST for BinisoftKitCore for debugging
+[14/64] Emitting module GeorgeCore
+[15/77] Compiling GeorgeCore PastLog.swift
+[16/77] Compiling GeorgeCore PlanTools.swift
+[17/77] Compiling GeorgeCore Planning.swift
+[18/77] Compiling GeorgeCore ProgramCSV.swift
+[19/77] Compiling GeorgeCore ResizableColumn.swift
+[20/77] Compiling GeorgeCore Routines.swift
+[21/77] Compiling GeorgeCore RunningWorkout.swift
+[22/77] Compiling GeorgeCore SetEditing.swift
+[23/77] Compiling GeorgeCore SettingsExtras.swift
+[24/77] Compiling GeorgeCore SnapshotTiming.swift
+[25/77] Compiling GeorgeCore SportLoad.swift
+[26/77] Compiling GeorgeCore Stats.swift
+[27/77] Compiling GeorgeCore StoreRevisions.swift
+[28/77] Compiling GeorgeCore StoredContent.swift
+[29/77] Compiling GeorgeCore StreakCaching.swift
+[30/77] Compiling GeorgeCore StreakEngine.swift
+[31/77] Compiling GeorgeCore SyncHealth.swift
+[32/77] Compiling GeorgeCore TemplateUpdate.swift
+[33/77] Compiling GeorgeCore ThaliaExport.swift
+[34/77] Compiling GeorgeCore TrainingNumbers.swift
+[35/77] Compiling GeorgeCore TrainingProfile.swift
+[36/77] Compiling GeorgeCore WatchHandOver.swift
+[37/77] Compiling GeorgeCore WatchProtocol.swift
+[38/77] Compiling GeorgeCore WeekGoals.swift
+[39/77] Compiling GeorgeCore WorkoutContent.swift
+[40/77] Compiling GeorgeCore WorkoutKind.swift
+[41/77] Compiling GeorgeCore BackupArchive.swift
+[42/77] Compiling GeorgeCore BodyMap.swift
+[43/77] Compiling GeorgeCore BodyMapData.swift
+[44/77] Compiling GeorgeCore CSVReader.swift
+[45/77] Compiling GeorgeCore Calendar+Weeks.swift
+[46/77] Compiling GeorgeCore CoachScript.swift
+[47/77] Compiling GeorgeCore Coaching.swift
+[48/77] Compiling GeorgeCore DuplicateMerge.swift
+[49/77] Compiling GeorgeCore Energy.swift
+[50/77] Compiling GeorgeCore EnergyDisplay.swift
+[51/77] Compiling GeorgeCore ExchangeFormat.swift
+[52/77] Compiling GeorgeCore ExerciseProgress.swift
+[53/77] Compiling GeorgeCore FinishQuotes.swift
+[54/77] Compiling GeorgeCore FinishTime.swift
+[55/77] Compiling GeorgeCore Format.swift
+[56/77] Compiling GeorgeCore GeorgeTour.swift
+[57/77] Compiling GeorgeCore HealthLink.swift
+[58/77] Compiling GeorgeCore HealthSignals.swift
+[59/77] Compiling GeorgeCore Library.swift
+[60/77] Compiling GeorgeCore ListDetailPath.swift
+[61/77] Compiling GeorgeCore ListSafety.swift
+[62/77] Compiling GeorgeCore LiveOwnership.swift
+[63/77] Compiling GeorgeCore LiveTakeover.swift
+[64/77] Compiling GeorgeCore LiveThread.swift
+[65/77] Compiling GeorgeCore MeasuredNumbers.swift
+[66/77] Compiling GeorgeCore MuscleEngine.swift
+[67/77] Compiling GeorgeCore Muscles.swift
+[68/78] Wrapping AST for GeorgeCore for debugging
+[70/104] Emitting module GeorgeCoreTests
+[71/112] Compiling GeorgeCoreTests V7W3ListsReviewTests.swift
+[72/112] Compiling GeorgeCoreTests V7W3ListsTests.swift
+[73/112] Compiling GeorgeCoreTests V7W3MeasuredReviewTests.swift
+[74/112] Compiling GeorgeCoreTests V7W3MeasuredTests.swift
+[75/112] Compiling GeorgeCoreTests V7W3NumbersReviewTests.swift
+[76/112] Compiling GeorgeCoreTests V7W3NumbersTests.swift
+[77/112] Compiling GeorgeCoreTests V7W3WatchlinkReviewTests.swift
+[78/112] Compiling GeorgeCoreTests V7W3WatchlinkTests.swift
+[79/112] Compiling GeorgeCoreTests V7ReviewUiTests.swift
+[80/112] Compiling GeorgeCoreTests V7SafetyTests.swift
+[81/112] Compiling GeorgeCoreTests V7W2FinishTests.swift
+[82/112] Compiling GeorgeCoreTests V7W2HandoverTests.swift
+[83/112] Compiling GeorgeCoreTests V7W2MacWinTests.swift
+[84/112] Compiling GeorgeCoreTests V7W2PerfViewsTests.swift
+[85/112] Compiling GeorgeCoreTests V7W2PerfcoreTests.swift
+[86/112] Compiling GeorgeCoreTests V7W2WidthTests.swift
+[87/112] Compiling GeorgeCoreTests GeorgeCoreTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[88/112] Compiling GeorgeCoreTests InsightsTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[89/112] Compiling GeorgeCoreTests PlanToolsTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[90/112] Compiling GeorgeCoreTests SettingsExtrasTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[91/112] Compiling GeorgeCoreTests ThaliaExportTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[92/112] Compiling GeorgeCoreTests V6Tests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[93/112] Compiling GeorgeCoreTests V7DataTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[94/112] Compiling GeorgeCoreTests V7LiveTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[95/112] Compiling GeorgeCoreTests V7MacTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V6Tests.swift:113:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+111 |         content.append(items: [WorkoutItem(name: "Leg Press", sets: sets)], asGroup: false)
+112 |         _ = content.toggleSet(id: content.allItems[0].sets[0].id)
+113 |         try XCTUnwrap(content.swapRemaining(itemID: content.allItems[0].id, with: WorkoutItem(name: "Squat")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+114 |         XCTAssertEqual(content.blocks.count, 2)
+115 |         XCTAssertTrue(content.blocks.allSatisfy { $0.style == .single && $0.items.count == 1 })
+[96/112] Compiling GeorgeCoreTests V7NumbersATests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[97/112] Compiling GeorgeCoreTests V7NumbersBTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[98/112] Compiling GeorgeCoreTests V7PlancoreTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[99/112] Compiling GeorgeCoreTests V7RemotesTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[100/112] Compiling GeorgeCoreTests V7ReviewCoreTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[101/112] Compiling GeorgeCoreTests V7ReviewDataTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[102/112] Compiling GeorgeCoreTests V7ReviewHealthwatchTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[103/112] Compiling GeorgeCoreTests V7ReviewLiveTests.swift
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:69:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 67 |         XCTAssertEqual(session.addWarmups(to: itemID), 4)
+ 68 |         let working = session.allItems[0].sets.filter { $0.kind == .working }
+ 69 |         try XCTUnwrap(session.dropWeight(setID: working[0].id, repsDone: 5, newWeightKg: 70, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 70 |         XCTAssertTrue(session.allItems[0].sets.filter { $0.kind != .working }.allSatisfy { $0.addedLive == true })
+ 71 |         XCTAssertTrue(session.structureDiffers(from: template), "the workout itself has more sets")
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7PlancoreTests.swift:172:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+170 |         content.toggleSet(id: a.sets[0].id)
+171 |         content.toggleSet(id: content.blocks[0].items[1].sets[0].id)
+172 |         try XCTUnwrap(content.swapRemaining(itemID: a.id, with: WorkoutItem(name: "A2")))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+173 |         XCTAssertEqual(content.blocks[0].lanes, [[0, 1], [2]])
+174 |         XCTAssertFalse(content.blocks[0].setCountsDiffer)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:64:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 62 |         for set in a.sets.prefix(2) + b.sets.prefix(3) { session.toggleSet(id: set.id) }
+ 63 |         // Last round of A: "Can't finish? Lower the weight", then "Add Set".
+ 64 |         try XCTUnwrap(session.dropWeight(setID: a.sets[2].id, repsDone: 5, newWeightKg: 30, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 65 |         session.addSet(to: a.id)
+ 66 |         let added = try XCTUnwrap(session.item(id: a.id)?.sets.last)
+
+/__w/george/george/Packages/GeorgeCore/Tests/GeorgeCoreTests/V7ReviewCoreTests.swift:83:13: warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 81 |         let item = content.allItems[0]
+ 82 |         content.toggleSet(id: item.sets[0].id)
+ 83 |         try XCTUnwrap(content.dropWeight(setID: item.sets[1].id, repsDone: 4, newWeightKg: 50, applyToRemaining: false))
+    |             `- warning: result of call to 'XCTUnwrap(_:_:file:line:)' is unused [#no-usage]
+ 84 |         content.setSetCount(of: item.id, to: 4)
+ 85 |         let sets = try XCTUnwrap(content.item(id: item.id)?.sets)
+[104/113] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageDiscoveredTests.derived/all-discovered-tests.swift
+[105/113] Write sources
+[106/113] Wrapping AST for GeorgeCoreTests for debugging
+[108/116] Compiling GeorgeCorePackageDiscoveredTests GeorgeCoreTests.swift
+[109/116] Emitting module GeorgeCorePackageDiscoveredTests
+[110/116] Compiling GeorgeCorePackageDiscoveredTests all-discovered-tests.swift
+[111/117] /__w/george/george/Packages/GeorgeCore/.build/x86_64-unknown-linux-gnu/debug/GeorgeCorePackageTests.derived/runner.swift
+[112/117] Write sources
+[113/117] Wrapping AST for GeorgeCorePackageDiscoveredTests for debugging
+[115/119] Emitting module GeorgeCorePackageTests
+[116/119] Compiling GeorgeCorePackageTests runner.swift
+[117/120] Wrapping AST for GeorgeCorePackageTests for debugging
+[118/120] Write Objects.LinkFileList
+[119/120] Linking GeorgeCorePackageTests.xctest
+Build complete! (37.68s)
+Test Suite 'All tests' started at 2026-11-23 19:02:11.827
+Test Suite 'debug.xctest' started at 2026-11-23 19:02:11.828
+Test Suite 'ContentTests' started at 2026-11-23 19:02:11.828
+Test Case 'ContentTests.testCodableIsForwardCompatible' started at 2026-11-23 19:02:11.828
+Test Case 'ContentTests.testCodableIsForwardCompatible' passed (0.003 seconds)
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' started at 2026-11-23 19:02:11.831
+Test Case 'ContentTests.testFreshCopyAndTemplatePromotion' passed (0.001 seconds)
+Test Case 'ContentTests.testGroupingOperations' started at 2026-11-23 19:02:11.832
+Test Case 'ContentTests.testGroupingOperations' passed (0.0 seconds)
+Test Case 'ContentTests.testMoveItemAcrossBlocks' started at 2026-11-23 19:02:11.832
+Test Case 'ContentTests.testMoveItemAcrossBlocks' passed (0.0 seconds)
+Test Case 'ContentTests.testNextPendingWraps' started at 2026-11-23 19:02:11.833
+Test Case 'ContentTests.testNextPendingWraps' passed (0.001 seconds)
+Test Case 'ContentTests.testPrescription' started at 2026-11-23 19:02:11.833
+Test Case 'ContentTests.testPrescription' passed (0.0 seconds)
+Test Case 'ContentTests.testRestRules' started at 2026-11-23 19:02:11.833
+Test Case 'ContentTests.testRestRules' passed (0.101 seconds)
+Test Case 'ContentTests.testToggleCopiesTargets' started at 2026-11-23 19:02:11.934
+Test Case 'ContentTests.testToggleCopiesTargets' passed (0.0 seconds)
+Test Suite 'ContentTests' passed at 2026-11-23 19:02:11.934
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.106 (0.106) seconds
+Test Suite 'HowToTests' started at 2026-11-23 19:02:11.934
+Test Case 'HowToTests.testStretchYogaAndMobilityHaveGuidance' started at 2026-11-23 19:02:11.934
+Test Case 'HowToTests.testStretchYogaAndMobilityHaveGuidance' passed (0.236 seconds)
+Test Suite 'HowToTests' passed at 2026-11-23 19:02:12.170
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.236 (0.236) seconds
+Test Suite 'InsightsTests' started at 2026-11-23 19:02:12.170
+Test Case 'InsightsTests.testBodyweightSessionsAreTheirOwnRepsSeries' started at 2026-11-23 19:02:12.170
+Test Case 'InsightsTests.testBodyweightSessionsAreTheirOwnRepsSeries' passed (0.001 seconds)
+Test Case 'InsightsTests.testFreshnessSeriesMatchesSinglePoints' started at 2026-11-23 19:02:12.171
+Test Case 'InsightsTests.testFreshnessSeriesMatchesSinglePoints' passed (0.002 seconds)
+Test Case 'InsightsTests.testHeavierTripleAfterTenRepsIsNotAnE1RMRecord' started at 2026-11-23 19:02:12.173
+Test Case 'InsightsTests.testHeavierTripleAfterTenRepsIsNotAnE1RMRecord' passed (0.0 seconds)
+Test Case 'InsightsTests.testHoldsChartTheLongestHold' started at 2026-11-23 19:02:12.174
+Test Case 'InsightsTests.testHoldsChartTheLongestHold' passed (0.0 seconds)
+Test Case 'InsightsTests.testPeriodTotalsAndRecordsInTheRange' started at 2026-11-23 19:02:12.174
+Test Case 'InsightsTests.testPeriodTotalsAndRecordsInTheRange' passed (0.0 seconds)
+Test Case 'InsightsTests.testTenThousandEventsStayFast' started at 2026-11-23 19:02:12.174
+Test Case 'InsightsTests.testTenThousandEventsStayFast' passed (0.42 seconds)
+Test Case 'InsightsTests.testTimeByTypeIncludesHealthWorkouts' started at 2026-11-23 19:02:12.594
+Test Case 'InsightsTests.testTimeByTypeIncludesHealthWorkouts' passed (0.101 seconds)
+Test Suite 'InsightsTests' passed at 2026-11-23 19:02:12.695
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.524 (0.524) seconds
+Test Suite 'KindAndParsingTests' started at 2026-11-23 19:02:12.695
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' started at 2026-11-23 19:02:12.695
+Test Case 'KindAndParsingTests.testCSVReaderQuotes' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' started at 2026-11-23 19:02:12.695
+Test Case 'KindAndParsingTests.testCSVSemicolonDetection' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testFormat' started at 2026-11-23 19:02:12.695
+Test Case 'KindAndParsingTests.testFormat' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testKindAliases' started at 2026-11-23 19:02:12.696
+Test Case 'KindAndParsingTests.testKindAliases' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseMeters' started at 2026-11-23 19:02:12.696
+Test Case 'KindAndParsingTests.testLooseMeters' passed (0.0 seconds)
+Test Case 'KindAndParsingTests.testLooseSeconds' started at 2026-11-23 19:02:12.696
+Test Case 'KindAndParsingTests.testLooseSeconds' passed (0.0 seconds)
+Test Suite 'KindAndParsingTests' passed at 2026-11-23 19:02:12.696
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'LibraryTests' started at 2026-11-23 19:02:12.697
+Test Case 'LibraryTests.testBundledLibraryDecodes' started at 2026-11-23 19:02:12.697
+Test Case 'LibraryTests.testBundledLibraryDecodes' passed (0.128 seconds)
+Test Case 'LibraryTests.testYouTubeHelpers' started at 2026-11-23 19:02:12.824
+Test Case 'LibraryTests.testYouTubeHelpers' passed (0.0 seconds)
+Test Suite 'LibraryTests' passed at 2026-11-23 19:02:12.825
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.128 (0.128) seconds
+Test Suite 'LoadRealityTests' started at 2026-11-23 19:02:12.825
+Test Case 'LoadRealityTests.testANormalWeekAfterLighterWeeksIsNotOverload' started at 2026-11-23 19:02:12.825
+Test Case 'LoadRealityTests.testANormalWeekAfterLighterWeeksIsNotOverload' passed (0.018 seconds)
+Test Suite 'LoadRealityTests' passed at 2026-11-23 19:02:12.843
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.018 (0.018) seconds
+Test Suite 'MuscleTests' started at 2026-11-23 19:02:12.843
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' started at 2026-11-23 19:02:12.843
+Test Case 'MuscleTests.testBodyMapParsesAndCoversAllMuscles' passed (0.101 seconds)
+Test Case 'MuscleTests.testEventsAndTotals' started at 2026-11-23 19:02:12.944
+Test Case 'MuscleTests.testEventsAndTotals' passed (0.001 seconds)
+Test Case 'MuscleTests.testFreshnessRecovers' started at 2026-11-23 19:02:12.945
+Test Case 'MuscleTests.testFreshnessRecovers' passed (0.0 seconds)
+Test Case 'MuscleTests.testLoadStatuses' started at 2026-11-23 19:02:12.945
+Test Case 'MuscleTests.testLoadStatuses' passed (0.137 seconds)
+Test Case 'MuscleTests.testRangesAndPlan' started at 2026-11-23 19:02:13.083
+Test Case 'MuscleTests.testRangesAndPlan' passed (0.0 seconds)
+Test Case 'MuscleTests.testResolver' started at 2026-11-23 19:02:13.083
+Test Case 'MuscleTests.testResolver' passed (0.0 seconds)
+Test Suite 'MuscleTests' passed at 2026-11-23 19:02:13.083
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.24 (0.24) seconds
+Test Suite 'NamingAndDatesTests' started at 2026-11-23 19:02:13.083
+Test Case 'NamingAndDatesTests.testBuckets' started at 2026-11-23 19:02:13.083
+Test Case 'NamingAndDatesTests.testBuckets' passed (0.0 seconds)
+Test Case 'NamingAndDatesTests.testSessionTitle' started at 2026-11-23 19:02:13.084
+Test Case 'NamingAndDatesTests.testSessionTitle' passed (0.0 seconds)
+Test Suite 'NamingAndDatesTests' passed at 2026-11-23 19:02:13.084
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'PlanToolsTests' started at 2026-11-23 19:02:13.084
+Test Case 'PlanToolsTests.testAllSetsChangesOnlyOpenWorkingSets' started at 2026-11-23 19:02:13.084
+Test Case 'PlanToolsTests.testAllSetsChangesOnlyOpenWorkingSets' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testAutoTitleIsRecognisedButTypedTitlesAreNot' started at 2026-11-23 19:02:13.084
+Test Case 'PlanToolsTests.testAutoTitleIsRecognisedButTypedTitlesAreNot' passed (0.002 seconds)
+Test Case 'PlanToolsTests.testGymSampleParses' started at 2026-11-23 19:02:13.087
+Test Case 'PlanToolsTests.testGymSampleParses' passed (0.004 seconds)
+Test Case 'PlanToolsTests.testImportNamesGetANumberWhenTaken' started at 2026-11-23 19:02:13.090
+Test Case 'PlanToolsTests.testImportNamesGetANumberWhenTaken' passed (0.1 seconds)
+Test Case 'PlanToolsTests.testMovedBlockJoinsTheSectionItLandsIn' started at 2026-11-23 19:02:13.191
+Test Case 'PlanToolsTests.testMovedBlockJoinsTheSectionItLandsIn' passed (0.001 seconds)
+Test Case 'PlanToolsTests.testPerformedStateFollowsTicks' started at 2026-11-23 19:02:13.191
+Test Case 'PlanToolsTests.testPerformedStateFollowsTicks' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testRescueRoutinesAreTheClosestInLength' started at 2026-11-23 19:02:13.192
+Test Case 'PlanToolsTests.testRescueRoutinesAreTheClosestInLength' passed (0.131 seconds)
+Test Case 'PlanToolsTests.testShortCompletedRoutinesNeedTheMinutes' started at 2026-11-23 19:02:13.322
+Test Case 'PlanToolsTests.testShortCompletedRoutinesNeedTheMinutes' passed (0.0 seconds)
+Test Case 'PlanToolsTests.testTrainingRemindersAndStreakAtRisk' started at 2026-11-23 19:02:13.323
+Test Case 'PlanToolsTests.testTrainingRemindersAndStreakAtRisk' passed (0.001 seconds)
+Test Suite 'PlanToolsTests' passed at 2026-11-23 19:02:13.323
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.239 (0.239) seconds
+Test Suite 'ProgramCSVTests' started at 2026-11-23 19:02:13.323
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' started at 2026-11-23 19:02:13.323
+Test Case 'ProgramCSVTests.testDocumentationExampleParses' passed (0.002 seconds)
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' started at 2026-11-23 19:02:13.325
+Test Case 'ProgramCSVTests.testGroupNumbersAndRounds' passed (0.001 seconds)
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' started at 2026-11-23 19:02:13.326
+Test Case 'ProgramCSVTests.testPoundsAndMissingColumn' passed (0.001 seconds)
+Test Case 'ProgramCSVTests.testRoundTrip' started at 2026-11-23 19:02:13.326
+Test Case 'ProgramCSVTests.testRoundTrip' passed (0.013 seconds)
+Test Case 'ProgramCSVTests.testSampleImport' started at 2026-11-23 19:02:13.340
+Test Case 'ProgramCSVTests.testSampleImport' passed (0.006 seconds)
+Test Suite 'ProgramCSVTests' passed at 2026-11-23 19:02:13.345
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.022 (0.022) seconds
+Test Suite 'SettingsExtrasTests' started at 2026-11-23 19:02:13.345
+Test Case 'SettingsExtrasTests.testMissingOrBrokenDataGivesEmptyExtras' started at 2026-11-23 19:02:13.345
+Test Case 'SettingsExtrasTests.testMissingOrBrokenDataGivesEmptyExtras' passed (0.101 seconds)
+Test Case 'SettingsExtrasTests.testRemove' started at 2026-11-23 19:02:13.446
+Test Case 'SettingsExtrasTests.testRemove' passed (0.0 seconds)
+Test Case 'SettingsExtrasTests.testValuesRoundTripAndUnknownKeysAreKept' started at 2026-11-23 19:02:13.446
+Test Case 'SettingsExtrasTests.testValuesRoundTripAndUnknownKeysAreKept' passed (0.001 seconds)
+Test Suite 'SettingsExtrasTests' passed at 2026-11-23 19:02:13.447
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.102 (0.102) seconds
+Test Suite 'StatsTests' started at 2026-11-23 19:02:13.447
+Test Case 'StatsTests.testEnergy' started at 2026-11-23 19:02:13.447
+Test Case 'StatsTests.testEnergy' passed (0.0 seconds)
+Test Case 'StatsTests.testRecordsAndHistory' started at 2026-11-23 19:02:13.447
+Test Case 'StatsTests.testRecordsAndHistory' passed (0.0 seconds)
+Test Suite 'StatsTests' passed at 2026-11-23 19:02:13.447
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'StreakTests' started at 2026-11-23 19:02:13.447
+Test Case 'StreakTests.testExcusedWeekIsNeutral' started at 2026-11-23 19:02:13.447
+Test Case 'StreakTests.testExcusedWeekIsNeutral' passed (0.001 seconds)
+Test Case 'StreakTests.testGoalHistory' started at 2026-11-23 19:02:13.448
+Test Case 'StreakTests.testGoalHistory' passed (0.0 seconds)
+Test Case 'StreakTests.testMetWeeksEarnCredits' started at 2026-11-23 19:02:13.448
+Test Case 'StreakTests.testMetWeeksEarnCredits' passed (0.101 seconds)
+Test Case 'StreakTests.testMissWithoutCreditResets' started at 2026-11-23 19:02:13.549
+Test Case 'StreakTests.testMissWithoutCreditResets' passed (0.0 seconds)
+Test Case 'StreakTests.testMissedWeekSpendsCredit' started at 2026-11-23 19:02:13.550
+Test Case 'StreakTests.testMissedWeekSpendsCredit' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueCountsDouble' started at 2026-11-23 19:02:13.550
+Test Case 'StreakTests.testRescueCountsDouble' passed (0.0 seconds)
+Test Case 'StreakTests.testRescueStatusOnSunday' started at 2026-11-23 19:02:13.550
+Test Case 'StreakTests.testRescueStatusOnSunday' passed (0.0 seconds)
+Test Suite 'StreakTests' passed at 2026-11-23 19:02:13.550
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.103 (0.103) seconds
+Test Suite 'ThaliaExportTests' started at 2026-11-23 19:02:13.550
+Test Case 'ThaliaExportTests.testDatesAndNames' started at 2026-11-23 19:02:13.550
+Test Case 'ThaliaExportTests.testDatesAndNames' passed (0.001 seconds)
+Test Case 'ThaliaExportTests.testDayFollowsTheDeviceTimeZone' started at 2026-11-23 19:02:13.552
+Test Case 'ThaliaExportTests.testDayFollowsTheDeviceTimeZone' passed (0.004 seconds)
+Test Case 'ThaliaExportTests.testFNV1a' started at 2026-11-23 19:02:13.555
+Test Case 'ThaliaExportTests.testFNV1a' passed (0.001 seconds)
+Test Case 'ThaliaExportTests.testFactsByDayKeepsTheWindowAndCountsDuplicatesOnce' started at 2026-11-23 19:02:13.556
+Test Case 'ThaliaExportTests.testFactsByDayKeepsTheWindowAndCountsDuplicatesOnce' passed (0.001 seconds)
+Test Case 'ThaliaExportTests.testFactsHaveKindStableIdsRefsOriginAndDate' started at 2026-11-23 19:02:13.557
+Test Case 'ThaliaExportTests.testFactsHaveKindStableIdsRefsOriginAndDate' passed (0.002 seconds)
+Test Case 'ThaliaExportTests.testFreeWorkoutsAndUnfinishedOnes' started at 2026-11-23 19:02:13.559
+Test Case 'ThaliaExportTests.testFreeWorkoutsAndUnfinishedOnes' passed (0.0 seconds)
+Test Case 'ThaliaExportTests.testHealthOnlyWorkoutsAreNeverWrittenAndWatchWorkoutsAre' started at 2026-11-23 19:02:13.560
+Test Case 'ThaliaExportTests.testHealthOnlyWorkoutsAreNeverWrittenAndWatchWorkoutsAre' passed (0.004 seconds)
+Test Case 'ThaliaExportTests.testOldDayFilesAreDeleted' started at 2026-11-23 19:02:13.564
+Test Case 'ThaliaExportTests.testOldDayFilesAreDeleted' passed (0.004 seconds)
+Test Case 'ThaliaExportTests.testReaderRejectsAndSkipsWithReasons' started at 2026-11-23 19:02:13.568
+Test Case 'ThaliaExportTests.testReaderRejectsAndSkipsWithReasons' passed (0.001 seconds)
+Test Case 'ThaliaExportTests.testSourceIsAHeartbeatAtMostOnceADay' started at 2026-11-23 19:02:13.568
+Test Case 'ThaliaExportTests.testSourceIsAHeartbeatAtMostOnceADay' passed (0.003 seconds)
+Test Case 'ThaliaExportTests.testSyncOnlyWritesWhatChanged' started at 2026-11-23 19:02:13.572
+Test Case 'ThaliaExportTests.testSyncOnlyWritesWhatChanged' passed (0.009 seconds)
+Test Case 'ThaliaExportTests.testThaliasTestFilesParseAndOurOutputHasTheSameForm' started at 2026-11-23 19:02:13.581
+Test Case 'ThaliaExportTests.testThaliasTestFilesParseAndOurOutputHasTheSameForm' passed (0.002 seconds)
+Test Case 'ThaliaExportTests.testWrittenFilesReadBackWithoutSkips' started at 2026-11-23 19:02:13.583
+Test Case 'ThaliaExportTests.testWrittenFilesReadBackWithoutSkips' passed (0.004 seconds)
+Test Suite 'ThaliaExportTests' passed at 2026-11-23 19:02:13.586
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.036 (0.036) seconds
+Test Suite 'TourTests' started at 2026-11-23 19:02:13.586
+Test Case 'TourTests.testCatalogIsValid' started at 2026-11-23 19:02:13.586
+Test Case 'TourTests.testCatalogIsValid' passed (0.0 seconds)
+Test Case 'TourTests.testSnapshotFollowsContent' started at 2026-11-23 19:02:13.587
+Test Case 'TourTests.testSnapshotFollowsContent' passed (0.0 seconds)
+Test Suite 'TourTests' passed at 2026-11-23 19:02:13.587
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V2Tests' started at 2026-11-23 19:02:13.587
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' started at 2026-11-23 19:02:13.587
+Test Case 'V2Tests.testApplyToFollowingSetsSkipsDoneOnes' passed (0.0 seconds)
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' started at 2026-11-23 19:02:13.587
+Test Case 'V2Tests.testBodyReadinessFromHealthSignals' passed (0.001 seconds)
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' started at 2026-11-23 19:02:13.588
+Test Case 'V2Tests.testEffortPromptOnlyAfterLastWorkingSet' passed (0.0 seconds)
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' started at 2026-11-23 19:02:13.588
+Test Case 'V2Tests.testEnergyCycleAndWeekdays' passed (0.004 seconds)
+Test Case 'V2Tests.testMatchSetCounts' started at 2026-11-23 19:02:13.592
+Test Case 'V2Tests.testMatchSetCounts' passed (0.0 seconds)
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' started at 2026-11-23 19:02:13.592
+Test Case 'V2Tests.testNumberParserAcceptsCommaAndDot' passed (0.0 seconds)
+Test Case 'V2Tests.testPaceTrackerMomentum' started at 2026-11-23 19:02:13.592
+Test Case 'V2Tests.testPaceTrackerMomentum' passed (0.0 seconds)
+Test Case 'V2Tests.testProfileRecommendations' started at 2026-11-23 19:02:13.593
+Test Case 'V2Tests.testProfileRecommendations' passed (0.0 seconds)
+Test Case 'V2Tests.testProgression' started at 2026-11-23 19:02:13.593
+Test Case 'V2Tests.testProgression' passed (0.0 seconds)
+Test Case 'V2Tests.testRelativePerformance' started at 2026-11-23 19:02:13.593
+Test Case 'V2Tests.testRelativePerformance' passed (0.0 seconds)
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' started at 2026-11-23 19:02:13.593
+Test Case 'V2Tests.testSessionEditsShowWhatWasTyped' passed (0.0 seconds)
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' started at 2026-11-23 19:02:13.594
+Test Case 'V2Tests.testTourV2CatalogAndMatchStep' passed (0.0 seconds)
+Test Case 'V2Tests.testValenceAndCorrelation' started at 2026-11-23 19:02:13.594
+Test Case 'V2Tests.testValenceAndCorrelation' passed (0.0 seconds)
+Test Suite 'V2Tests' passed at 2026-11-23 19:02:13.594
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.007 (0.007) seconds
+Test Suite 'V3Tests' started at 2026-11-23 19:02:13.594
+Test Case 'V3Tests.testAlternativesTrainTheSameMuscles' started at 2026-11-23 19:02:13.594
+Test Case 'V3Tests.testAlternativesTrainTheSameMuscles' passed (0.13 seconds)
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' started at 2026-11-23 19:02:13.724
+Test Case 'V3Tests.testCoachScriptTalksAboutTheSetThatsDue' passed (0.101 seconds)
+Test Case 'V3Tests.testDropWeightMidSet' started at 2026-11-23 19:02:13.825
+Test Case 'V3Tests.testDropWeightMidSet' passed (0.0 seconds)
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' started at 2026-11-23 19:02:13.825
+Test Case 'V3Tests.testFinishQuoteFitsTheWorkout' passed (0.1 seconds)
+Test Case 'V3Tests.testFuzzyLibraryMatch' started at 2026-11-23 19:02:13.926
+Test Case 'V3Tests.testFuzzyLibraryMatch' passed (0.001 seconds)
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' started at 2026-11-23 19:02:13.926
+Test Case 'V3Tests.testPaceRecordsPlannedVersusActualRest' passed (0.0 seconds)
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' started at 2026-11-23 19:02:13.927
+Test Case 'V3Tests.testReadyMadeRoutinesResolveAgainstTheBundledLibrary' passed (0.13 seconds)
+Test Case 'V3Tests.testRemainingAndPlannedTime' started at 2026-11-23 19:02:14.056
+Test Case 'V3Tests.testRemainingAndPlannedTime' passed (0.0 seconds)
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' started at 2026-11-23 19:02:14.057
+Test Case 'V3Tests.testStartedAtAndFatigueAreStoredAndOptional' passed (0.0 seconds)
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' started at 2026-11-23 19:02:14.057
+Test Case 'V3Tests.testSubjectiveFatigueScalesMuscleLoad' passed (0.0 seconds)
+Test Case 'V3Tests.testSwapRemainingKeepsDoneSets' started at 2026-11-23 19:02:14.057
+Test Case 'V3Tests.testSwapRemainingKeepsDoneSets' passed (0.0 seconds)
+Test Suite 'V3Tests' passed at 2026-11-23 19:02:14.058
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.463 (0.463) seconds
+Test Suite 'V6TemplateTests' started at 2026-11-23 19:02:14.058
+Test Case 'V6TemplateTests.testLoadChangesAgainstTheTemplate' started at 2026-11-23 19:02:14.058
+Test Case 'V6TemplateTests.testLoadChangesAgainstTheTemplate' passed (0.0 seconds)
+Test Suite 'V6TemplateTests' passed at 2026-11-23 19:02:14.058
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V6Tests' started at 2026-11-23 19:02:14.058
+Test Case 'V6Tests.testComparisonWithLastTimeAndTrend' started at 2026-11-23 19:02:14.058
+Test Case 'V6Tests.testComparisonWithLastTimeAndTrend' passed (0.001 seconds)
+Test Case 'V6Tests.testCoolDownFitsTheWorkout' started at 2026-11-23 19:02:14.059
+Test Case 'V6Tests.testCoolDownFitsTheWorkout' passed (0.126 seconds)
+Test Case 'V6Tests.testCurrentSetSurvivesEdits' started at 2026-11-23 19:02:14.185
+Test Case 'V6Tests.testCurrentSetSurvivesEdits' passed (0.0 seconds)
+Test Case 'V6Tests.testDropSetInSupersetFollowsItsSetWithoutRest' started at 2026-11-23 19:02:14.185
+Test Case 'V6Tests.testDropSetInSupersetFollowsItsSetWithoutRest' passed (0.0 seconds)
+Test Case 'V6Tests.testOneHeavierSetIsOneRecordAndRepRecordsCount' started at 2026-11-23 19:02:14.186
+Test Case 'V6Tests.testOneHeavierSetIsOneRecordAndRepRecordsCount' passed (0.101 seconds)
+Test Case 'V6Tests.testOtherSportsLoadMusclesWithoutSets' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testOtherSportsLoadMusclesWithoutSets' passed (0.0 seconds)
+Test Case 'V6Tests.testPauseShiftsThePace' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testPauseShiftsThePace' passed (0.0 seconds)
+Test Case 'V6Tests.testPerformedState' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testPerformedState' passed (0.0 seconds)
+Test Case 'V6Tests.testProfileBandChangesTheVerdict' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testProfileBandChangesTheVerdict' passed (0.0 seconds)
+Test Case 'V6Tests.testProgressionRespectsTheDay' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testProgressionRespectsTheDay' passed (0.0 seconds)
+Test Case 'V6Tests.testSteadyTrainingInTheFirstWeeksIsNotOverload' started at 2026-11-23 19:02:14.287
+Test Case 'V6Tests.testSteadyTrainingInTheFirstWeeksIsNotOverload' passed (0.041 seconds)
+Test Case 'V6Tests.testStreakRulesNeedTheMinutesForShortRoutines' started at 2026-11-23 19:02:14.328
+Test Case 'V6Tests.testStreakRulesNeedTheMinutesForShortRoutines' passed (0.1 seconds)
+Test Case 'V6Tests.testStretchingAddsLoadButNoSets' started at 2026-11-23 19:02:14.429
+Test Case 'V6Tests.testStretchingAddsLoadButNoSets' passed (0.101 seconds)
+Test Case 'V6Tests.testSwapInStraightSetsMakesItsOwnBlock' started at 2026-11-23 19:02:14.529
+Test Case 'V6Tests.testSwapInStraightSetsMakesItsOwnBlock' passed (0.0 seconds)
+Test Case 'V6Tests.testSwapInSupersetContinuesTheRounds' started at 2026-11-23 19:02:14.530
+Test Case 'V6Tests.testSwapInSupersetContinuesTheRounds' passed (0.0 seconds)
+Test Case 'V6Tests.testWarmupsAndPlates' started at 2026-11-23 19:02:14.530
+Test Case 'V6Tests.testWarmupsAndPlates' passed (0.0 seconds)
+Test Case 'V6Tests.testWatchCommandsAreDroppedWhenStale' started at 2026-11-23 19:02:14.530
+Test Case 'V6Tests.testWatchCommandsAreDroppedWhenStale' passed (0.002 seconds)
+Test Case 'V6Tests.testWeekPlannerSpreadsTheRotation' started at 2026-11-23 19:02:14.532
+Test Case 'V6Tests.testWeekPlannerSpreadsTheRotation' passed (0.001 seconds)
+Test Suite 'V6Tests' passed at 2026-11-23 19:02:14.533
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.475 (0.475) seconds
+Test Suite 'V7DataTests' started at 2026-11-23 19:02:14.533
+Test Case 'V7DataTests.testActivityRowExported' started at 2026-11-23 19:02:14.533
+Test Case 'V7DataTests.testActivityRowExported' passed (0.001 seconds)
+Test Case 'V7DataTests.testBareDayGetsTheUsualTimeAndEndsByNow' started at 2026-11-23 19:02:14.535
+Test Case 'V7DataTests.testBareDayGetsTheUsualTimeAndEndsByNow' passed (0.0 seconds)
+Test Case 'V7DataTests.testDefaultMinutesPreferRecentWorkouts' started at 2026-11-23 19:02:14.535
+Test Case 'V7DataTests.testDefaultMinutesPreferRecentWorkouts' passed (0.0 seconds)
+Test Case 'V7DataTests.testExerciseNotesAndLinksAreJoined' started at 2026-11-23 19:02:14.535
+Test Case 'V7DataTests.testExerciseNotesAndLinksAreJoined' passed (0.0 seconds)
+Test Case 'V7DataTests.testLogExportUsesLocalDay' started at 2026-11-23 19:02:14.535
+Test Case 'V7DataTests.testLogExportUsesLocalDay' passed (0.002 seconds)
+Test Case 'V7DataTests.testMeasuredEnergyWinsAndEstimatesAreMarked' started at 2026-11-23 19:02:14.537
+Test Case 'V7DataTests.testMeasuredEnergyWinsAndEstimatesAreMarked' passed (0.0 seconds)
+Test Case 'V7DataTests.testSettingsMergeKeepsOldestAndTakesTheLastEdit' started at 2026-11-23 19:02:14.537
+Test Case 'V7DataTests.testSettingsMergeKeepsOldestAndTakesTheLastEdit' passed (0.0 seconds)
+Test Case 'V7DataTests.testSyncHealthLevels' started at 2026-11-23 19:02:14.537
+Test Case 'V7DataTests.testSyncHealthLevels' passed (0.0 seconds)
+Test Suite 'V7DataTests' passed at 2026-11-23 19:02:14.537
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'V7LiveTests' started at 2026-11-23 19:02:14.537
+Test Case 'V7LiveTests.testB1BeforeA1KeepsA1CurrentNoRest' started at 2026-11-23 19:02:14.537
+Test Case 'V7LiveTests.testB1BeforeA1KeepsA1CurrentNoRest' passed (0.0 seconds)
+Test Case 'V7LiveTests.testOffPlanTickKeepsThePlanAndAdoptingFollows' started at 2026-11-23 19:02:14.538
+Test Case 'V7LiveTests.testOffPlanTickKeepsThePlanAndAdoptingFollows' passed (0.0 seconds)
+Test Case 'V7LiveTests.testOpenDropSetFollowsWithoutRest' started at 2026-11-23 19:02:14.538
+Test Case 'V7LiveTests.testOpenDropSetFollowsWithoutRest' passed (0.0 seconds)
+Test Case 'V7LiveTests.testRoundRestFallsBackToTheLastExercisesRest' started at 2026-11-23 19:02:14.538
+Test Case 'V7LiveTests.testRoundRestFallsBackToTheLastExercisesRest' passed (0.0 seconds)
+Test Case 'V7LiveTests.testRoundRestWhenRoundCompletedOutOfOrder' started at 2026-11-23 19:02:14.538
+Test Case 'V7LiveTests.testRoundRestWhenRoundCompletedOutOfOrder' passed (0.0 seconds)
+Test Case 'V7LiveTests.testRoundWithOpenSetsComesFirst' started at 2026-11-23 19:02:14.539
+Test Case 'V7LiveTests.testRoundWithOpenSetsComesFirst' passed (0.0 seconds)
+Test Case 'V7LiveTests.testSet3BeforeSet2KeepsSet2Current' started at 2026-11-23 19:02:14.539
+Test Case 'V7LiveTests.testSet3BeforeSet2KeepsSet2Current' passed (0.0 seconds)
+Test Case 'V7LiveTests.testStraightSetsWithoutRestGiveNil' started at 2026-11-23 19:02:14.539
+Test Case 'V7LiveTests.testStraightSetsWithoutRestGiveNil' passed (0.0 seconds)
+Test Case 'V7LiveTests.testValueEditsKeepTheShape' started at 2026-11-23 19:02:14.539
+Test Case 'V7LiveTests.testValueEditsKeepTheShape' passed (0.0 seconds)
+Test Suite 'V7LiveTests' passed at 2026-11-23 19:02:14.539
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'V7MacTests' started at 2026-11-23 19:02:14.539
+Test Case 'V7MacTests.testEndedStatus' started at 2026-11-23 19:02:14.539
+Test Case 'V7MacTests.testEndedStatus' passed (0.0 seconds)
+Test Case 'V7MacTests.testKindLeftOutWhenProgramStartsWithIt' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testKindLeftOutWhenProgramStartsWithIt' passed (0.0 seconds)
+Test Case 'V7MacTests.testLastActivityIsTheNewestSign' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testLastActivityIsTheNewestSign' passed (0.0 seconds)
+Test Case 'V7MacTests.testNothingRunningStarts' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testNothingRunningStarts' passed (0.0 seconds)
+Test Case 'V7MacTests.testOwnWorkoutResumesWithoutAsking' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testOwnWorkoutResumesWithoutAsking' passed (0.0 seconds)
+Test Case 'V7MacTests.testProgramCounts' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testProgramCounts' passed (0.0 seconds)
+Test Case 'V7MacTests.testProgressLine' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testProgressLine' passed (0.0 seconds)
+Test Case 'V7MacTests.testRunningHereAsksOrShows' started at 2026-11-23 19:02:14.540
+Test Case 'V7MacTests.testRunningHereAsksOrShows' passed (0.0 seconds)
+Test Case 'V7MacTests.testStaleAfterAboutHalfADay' started at 2026-11-23 19:02:14.541
+Test Case 'V7MacTests.testStaleAfterAboutHalfADay' passed (0.0 seconds)
+Test Case 'V7MacTests.testStartedSetCountsAsActivity' started at 2026-11-23 19:02:14.541
+Test Case 'V7MacTests.testStartedSetCountsAsActivity' passed (0.0 seconds)
+Test Case 'V7MacTests.testTakesOver' started at 2026-11-23 19:02:14.541
+Test Case 'V7MacTests.testTakesOver' passed (0.0 seconds)
+Test Case 'V7MacTests.testWorkoutElsewhereBlocksAParallelStart' started at 2026-11-23 19:02:14.541
+Test Case 'V7MacTests.testWorkoutElsewhereBlocksAParallelStart' passed (0.0 seconds)
+Test Suite 'V7MacTests' passed at 2026-11-23 19:02:14.541
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V7NumbersATests' started at 2026-11-23 19:02:14.541
+Test Case 'V7NumbersATests.testCoverageOfThePreviousPeriod' started at 2026-11-23 19:02:14.541
+Test Case 'V7NumbersATests.testCoverageOfThePreviousPeriod' passed (0.0 seconds)
+Test Case 'V7NumbersATests.testEightWeeksOfTwelveSetsAverageTwelveOverAYear' started at 2026-11-23 19:02:14.541
+Test Case 'V7NumbersATests.testEightWeeksOfTwelveSetsAverageTwelveOverAYear' passed (0.002 seconds)
+Test Case 'V7NumbersATests.testEstimatesRoundInTheDisplayUnit' started at 2026-11-23 19:02:14.543
+Test Case 'V7NumbersATests.testEstimatesRoundInTheDisplayUnit' passed (0.0 seconds)
+Test Case 'V7NumbersATests.testFirstSessionIsNoRecordInEitherFunction' started at 2026-11-23 19:02:14.543
+Test Case 'V7NumbersATests.testFirstSessionIsNoRecordInEitherFunction' passed (0.0 seconds)
+Test Case 'V7NumbersATests.testLongerYogaHoldIsNoRecordButALongerPlankIs' started at 2026-11-23 19:02:14.543
+Test Case 'V7NumbersATests.testLongerYogaHoldIsNoRecordButALongerPlankIs' passed (0.0 seconds)
+Test Case 'V7NumbersATests.testNoLoadNumberIsCalledSets' started at 2026-11-23 19:02:14.544
+Test Case 'V7NumbersATests.testNoLoadNumberIsCalledSets' passed (0.103 seconds)
+Test Case 'V7NumbersATests.testPerSideItemWithWarmUpCountsWorkingVolumeOnBothSides' started at 2026-11-23 19:02:14.647
+Test Case 'V7NumbersATests.testPerSideItemWithWarmUpCountsWorkingVolumeOnBothSides' passed (0.001 seconds)
+Test Case 'V7NumbersATests.testShortStretchIsNoTrainingDayAndHealthWorkoutsCountWhenOn' started at 2026-11-23 19:02:14.647
+Test Case 'V7NumbersATests.testShortStretchIsNoTrainingDayAndHealthWorkoutsCountWhenOn' passed (0.101 seconds)
+Test Suite 'V7NumbersATests' passed at 2026-11-23 19:02:14.749
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.208 (0.208) seconds
+Test Suite 'V7NumbersBTests' started at 2026-11-23 19:02:14.749
+Test Case 'V7NumbersBTests.testExcusedCurrentWeekIsCalm' started at 2026-11-23 19:02:14.749
+Test Case 'V7NumbersBTests.testExcusedCurrentWeekIsCalm' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testExcusedCurrentWeekIsCalmSundayFirst' started at 2026-11-23 19:02:14.750
+Test Case 'V7NumbersBTests.testExcusedCurrentWeekIsCalmSundayFirst' passed (0.0 seconds)
+Test Case 'V7NumbersBTests.testGoalMetWeekCountsTowardSave' started at 2026-11-23 19:02:14.750
+Test Case 'V7NumbersBTests.testGoalMetWeekCountsTowardSave' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testMixedScheduledAndRotation' started at 2026-11-23 19:02:14.751
+Test Case 'V7NumbersBTests.testMixedScheduledAndRotation' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testPlannedSessionsCountTowardGoal' started at 2026-11-23 19:02:14.752
+Test Case 'V7NumbersBTests.testPlannedSessionsCountTowardGoal' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testRandomEnergyHasNoRhythm' started at 2026-11-23 19:02:14.753
+Test Case 'V7NumbersBTests.testRandomEnergyHasNoRhythm' passed (0.186 seconds)
+Test Case 'V7NumbersBTests.testRealRhythmIsStillFound' started at 2026-11-23 19:02:14.939
+Test Case 'V7NumbersBTests.testRealRhythmIsStillFound' passed (0.005 seconds)
+Test Case 'V7NumbersBTests.testReminderKeepsClockTimeAcrossDST' started at 2026-11-23 19:02:14.944
+Test Case 'V7NumbersBTests.testReminderKeepsClockTimeAcrossDST' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testSnapshotTimingMovesOnWithTheWeek' started at 2026-11-23 19:02:14.944
+Test Case 'V7NumbersBTests.testSnapshotTimingMovesOnWithTheWeek' passed (0.0 seconds)
+Test Case 'V7NumbersBTests.testStepAndDeclineAreNoRhythm' started at 2026-11-23 19:02:14.944
+Test Case 'V7NumbersBTests.testStepAndDeclineAreNoRhythm' passed (0.134 seconds)
+Test Case 'V7NumbersBTests.testThursdayPlanMeetsThisWeek' started at 2026-11-23 19:02:15.078
+Test Case 'V7NumbersBTests.testThursdayPlanMeetsThisWeek' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testThursdayPlanMeetsThisWeekSundayFirst' started at 2026-11-23 19:02:15.080
+Test Case 'V7NumbersBTests.testThursdayPlanMeetsThisWeekSundayFirst' passed (0.001 seconds)
+Test Case 'V7NumbersBTests.testWatchStreakCarriesItsWeek' started at 2026-11-23 19:02:15.080
+Test Case 'V7NumbersBTests.testWatchStreakCarriesItsWeek' passed (0.001 seconds)
+Test Suite 'V7NumbersBTests' passed at 2026-11-23 19:02:15.081
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.332 (0.332) seconds
+Test Suite 'V7PlancoreTests' started at 2026-11-23 19:02:15.081
+Test Case 'V7PlancoreTests.testDoubleSwapKeepsTheRound' started at 2026-11-23 19:02:15.081
+Test Case 'V7PlancoreTests.testDoubleSwapKeepsTheRound' passed (0.003 seconds)
+Test Case 'V7PlancoreTests.testDropInSupersetIsNotMismatch' started at 2026-11-23 19:02:15.084
+Test Case 'V7PlancoreTests.testDropInSupersetIsNotMismatch' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testEffortPromptTargetsTheLastNonDropSet' started at 2026-11-23 19:02:15.084
+Test Case 'V7PlancoreTests.testEffortPromptTargetsTheLastNonDropSet' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testFailedSetDoesNotLowerTarget' started at 2026-11-23 19:02:15.084
+Test Case 'V7PlancoreTests.testFailedSetDoesNotLowerTarget' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testFailedStraightSetStillLightens' started at 2026-11-23 19:02:15.085
+Test Case 'V7PlancoreTests.testFailedStraightSetStillLightens' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testFreshCopyClearsFatigue' started at 2026-11-23 19:02:15.085
+Test Case 'V7PlancoreTests.testFreshCopyClearsFatigue' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testLiveDropAndWarmupsNotPersisted' started at 2026-11-23 19:02:15.085
+Test Case 'V7PlancoreTests.testLiveDropAndWarmupsNotPersisted' passed (0.001 seconds)
+Test Case 'V7PlancoreTests.testLoadsModeRaisesMatchingWorkingSetsOnly' started at 2026-11-23 19:02:15.086
+Test Case 'V7PlancoreTests.testLoadsModeRaisesMatchingWorkingSetsOnly' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testMatchAfterSwapPadsReplacementOnly' started at 2026-11-23 19:02:15.086
+Test Case 'V7PlancoreTests.testMatchAfterSwapPadsReplacementOnly' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testNoSmallPlates62_5' started at 2026-11-23 19:02:15.086
+Test Case 'V7PlancoreTests.testNoSmallPlates62_5' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testPlannedDropDoesNotBlockProgression' started at 2026-11-23 19:02:15.087
+Test Case 'V7PlancoreTests.testPlannedDropDoesNotBlockProgression' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testPoundPlatesOnKgBar' started at 2026-11-23 19:02:15.087
+Test Case 'V7PlancoreTests.testPoundPlatesOnKgBar' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testPrefillSkipsWarmupsAndDrops' started at 2026-11-23 19:02:15.087
+Test Case 'V7PlancoreTests.testPrefillSkipsWarmupsAndDrops' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testRangeSurvivesPlainTick' started at 2026-11-23 19:02:15.087
+Test Case 'V7PlancoreTests.testRangeSurvivesPlainTick' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testSwapAfterWarmupsAndDropCountsRoundsNotSets' started at 2026-11-23 19:02:15.088
+Test Case 'V7PlancoreTests.testSwapAfterWarmupsAndDropCountsRoundsNotSets' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testSwapInSupersetIsNotMismatch' started at 2026-11-23 19:02:15.088
+Test Case 'V7PlancoreTests.testSwapInSupersetIsNotMismatch' passed (0.0 seconds)
+Test Case 'V7PlancoreTests.testSwapSplitMerged' started at 2026-11-23 19:02:15.088
+Test Case 'V7PlancoreTests.testSwapSplitMerged' passed (0.001 seconds)
+Test Case 'V7PlancoreTests.testTemplateChangeLines' started at 2026-11-23 19:02:15.089
+Test Case 'V7PlancoreTests.testTemplateChangeLines' passed (0.001 seconds)
+Test Case 'V7PlancoreTests.testWarmupsInSupersetComeFirst' started at 2026-11-23 19:02:15.090
+Test Case 'V7PlancoreTests.testWarmupsInSupersetComeFirst' passed (0.0 seconds)
+Test Suite 'V7PlancoreTests' passed at 2026-11-23 19:02:15.090
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.009 (0.009) seconds
+Test Suite 'V7RemotesTests' started at 2026-11-23 19:02:15.090
+Test Case 'V7RemotesTests.testLiveStateWithSidesRoundTripsAndOlderPayloadsDecode' started at 2026-11-23 19:02:15.090
+Test Case 'V7RemotesTests.testLiveStateWithSidesRoundTripsAndOlderPayloadsDecode' passed (0.001 seconds)
+Test Case 'V7RemotesTests.testOneSidedPausedOrRestingHoldsHaveNoSides' started at 2026-11-23 19:02:15.091
+Test Case 'V7RemotesTests.testOneSidedPausedOrRestingHoldsHaveNoSides' passed (0.0 seconds)
+Test Case 'V7RemotesTests.testPerSideHoldSides' started at 2026-11-23 19:02:15.091
+Test Case 'V7RemotesTests.testPerSideHoldSides' passed (0.001 seconds)
+Test Case 'V7RemotesTests.testSetCommandsCountHoweverLateForTheSameWorkout' started at 2026-11-23 19:02:15.093
+Test Case 'V7RemotesTests.testSetCommandsCountHoweverLateForTheSameWorkout' passed (0.0 seconds)
+Test Case 'V7RemotesTests.testUndoSetRoundTripsAndOlderCommandsStillDecode' started at 2026-11-23 19:02:15.093
+Test Case 'V7RemotesTests.testUndoSetRoundTripsAndOlderCommandsStillDecode' passed (0.0 seconds)
+Test Suite 'V7RemotesTests' passed at 2026-11-23 19:02:15.093
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'V7ReviewCoreTests' started at 2026-11-23 19:02:15.093
+Test Case 'V7ReviewCoreTests.testAddSetAfterLiveDropCopiesTheWorkingSet' started at 2026-11-23 19:02:15.093
+Test Case 'V7ReviewCoreTests.testAddSetAfterLiveDropCopiesTheWorkingSet' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testAddSetStillCopiesAPlannedDropSet' started at 2026-11-23 19:02:15.094
+Test Case 'V7ReviewCoreTests.testAddSetStillCopiesAPlannedDropSet' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testAddSetWithOnlyLiveSetsMakesAWorkingSet' started at 2026-11-23 19:02:15.094
+Test Case 'V7ReviewCoreTests.testAddSetWithOnlyLiveSetsMakesAWorkingSet' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testFormatNumberNeverTraps' started at 2026-11-23 19:02:15.094
+Test Case 'V7ReviewCoreTests.testFormatNumberNeverTraps' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testHugeTypedNumberIsRejected' started at 2026-11-23 19:02:15.094
+Test Case 'V7ReviewCoreTests.testHugeTypedNumberIsRejected' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testLegacySwapTemplateDoneAsPlannedIsUnchanged' started at 2026-11-23 19:02:15.094
+Test Case 'V7ReviewCoreTests.testLegacySwapTemplateDoneAsPlannedIsUnchanged' passed (0.001 seconds)
+Test Case 'V7ReviewCoreTests.testLegacySwapTemplateStillSeesRealChanges' started at 2026-11-23 19:02:15.095
+Test Case 'V7ReviewCoreTests.testLegacySwapTemplateStillSeesRealChanges' passed (0.001 seconds)
+Test Case 'V7ReviewCoreTests.testLongerHoldIsALoadChange' started at 2026-11-23 19:02:15.095
+Test Case 'V7ReviewCoreTests.testLongerHoldIsALoadChange' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testPlanWeekLeavesDaysThatCountFree' started at 2026-11-23 19:02:15.096
+Test Case 'V7ReviewCoreTests.testPlanWeekLeavesDaysThatCountFree' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testSetStepperAfterLiveDropAddsWorkingSet' started at 2026-11-23 19:02:15.096
+Test Case 'V7ReviewCoreTests.testSetStepperAfterLiveDropAddsWorkingSet' passed (0.0 seconds)
+Test Case 'V7ReviewCoreTests.testSetValueNeverTraps' started at 2026-11-23 19:02:15.096
+Test Case 'V7ReviewCoreTests.testSetValueNeverTraps' passed (0.1 seconds)
+Test Case 'V7ReviewCoreTests.testWeeklyEffectiveDaysFollowTheStreak' started at 2026-11-23 19:02:15.197
+Test Case 'V7ReviewCoreTests.testWeeklyEffectiveDaysFollowTheStreak' passed (0.101 seconds)
+Test Suite 'V7ReviewCoreTests' passed at 2026-11-23 19:02:15.297
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.204 (0.204) seconds
+Test Suite 'V7ReviewDataTests' started at 2026-11-23 19:02:15.297
+Test Case 'V7ReviewDataTests.testEditedRoutineCopyWins' started at 2026-11-23 19:02:15.298
+Test Case 'V7ReviewDataTests.testEditedRoutineCopyWins' passed (0.0 seconds)
+Test Case 'V7ReviewDataTests.testFewWeeklyBackupsLeaveTheRestToOthers' started at 2026-11-23 19:02:15.298
+Test Case 'V7ReviewDataTests.testFewWeeklyBackupsLeaveTheRestToOthers' passed (0.006 seconds)
+Test Case 'V7ReviewDataTests.testImportBurstDoesNotPushOutWeeklyBackups' started at 2026-11-23 19:02:15.304
+Test Case 'V7ReviewDataTests.testImportBurstDoesNotPushOutWeeklyBackups' passed (0.008 seconds)
+Test Case 'V7ReviewDataTests.testMergedExtrasKeepBothSidesKeys' started at 2026-11-23 19:02:15.312
+Test Case 'V7ReviewDataTests.testMergedExtrasKeepBothSidesKeys' passed (0.0 seconds)
+Test Case 'V7ReviewDataTests.testOnlyWeeklyBackupsKeepTheNewest' started at 2026-11-23 19:02:15.312
+Test Case 'V7ReviewDataTests.testOnlyWeeklyBackupsKeepTheNewest' passed (0.005 seconds)
+Test Case 'V7ReviewDataTests.testReasonFromFileName' started at 2026-11-23 19:02:15.317
+Test Case 'V7ReviewDataTests.testReasonFromFileName' passed (0.001 seconds)
+Test Case 'V7ReviewDataTests.testRowStampSeesEditsWithoutNewDate' started at 2026-11-23 19:02:15.318
+Test Case 'V7ReviewDataTests.testRowStampSeesEditsWithoutNewDate' passed (0.0 seconds)
+Test Suite 'V7ReviewDataTests' passed at 2026-11-23 19:02:15.318
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.021 (0.021) seconds
+Test Suite 'V7ReviewHealthwatchTests' started at 2026-11-23 19:02:15.318
+Test Case 'V7ReviewHealthwatchTests.testContinuedWorkoutAddsCaloriesAndWeighsHeartRateByTime' started at 2026-11-23 19:02:15.319
+Test Case 'V7ReviewHealthwatchTests.testContinuedWorkoutAddsCaloriesAndWeighsHeartRateByTime' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testEffortScoresAreReadAgainWhileTheyMayStillCome' started at 2026-11-23 19:02:15.319
+Test Case 'V7ReviewHealthwatchTests.testEffortScoresAreReadAgainWhileTheyMayStillCome' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testMarkNotDoneUsesUndoSetOnlyForPhonesThatReadIt' started at 2026-11-23 19:02:15.319
+Test Case 'V7ReviewHealthwatchTests.testMarkNotDoneUsesUndoSetOnlyForPhonesThatReadIt' passed (0.001 seconds)
+Test Case 'V7ReviewHealthwatchTests.testOnePartsCaloriesAreNotTheWholeWorkouts' started at 2026-11-23 19:02:15.319
+Test Case 'V7ReviewHealthwatchTests.testOnePartsCaloriesAreNotTheWholeWorkouts' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testSaveWithoutRatingStoresNoEffort' started at 2026-11-23 19:02:15.319
+Test Case 'V7ReviewHealthwatchTests.testSaveWithoutRatingStoresNoEffort' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testStoredZerosCountAsNotMeasured' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewHealthwatchTests.testStoredZerosCountAsNotMeasured' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testWatchTotalsDontFitAWorkoutEndedAtItsLastSetHoursAgo' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewHealthwatchTests.testWatchTotalsDontFitAWorkoutEndedAtItsLastSetHoursAgo' passed (0.0 seconds)
+Test Case 'V7ReviewHealthwatchTests.testWatchTotalsFitAWorkoutThatEndsNow' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewHealthwatchTests.testWatchTotalsFitAWorkoutThatEndsNow' passed (0.0 seconds)
+Test Suite 'V7ReviewHealthwatchTests' passed at 2026-11-23 19:02:15.320
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V7ReviewLiveTests' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testATickWithoutTimeCountsAsEarlier' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testATickWithoutTimeCountsAsEarlier' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testEarlierActiveTimeNeverMoreThanItSpanned' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testEarlierActiveTimeNeverMoreThanItSpanned' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testEarlierPartWithoutSetsIsComplete' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testEarlierPartWithoutSetsIsComplete' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testIdleRuleAppliesToEveryKindWithSets' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testIdleRuleAppliesToEveryKindWithSets' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testLeftIdleEndsAtTheLastSetPlusRest' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testLeftIdleEndsAtTheLastSetPlusRest' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testMadeByItsStartIsDeleted' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testMadeByItsStartIsDeleted' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testNoSetsEndsNow' started at 2026-11-23 19:02:15.320
+Test Case 'V7ReviewLiveTests.testNoSetsEndsNow' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testPausedClockKeepsItsActiveTime' started at 2026-11-23 19:02:15.321
+Test Case 'V7ReviewLiveTests.testPausedClockKeepsItsActiveTime' passed (0.001 seconds)
+Test Case 'V7ReviewLiveTests.testPlannedBeforeGoesBackToThePlan' started at 2026-11-23 19:02:15.321
+Test Case 'V7ReviewLiveTests.testPlannedBeforeGoesBackToThePlan' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testRecentActivityEndsNow' started at 2026-11-23 19:02:15.321
+Test Case 'V7ReviewLiveTests.testRecentActivityEndsNow' passed (0.0 seconds)
+Test Case 'V7ReviewLiveTests.testSavedBeforeKeepsTheEarlierPart' started at 2026-11-23 19:02:15.321
+Test Case 'V7ReviewLiveTests.testSavedBeforeKeepsTheEarlierPart' passed (0.1 seconds)
+Test Case 'V7ReviewLiveTests.testTakingBackEverySetForThePlan' started at 2026-11-23 19:02:15.422
+Test Case 'V7ReviewLiveTests.testTakingBackEverySetForThePlan' passed (0.101 seconds)
+Test Case 'V7ReviewLiveTests.testTakingBackOnlyTheSetsSinceContinuing' started at 2026-11-23 19:02:15.522
+Test Case 'V7ReviewLiveTests.testTakingBackOnlyTheSetsSinceContinuing' passed (0.0 seconds)
+Test Suite 'V7ReviewLiveTests' passed at 2026-11-23 19:02:15.522
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.203 (0.203) seconds
+Test Suite 'V7ReviewUiTests' started at 2026-11-23 19:02:15.522
+Test Case 'V7ReviewUiTests.testClosingAnEntryOnTopKeepsTheOthers' started at 2026-11-23 19:02:15.522
+Test Case 'V7ReviewUiTests.testClosingAnEntryOnTopKeepsTheOthers' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testClosingSomethingElseKeepsTheStack' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testClosingSomethingElseKeepsTheStack' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testClosingTheShownItemDropsWhatWasOpenedFromIt' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testClosingTheShownItemDropsWhatWasOpenedFromIt' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testEntryBelowTheTopIsCovered' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testEntryBelowTheTopIsCovered' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testItemNotShownAnywhereIsNotCovered' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testItemNotShownAnywhereIsNotCovered' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testShownItemAloneIsNotCovered' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testShownItemAloneIsNotCovered' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testShownItemWithSomethingOnTopIsCovered' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testShownItemWithSomethingOnTopIsCovered' passed (0.0 seconds)
+Test Case 'V7ReviewUiTests.testTopmostEntryIsNotCovered' started at 2026-11-23 19:02:15.523
+Test Case 'V7ReviewUiTests.testTopmostEntryIsNotCovered' passed (0.0 seconds)
+Test Suite 'V7ReviewUiTests' passed at 2026-11-23 19:02:15.523
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V7SafetyTests' started at 2026-11-23 19:02:15.523
+Test Case 'V7SafetyTests.testBackupFileChecks' started at 2026-11-23 19:02:15.523
+Test Case 'V7SafetyTests.testBackupFileChecks' passed (0.002 seconds)
+Test Case 'V7SafetyTests.testBackupRoundTrip' started at 2026-11-23 19:02:15.525
+Test Case 'V7SafetyTests.testBackupRoundTrip' passed (0.102 seconds)
+Test Case 'V7SafetyTests.testBundledSamplesImportWithoutWarnings' started at 2026-11-23 19:02:15.627
+Test Case 'V7SafetyTests.testBundledSamplesImportWithoutWarnings' passed (0.02 seconds)
+Test Case 'V7SafetyTests.testCommaFileQuotedDecimalComma' started at 2026-11-23 19:02:15.647
+Test Case 'V7SafetyTests.testCommaFileQuotedDecimalComma' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testCommentLineDoesNotHideSemicolonHeader' started at 2026-11-23 19:02:15.648
+Test Case 'V7SafetyTests.testCommentLineDoesNotHideSemicolonHeader' passed (0.101 seconds)
+Test Case 'V7SafetyTests.testEncodeFailureKeepsPreviousData' started at 2026-11-23 19:02:15.749
+Test Case 'V7SafetyTests.testEncodeFailureKeepsPreviousData' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testEncodedIsNeverEmptyData' started at 2026-11-23 19:02:15.750
+Test Case 'V7SafetyTests.testEncodedIsNeverEmptyData' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testExtendedRoundTrip' started at 2026-11-23 19:02:15.750
+Test Case 'V7SafetyTests.testExtendedRoundTrip' passed (0.008 seconds)
+Test Case 'V7SafetyTests.testFreshCopyOfNewerContentIsCurrentFormat' started at 2026-11-23 19:02:15.758
+Test Case 'V7SafetyTests.testFreshCopyOfNewerContentIsCurrentFormat' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testListLongerThanSetsWarns' started at 2026-11-23 19:02:15.758
+Test Case 'V7SafetyTests.testListLongerThanSetsWarns' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testNanWeightRejected' started at 2026-11-23 19:02:15.758
+Test Case 'V7SafetyTests.testNanWeightRejected' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testNewerVersionIsNotOverwritten' started at 2026-11-23 19:02:15.760
+Test Case 'V7SafetyTests.testNewerVersionIsNotOverwritten' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testNonFiniteNumberIsDroppedNotTheWorkout' started at 2026-11-23 19:02:15.760
+Test Case 'V7SafetyTests.testNonFiniteNumberIsDroppedNotTheWorkout' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testOlderFormatIsReadAndWrittenAsCurrent' started at 2026-11-23 19:02:15.761
+Test Case 'V7SafetyTests.testOlderFormatIsReadAndWrittenAsCurrent' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testOutOfRangeWeightAndRPEAreClamped' started at 2026-11-23 19:02:15.761
+Test Case 'V7SafetyTests.testOutOfRangeWeightAndRPEAreClamped' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testProgramNotesAreKeptWithoutReplace' started at 2026-11-23 19:02:15.762
+Test Case 'V7SafetyTests.testProgramNotesAreKeptWithoutReplace' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testRestorePlanMergesByID' started at 2026-11-23 19:02:15.762
+Test Case 'V7SafetyTests.testRestorePlanMergesByID' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testRollingBackupNamesAndPruning' started at 2026-11-23 19:02:15.763
+Test Case 'V7SafetyTests.testRollingBackupNamesAndPruning' passed (0.006 seconds)
+Test Case 'V7SafetyTests.testRoundsKeepWarmupsAndDropSets' started at 2026-11-23 19:02:15.768
+Test Case 'V7SafetyTests.testRoundsKeepWarmupsAndDropSets' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testRunningWorkoutComesBackStopped' started at 2026-11-23 19:02:15.769
+Test Case 'V7SafetyTests.testRunningWorkoutComesBackStopped' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testSameExerciseInANewSectionIsANewExercise' started at 2026-11-23 19:02:15.769
+Test Case 'V7SafetyTests.testSameExerciseInANewSectionIsANewExercise' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testSemicolonFileReadsDecimalComma' started at 2026-11-23 19:02:15.770
+Test Case 'V7SafetyTests.testSemicolonFileReadsDecimalComma' passed (0.001 seconds)
+Test Case 'V7SafetyTests.testSetRoundsPadsWithWorkingSets' started at 2026-11-23 19:02:15.770
+Test Case 'V7SafetyTests.testSetRoundsPadsWithWorkingSets' passed (0.0 seconds)
+Test Case 'V7SafetyTests.testUnreadableDataIsKept' started at 2026-11-23 19:02:15.771
+Test Case 'V7SafetyTests.testUnreadableDataIsKept' passed (0.0 seconds)
+Test Suite 'V7SafetyTests' passed at 2026-11-23 19:02:15.771
+	 Executed 24 tests, with 0 failures (0 unexpected) in 0.247 (0.247) seconds
+Test Suite 'V7W2FinishTests' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testAContinuedWorkoutAddsOnlyTheNewPart' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testAContinuedWorkoutAddsOnlyTheNewPart' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testANormalWorkoutKeepsItsEnd' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testANormalWorkoutKeepsItsEnd' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testAWholeWorkoutGoesToHealthWithItsPauses' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testAWholeWorkoutGoesToHealthWithItsPauses' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testActiveSecondsUpToAnEarlierEnd' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testActiveSecondsUpToAnEarlierEnd' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testAfterTheWatchStoppedOnlyTheRestIsSaved' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testAfterTheWatchStoppedOnlyTheRestIsSaved' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testEndsAreClampedIntoTheWorkout' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testEndsAreClampedIntoTheWorkout' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testFinishTheNextMorningEndsAtTheLastSetForStrength' started at 2026-11-23 19:02:15.771
+Test Case 'V7W2FinishTests.testFinishTheNextMorningEndsAtTheLastSetForStrength' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testIdleTime' started at 2026-11-23 19:02:15.772
+Test Case 'V7W2FinishTests.testIdleTime' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testLinkingTheWatchWorkout' started at 2026-11-23 19:02:15.772
+Test Case 'V7W2FinishTests.testLinkingTheWatchWorkout' passed (0.001 seconds)
+Test Case 'V7W2FinishTests.testOnlyStrengthKindsHaveALimit' started at 2026-11-23 19:02:15.773
+Test Case 'V7W2FinishTests.testOnlyStrengthKindsHaveALimit' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testPausesSurviveARelaunch' started at 2026-11-23 19:02:15.773
+Test Case 'V7W2FinishTests.testPausesSurviveARelaunch' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testPendingLinksAreKeptForAFewDays' started at 2026-11-23 19:02:15.773
+Test Case 'V7W2FinishTests.testPendingLinksAreKeptForAFewDays' passed (0.001 seconds)
+Test Case 'V7W2FinishTests.testRestAfterTheLastSetIsCappedAndAPauseCanBeTheEnd' started at 2026-11-23 19:02:15.774
+Test Case 'V7W2FinishTests.testRestAfterTheLastSetIsCappedAndAPauseCanBeTheEnd' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testThePauseLog' started at 2026-11-23 19:02:15.774
+Test Case 'V7W2FinishTests.testThePauseLog' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testWatchFinishAndDiscardCountHoweverLate' started at 2026-11-23 19:02:15.774
+Test Case 'V7W2FinishTests.testWatchFinishAndDiscardCountHoweverLate' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testWatchMetricsCarryTheWorkoutAndOldOnesStillDecode' started at 2026-11-23 19:02:15.774
+Test Case 'V7W2FinishTests.testWatchMetricsCarryTheWorkoutAndOldOnesStillDecode' passed (0.0 seconds)
+Test Case 'V7W2FinishTests.testWhetherTheWatchSavesAndWhenFinishWaits' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2FinishTests.testWhetherTheWatchSavesAndWhenFinishWaits' passed (0.0 seconds)
+Test Suite 'V7W2FinishTests' passed at 2026-11-23 19:02:15.775
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'V7W2HandoverTests' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testAClaimElsewhereWithoutOwnClaimLetsGo' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testAClaimElsewhereWithoutOwnClaimLetsGo' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testANewerClaimElsewhereLetsGo' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testANewerClaimElsewhereLetsGo' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testASetDoneOnTheOtherDeviceIsKept' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testASetDoneOnTheOtherDeviceIsKept' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testATakeoverAlwaysClaimsAfterTheClaimItReplaces' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testATakeoverAlwaysClaimsAfterTheClaimItReplaces' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testAnExerciseMovedToAnotherBlockIsNotDoubled' started at 2026-11-23 19:02:15.775
+Test Case 'V7W2HandoverTests.testAnExerciseMovedToAnotherBlockIsNotDoubled' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testAnOlderClaimElsewhereIsAnsweredWithOurOwn' started at 2026-11-23 19:02:15.776
+Test Case 'V7W2HandoverTests.testAnOlderClaimElsewhereIsAnsweredWithOurOwn' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testClaimsAtTheSameMomentEndTheSameOnBothDevices' started at 2026-11-23 19:02:15.776
+Test Case 'V7W2HandoverTests.testClaimsAtTheSameMomentEndTheSameOnBothDevices' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testDoneOnBothSidesTakesTheLaterTick' started at 2026-11-23 19:02:15.776
+Test Case 'V7W2HandoverTests.testDoneOnBothSidesTakesTheLaterTick' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testDoneOnOneSideStaysDoneWithItsNumbers' started at 2026-11-23 19:02:15.776
+Test Case 'V7W2HandoverTests.testDoneOnOneSideStaysDoneWithItsNumbers' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testExercisesAndBlocksOnlyOneSideHasAreKept' started at 2026-11-23 19:02:15.776
+Test Case 'V7W2HandoverTests.testExercisesAndBlocksOnlyOneSideHasAreKept' passed (0.001 seconds)
+Test Case 'V7W2HandoverTests.testFatigueAnsweredThereIsKept' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testFatigueAnsweredThereIsKept' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testMissingOrUnreadableOwnerMeansNobodyClaimsIt' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testMissingOrUnreadableOwnerMeansNobodyClaimsIt' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testNoClaimOrOwnClaimKeepsTheWorkout' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testNoClaimOrOwnClaimKeepsTheWorkout' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testOpenSetsKeepTheNumbersTypedHere' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testOpenSetsKeepTheNumbersTypedHere' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testOwnerRoundTripsThroughItsStoredForm' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testOwnerRoundTripsThroughItsStoredForm' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testRunsElsewhereFollowsTheOwnerWhenThereIsOne' started at 2026-11-23 19:02:15.777
+Test Case 'V7W2HandoverTests.testRunsElsewhereFollowsTheOwnerWhenThereIsOne' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testSameCopyMergesToItself' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testSameCopyMergesToItself' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testSetsAddedHereStay' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testSetsAddedHereStay' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testSetsAddedOnTheOtherDeviceAreKeptInPlace' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testSetsAddedOnTheOtherDeviceAreKeptInPlace' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testTextsNameTheKindOfDeviceNeverItsName' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testTextsNameTheKindOfDeviceNeverItsName' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testUnknownKindStillCountsAsAnOwner' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testUnknownKindStillCountsAsAnOwner' passed (0.0 seconds)
+Test Case 'V7W2HandoverTests.testUnreadableOrNewerCopiesAreNotMerged' started at 2026-11-23 19:02:15.778
+Test Case 'V7W2HandoverTests.testUnreadableOrNewerCopiesAreNotMerged' passed (0.101 seconds)
+Test Case 'V7W2HandoverTests.testWrittenElsewhereOnlyWhenTheStoredCopyChanged' started at 2026-11-23 19:02:15.879
+Test Case 'V7W2HandoverTests.testWrittenElsewhereOnlyWhenTheStoredCopyChanged' passed (0.001 seconds)
+Test Suite 'V7W2HandoverTests' passed at 2026-11-23 19:02:15.880
+	 Executed 23 tests, with 0 failures (0 unexpected) in 0.105 (0.105) seconds
+Test Suite 'V7W2MacWinTests' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testDragCountsFromItsStart' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testDragCountsFromItsStart' passed (0.0 seconds)
+Test Case 'V7W2MacWinTests.testDragFromAStoredWidthOutsideTheRange' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testDragFromAStoredWidthOutsideTheRange' passed (0.0 seconds)
+Test Case 'V7W2MacWinTests.testDragStopsAtTheEnds' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testDragStopsAtTheEnds' passed (0.0 seconds)
+Test Case 'V7W2MacWinTests.testIdealOutsideRangeIsClamped' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testIdealOutsideRangeIsClamped' passed (0.0 seconds)
+Test Case 'V7W2MacWinTests.testUnusableWidthFallsBackToIdeal' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testUnusableWidthFallsBackToIdeal' passed (0.0 seconds)
+Test Case 'V7W2MacWinTests.testWidthStaysInRange' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2MacWinTests.testWidthStaysInRange' passed (0.0 seconds)
+Test Suite 'V7W2MacWinTests' passed at 2026-11-23 19:02:15.880
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V7W2PerfViewsTests' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2PerfViewsTests.testEqualNamesKeepTheFileOrder' started at 2026-11-23 19:02:15.880
+Test Case 'V7W2PerfViewsTests.testEqualNamesKeepTheFileOrder' passed (0.001 seconds)
+Test Case 'V7W2PerfViewsTests.testFilterListsAreTheSameAsBefore' started at 2026-11-23 19:02:15.881
+Test Case 'V7W2PerfViewsTests.testFilterListsAreTheSameAsBefore' passed (0.126 seconds)
+Test Case 'V7W2PerfViewsTests.testLibrarySearchOrderIsUnchanged' started at 2026-11-23 19:02:16.007
+Test Case 'V7W2PerfViewsTests.testLibrarySearchOrderIsUnchanged' passed (0.505 seconds)
+Test Case 'V7W2PerfViewsTests.testLoadSummaryMatchesTheFullWalkOnThreeYears' started at 2026-11-23 19:02:16.512
+Test Case 'V7W2PerfViewsTests.testLoadSummaryMatchesTheFullWalkOnThreeYears' passed (3.547 seconds)
+Test Case 'V7W2PerfViewsTests.testLoadSummaryWithoutEventsIsCalibrating' started at 2026-11-23 19:02:20.059
+Test Case 'V7W2PerfViewsTests.testLoadSummaryWithoutEventsIsCalibrating' passed (0.001 seconds)
+Test Case 'V7W2PerfViewsTests.testStreakIsKeptForTheDayUntilALaterWorkoutCounts' started at 2026-11-23 19:02:20.061
+Test Case 'V7W2PerfViewsTests.testStreakIsKeptForTheDayUntilALaterWorkoutCounts' passed (0.003 seconds)
+Test Suite 'V7W2PerfViewsTests' passed at 2026-11-23 19:02:20.064
+	 Executed 6 tests, with 0 failures (0 unexpected) in 4.183 (4.183) seconds
+Test Suite 'V7W2PerfcoreTests' started at 2026-11-23 19:02:20.064
+Test Case 'V7W2PerfcoreTests.testAWorkoutThatCantBeReadAnyMoreIsLeftOut' started at 2026-11-23 19:02:20.064
+Test Case 'V7W2PerfcoreTests.testAWorkoutThatCantBeReadAnyMoreIsLeftOut' passed (0.0 seconds)
+Test Case 'V7W2PerfcoreTests.testAnImportMovesOnlyWhatItChanged' started at 2026-11-23 19:02:20.064
+Test Case 'V7W2PerfcoreTests.testAnImportMovesOnlyWhatItChanged' passed (0.0 seconds)
+Test Case 'V7W2PerfcoreTests.testDecodingManyAtOnceGivesTheSameAsOneByOne' started at 2026-11-23 19:02:20.064
+Test Case 'V7W2PerfcoreTests.testDecodingManyAtOnceGivesTheSameAsOneByOne' passed (0.007 seconds)
+Test Case 'V7W2PerfcoreTests.testEveryStampFieldCounts' started at 2026-11-23 19:02:20.071
+Test Case 'V7W2PerfcoreTests.testEveryStampFieldCounts' passed (0.0 seconds)
+Test Case 'V7W2PerfcoreTests.testOnlyPerformedWorkoutsMoveTheHistory' started at 2026-11-23 19:02:20.071
+Test Case 'V7W2PerfcoreTests.testOnlyPerformedWorkoutsMoveTheHistory' passed (0.1 seconds)
+Test Case 'V7W2PerfcoreTests.testTheHistoryIndexDecodesOnlyWhatChanged' started at 2026-11-23 19:02:20.172
+Test Case 'V7W2PerfcoreTests.testTheHistoryIndexDecodesOnlyWhatChanged' passed (0.001 seconds)
+Test Case 'V7W2PerfcoreTests.testWorkoutsAtTheSameMomentKeepOneOrder' started at 2026-11-23 19:02:20.172
+Test Case 'V7W2PerfcoreTests.testWorkoutsAtTheSameMomentKeepOneOrder' passed (0.001 seconds)
+Test Suite 'V7W2PerfcoreTests' passed at 2026-11-23 19:02:20.173
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.109 (0.109) seconds
+Test Suite 'V7W2WidthTests' started at 2026-11-23 19:02:20.173
+Test Case 'V7W2WidthTests.testJoinIsTheInverseOfSplit' started at 2026-11-23 19:02:20.173
+Test Case 'V7W2WidthTests.testJoinIsTheInverseOfSplit' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testJoinKeepsWhatIsOnTopOfAClosedItem' started at 2026-11-23 19:02:20.173
+Test Case 'V7W2WidthTests.testJoinKeepsWhatIsOnTopOfAClosedItem' passed (0.1 seconds)
+Test Case 'V7W2WidthTests.testPushAddsOnTop' started at 2026-11-23 19:02:20.274
+Test Case 'V7W2WidthTests.testPushAddsOnTop' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testPushDoesNotRepeatWhatShows' started at 2026-11-23 19:02:20.274
+Test Case 'V7W2WidthTests.testPushDoesNotRepeatWhatShows' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testPushTheShownItemAgainFromFurtherUp' started at 2026-11-23 19:02:20.274
+Test Case 'V7W2WidthTests.testPushTheShownItemAgainFromFurtherUp' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testPushWithNothingShown' started at 2026-11-23 19:02:20.274
+Test Case 'V7W2WidthTests.testPushWithNothingShown' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testSplitAtTheFirstItem' started at 2026-11-23 19:02:20.274
+Test Case 'V7W2WidthTests.testSplitAtTheFirstItem' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testSplitOfAnEmptyPath' started at 2026-11-23 19:02:20.275
+Test Case 'V7W2WidthTests.testSplitOfAnEmptyPath' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testSplitWithTheItemAtTheRoot' started at 2026-11-23 19:02:20.275
+Test Case 'V7W2WidthTests.testSplitWithTheItemAtTheRoot' passed (0.0 seconds)
+Test Case 'V7W2WidthTests.testSplitWithoutAnItemKeepsTheLists' started at 2026-11-23 19:02:20.275
+Test Case 'V7W2WidthTests.testSplitWithoutAnItemKeepsTheLists' passed (0.0 seconds)
+Test Suite 'V7W2WidthTests' passed at 2026-11-23 19:02:20.275
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.102 (0.102) seconds
+Test Suite 'V7W3ListsReviewTests' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsReviewTests.testBulkTitleCountsOneWorkoutInTheSingular' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsReviewTests.testBulkTitleCountsOneWorkoutInTheSingular' passed (0.0 seconds)
+Test Case 'V7W3ListsReviewTests.testOneSelectedWorkoutRunningElsewhereStillGetsTheMessage' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsReviewTests.testOneSelectedWorkoutRunningElsewhereStillGetsTheMessage' passed (0.0 seconds)
+Test Suite 'V7W3ListsReviewTests' passed at 2026-11-23 19:02:20.275
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V7W3ListsTests' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsTests.testBulkAsksOnceWhenOneRunsElsewhere' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsTests.testBulkAsksOnceWhenOneRunsElsewhere' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testBulkKeepsTheWorkoutRunningHere' started at 2026-11-23 19:02:20.275
+Test Case 'V7W3ListsTests.testBulkKeepsTheWorkoutRunningHere' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testBulkMessageForSeveralRunningElsewhere' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testBulkMessageForSeveralRunningElsewhere' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testBulkWithoutRunningWorkoutsDeletesAllWithThePlainQuestion' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testBulkWithoutRunningWorkoutsDeletesAllWithThePlainQuestion' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testDeleteRouteFollowsWhereTheWorkoutRuns' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testDeleteRouteFollowsWhereTheWorkoutRuns' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRestoreAsksWhenTheLastImportIsOld' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRestoreAsksWhenTheLastImportIsOld' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRestoreAsksWhileSyncHasAProblem' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRestoreAsksWhileSyncHasAProblem' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRestoreAsksWhileTheFirstImportIsPending' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRestoreAsksWhileTheFirstImportIsPending' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRestoreDoesNotAskWithoutICloud' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRestoreDoesNotAskWithoutICloud' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRestoreTexts' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRestoreTexts' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testRunningElsewhereTitleAndMessage' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testRunningElsewhereTitleAndMessage' passed (0.0 seconds)
+Test Case 'V7W3ListsTests.testSyncProblemFromSyncState' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3ListsTests.testSyncProblemFromSyncState' passed (0.0 seconds)
+Test Suite 'V7W3ListsTests' passed at 2026-11-23 19:02:20.276
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V7W3MeasuredReviewTests' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3MeasuredReviewTests.testNumbersKeptAtFinishCoverTheWorkout' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3MeasuredReviewTests.testNumbersKeptAtFinishCoverTheWorkout' passed (0.0 seconds)
+Test Case 'V7W3MeasuredReviewTests.testNumbersKeptBeforeAContinuedPartAreOnePartsOnly' started at 2026-11-23 19:02:20.276
+Test Case 'V7W3MeasuredReviewTests.testNumbersKeptBeforeAContinuedPartAreOnePartsOnly' passed (0.0 seconds)
+Test Case 'V7W3MeasuredReviewTests.testTakenOverContinuedWorkoutSavesOnlyTheNewPartToHealth' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredReviewTests.testTakenOverContinuedWorkoutSavesOnlyTheNewPartToHealth' passed (0.0 seconds)
+Test Case 'V7W3MeasuredReviewTests.testTheFirstPartsLateRecordingIsntTheRunningParts' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredReviewTests.testTheFirstPartsLateRecordingIsntTheRunningParts' passed (0.0 seconds)
+Test Case 'V7W3MeasuredReviewTests.testThreePartsAcrossDevicesDontAddOnePartAsTwo' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredReviewTests.testThreePartsAcrossDevicesDontAddOnePartAsTwo' passed (0.0 seconds)
+Test Suite 'V7W3MeasuredReviewTests' passed at 2026-11-23 19:02:20.277
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'V7W3MeasuredTests' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredTests.testARecordingThatEndedBeforeContinuingIsTheFirstParts' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredTests.testARecordingThatEndedBeforeContinuingIsTheFirstParts' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testBothPartsMeasuredMakeTheWholeWorkout' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredTests.testBothPartsMeasuredMakeTheWholeWorkout' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testEachNumberNeedsBothParts' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredTests.testEachNumberNeedsBothParts' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testKeptForThreeDaysNewestFirst' started at 2026-11-23 19:02:20.277
+Test Case 'V7W3MeasuredTests.testKeptForThreeDaysNewestFirst' passed (0.001 seconds)
+Test Case 'V7W3MeasuredTests.testKeptNumbersSurviveEncoding' started at 2026-11-23 19:02:20.278
+Test Case 'V7W3MeasuredTests.testKeptNumbersSurviveEncoding' passed (0.001 seconds)
+Test Case 'V7W3MeasuredTests.testLateWatchNumbersOfTheContinuedPartJoinTheFirstPart' started at 2026-11-23 19:02:20.278
+Test Case 'V7W3MeasuredTests.testLateWatchNumbersOfTheContinuedPartJoinTheFirstPart' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testOnlyTheContinuedPartMeasuredShowsTheEstimate' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3MeasuredTests.testOnlyTheContinuedPartMeasuredShowsTheEstimate' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testOnlyTheFirstPartMeasuredShowsTheEstimate' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3MeasuredTests.testOnlyTheFirstPartMeasuredShowsTheEstimate' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testPartStartIsWhenItWasContinued' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3MeasuredTests.testPartStartIsWhenItWasContinued' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testPartStartWithoutContinueTimeNeverReachesIntoTheGap' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3MeasuredTests.testPartStartWithoutContinueTimeNeverReachesIntoTheGap' passed (0.0 seconds)
+Test Case 'V7W3MeasuredTests.testThreePartsCombineStepByStep' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3MeasuredTests.testThreePartsCombineStepByStep' passed (0.0 seconds)
+Test Suite 'V7W3MeasuredTests' passed at 2026-11-23 19:02:20.279
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'V7W3NumbersReviewTests' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3NumbersReviewTests.testBreakWeekWithARescueFollowsTheRescueSetting' started at 2026-11-23 19:02:20.279
+Test Case 'V7W3NumbersReviewTests.testBreakWeekWithARescueFollowsTheRescueSetting' passed (0.001 seconds)
+Test Case 'V7W3NumbersReviewTests.testBreaksStoredWithAnotherFirstWeekdayReadLikeTheStreak' started at 2026-11-23 19:02:20.280
+Test Case 'V7W3NumbersReviewTests.testBreaksStoredWithAnotherFirstWeekdayReadLikeTheStreak' passed (0.002 seconds)
+Test Case 'V7W3NumbersReviewTests.testEveryKeystrokeOnTheWayToAStrayNumberIsCheap' started at 2026-11-23 19:02:20.282
+Test Case 'V7W3NumbersReviewTests.testEveryKeystrokeOnTheWayToAStrayNumberIsCheap' passed (0.0 seconds)
+Test Suite 'V7W3NumbersReviewTests' passed at 2026-11-23 19:02:20.282
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'V7W3NumbersTests' started at 2026-11-23 19:02:20.282
+Test Case 'V7W3NumbersTests.testBreakWeekOutsideTheRangeIsIgnored' started at 2026-11-23 19:02:20.282
+Test Case 'V7W3NumbersTests.testBreakWeekOutsideTheRangeIsIgnored' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testEverydayLoadsUnchanged' started at 2026-11-23 19:02:20.282
+Test Case 'V7W3NumbersTests.testEverydayLoadsUnchanged' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testHugeLoadGivesNoPlateHint' started at 2026-11-23 19:02:20.282
+Test Case 'V7W3NumbersTests.testHugeLoadGivesNoPlateHint' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testNonFiniteLoadGivesNoPlateHint' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testNonFiniteLoadGivesNoPlateHint' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testPerSideCapIsInclusive' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testPerSideCapIsInclusive' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testPlateCountLimit' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testPlateCountLimit' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testPoundPlatesUpTo2200lbPerSide' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testPoundPlatesUpTo2200lbPerSide' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testStateRules' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testStateRules' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testWeekGoalsFollowGoalChanges' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testWeekGoalsFollowGoalChanges' passed (0.0 seconds)
+Test Case 'V7W3NumbersTests.testWeekGoalsMarkBreakWeeksLikeTheStreak' started at 2026-11-23 19:02:20.283
+Test Case 'V7W3NumbersTests.testWeekGoalsMarkBreakWeeksLikeTheStreak' passed (0.001 seconds)
+Test Suite 'V7W3NumbersTests' passed at 2026-11-23 19:02:20.284
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'V7W3WatchlinkReviewTests' started at 2026-11-23 19:02:20.284
+Test Case 'V7W3WatchlinkReviewTests.testAPartRecordingLinksWithoutItsNumbers' started at 2026-11-23 19:02:20.284
+Test Case 'V7W3WatchlinkReviewTests.testAPartRecordingLinksWithoutItsNumbers' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testARecordingUpToTheEndBringsItsNumbers' started at 2026-11-23 19:02:20.284
+Test Case 'V7W3WatchlinkReviewTests.testARecordingUpToTheEndBringsItsNumbers' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testAWatchFinishWaitsForAnEndFromThisRecording' started at 2026-11-23 19:02:20.284
+Test Case 'V7W3WatchlinkReviewTests.testAWatchFinishWaitsForAnEndFromThisRecording' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testContinueHereDoesntCountOnARecordingTheWatchWasToldToDrop' started at 2026-11-23 19:02:20.284
+Test Case 'V7W3WatchlinkReviewTests.testContinueHereDoesntCountOnARecordingTheWatchWasToldToDrop' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testContinueHereKeepsThePartAWatchSaved' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkReviewTests.testContinueHereKeepsThePartAWatchSaved' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testContinueHerePicksUpARunningRecording' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkReviewTests.testContinueHerePicksUpARunningRecording' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkReviewTests.testTheEndNeverGoesBeforeAPauseHealthKitHolds' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkReviewTests.testTheEndNeverGoesBeforeAPauseHealthKitHolds' passed (0.0 seconds)
+Test Suite 'V7W3WatchlinkReviewTests' passed at 2026-11-23 19:02:20.285
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'V7W3WatchlinkTests' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkTests.testAnIPadTakingItOverFromTheMacEndsTheWatchRecording' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkTests.testAnIPadTakingItOverFromTheMacEndsTheWatchRecording' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testCollectionEndsAtTheCorrectedTimeOnlyInsideTheRecording' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkTests.testCollectionEndsAtTheCorrectedTimeOnlyInsideTheRecording' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testDiscardClosesFromTheTapFinishForGood' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkTests.testDiscardClosesFromTheTapFinishForGood' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testEndedMessageNamesTheOtherDevice' started at 2026-11-23 19:02:20.285
+Test Case 'V7W3WatchlinkTests.testEndedMessageNamesTheOtherDevice' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testFinishedOnTheMacEndsAtItsEndAndDiscardedOrDeletedThrowsItAway' started at 2026-11-23 19:02:20.286
+Test Case 'V7W3WatchlinkTests.testFinishedOnTheMacEndsAtItsEndAndDiscardedOrDeletedThrowsItAway' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testLeftRunningOnTheMacEndsAtItsLastSignOfLife' started at 2026-11-23 19:02:20.286
+Test Case 'V7W3WatchlinkTests.testLeftRunningOnTheMacEndsAtItsLastSignOfLife' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testLinkExpires' started at 2026-11-23 19:02:20.286
+Test Case 'V7W3WatchlinkTests.testLinkExpires' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testLinkSurvivesARelaunch' started at 2026-11-23 19:02:20.286
+Test Case 'V7W3WatchlinkTests.testLinkSurvivesARelaunch' passed (0.001 seconds)
+Test Case 'V7W3WatchlinkTests.testMovedEndSendsTheWorkoutsOwnNumbers' started at 2026-11-23 19:02:20.286
+Test Case 'V7W3WatchlinkTests.testMovedEndSendsTheWorkoutsOwnNumbers' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testOnlyAMacKeepsTheWatchRecording' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testOnlyAMacKeepsTheWatchRecording' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testSettlementLinksDeletesOrWaits' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testSettlementLinksDeletesOrWaits' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testSnapshotCarriesKeepEndOrDiscard' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testSnapshotCarriesKeepEndOrDiscard' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testSnapshotWithTheNewFieldStillDecodesOnBothSides' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testSnapshotWithTheNewFieldStillDecodesOnBothSides' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWatchFinishWaitsForThePhoneOnlyWhenTheEndMayMoveEarlier' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testWatchFinishWaitsForThePhoneOnlyWhenTheEndMayMoveEarlier' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWatchKeepsSavesOrDiscardsByTheHandOver' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testWatchKeepsSavesOrDiscardsByTheHandOver' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWatchPacketsUpdateTheLink' started at 2026-11-23 19:02:20.287
+Test Case 'V7W3WatchlinkTests.testWatchPacketsUpdateTheLink' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWatchStopWordingSaysWhoSavesWhat' started at 2026-11-23 19:02:20.288
+Test Case 'V7W3WatchlinkTests.testWatchStopWordingSaysWhoSavesWhat' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWatchUsesThePhonesFinishTimeAndDiscards' started at 2026-11-23 19:02:20.288
+Test Case 'V7W3WatchlinkTests.testWatchUsesThePhonesFinishTimeAndDiscards' passed (0.0 seconds)
+Test Case 'V7W3WatchlinkTests.testWhileTheMacRunsItTheWatchKeepsRecording' started at 2026-11-23 19:02:20.288
+Test Case 'V7W3WatchlinkTests.testWhileTheMacRunsItTheWatchKeepsRecording' passed (0.0 seconds)
+Test Suite 'V7W3WatchlinkTests' passed at 2026-11-23 19:02:20.288
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'WatchProtocolTests' started at 2026-11-23 19:02:20.288
+Test Case 'WatchProtocolTests.testCommandRoundTrip' started at 2026-11-23 19:02:20.288
+Test Case 'WatchProtocolTests.testCommandRoundTrip' passed (0.0 seconds)
+Test Case 'WatchProtocolTests.testLiveElapsed' started at 2026-11-23 19:02:20.288
+Test Case 'WatchProtocolTests.testLiveElapsed' passed (0.0 seconds)
+Test Suite 'WatchProtocolTests' passed at 2026-11-23 19:02:20.288
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'debug.xctest' passed at 2026-11-23 19:02:20.288
+	 Executed 403 tests, with 0 failures (0 unexpected) in 8.454 (8.454) seconds
+Test Suite 'All tests' passed at 2026-11-23 19:02:20.288
+	 Executed 403 tests, with 0 failures (0 unexpected) in 8.454 (8.454) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.2.4 (5ee435b15ad40ec)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
