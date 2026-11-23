@@ -133,6 +133,11 @@ final class WorkoutSession {
     var energyKcal: Double = 0
     var healthWorkoutID: String?
     var recordedOnWatch: Bool = false
+    /// The install (iPhone, iPad or Mac) that runs this workout live right now; nil when none claims it.
+    /// After "Continue Here" on another device, the previous one sees the new owner and stops writing.
+    var liveDeviceID: String?
+    /// When `liveDeviceID` last claimed the workout.
+    var liveClaimedAt: Date?
     var templateID: UUID?
     var templateName: String = ""
     var createdAt: Date = Date()
@@ -245,6 +250,9 @@ final class SyncedSettings {
     var birthYear: Int = 0
     var experienceRaw: String = ""
     var goalRaw: String = ""
+    /// Further synced settings as a small JSON object (`SettingsExtras`, e.g. "thalia.deliver"), so new
+    /// settings don't need a CloudKit schema change. Unknown keys are kept.
+    var extrasData: Data?
 
     init() {
         self.createdAt = Date()

@@ -46,7 +46,7 @@ without `generatedAt`, so unchanged files keep their bytes):
 - when George comes to the foreground, and when the day changes.
 
 Never on the Watch, never from the demo/screenshot store (`-Demo`), the tour's practice store,
-SwiftUI previews or an in-memory store. Writing happens off the main thread, never delays launch or
+SwiftUI previews, an in-memory or a local-only store. Writing happens off the main thread, never delays launch or
 saving, and only logs problems. On the Mac, George first checks (off the main thread, not at launch)
 that the signed app has the App Group entitlement; without the group (unsigned CI builds) nothing
 is written.
@@ -65,5 +65,11 @@ is written.
   the Thalia measure that counts it, if Thalia's catalog has one.
 
 Turning the switch off counts as "nothing there": the next sync rewrites the affected days with
-`"facts":[]`, and Thalia removes them. The switch is stored on this device (George's synced
-settings record has no free JSON field, and a new field needs a CloudKit schema deploy).
+`"facts":[]`, and Thalia removes them. The switch syncs: it is stored as `"thalia.deliver"` in the
+synced settings' JSON field `SyncedSettings.extrasData` (GeorgeCore `SettingsExtras`), so every
+device writes the same files. Future settings go into the same JSON object without another
+CloudKit schema change.
+
+George writes only while its store syncs with iCloud. A device whose iCloud store could not be
+opened (local only) may hold stale data and would remove workouts in Thalia that other devices
+delivered, so it writes nothing.

@@ -116,10 +116,13 @@ actor ThaliaWriter {
 @MainActor
 @Observable
 final class ThaliaSync {
-    /// Settings → Thalia → "Send to Thalia" (this device).
+    /// Settings → Thalia → "Send to Thalia". Synced (settings extras), so every device writes the same.
     var isEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isEnabled, forKey: Prefs.thaliaDeliver)
+        get { store.settings.extras.bool(SettingsExtras.Key.thaliaDeliver) ?? true }
+        set {
+            guard newValue != isEnabled else { return }
+            store.settings.extras.set(newValue, for: SettingsExtras.Key.thaliaDeliver)
+            store.save()
             schedule(after: .milliseconds(300))
         }
     }
@@ -140,20 +143,33 @@ final class ThaliaSync {
     init(store: GeorgeStore, mode: StorageMode, launch: LaunchOptions) {
         self.store = store
         let defaults = UserDefaults.standard
-        isEnabled = defaults.object(forKey: Prefs.thaliaDeliver) as? Bool ?? true
         lastWritten = defaults.object(forKey: Prefs.thaliaLastWritten) as? Date
         let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
         switch mode {
-        case .iCloud, .local: isRealStore = !launch.isDemo && !isPreview
-        case .memory, .demo: isRealStore = false
+        // Only the synced store: a device whose iCloud store failed (local only) may hold stale data and
+        // would remove workouts in Thalia that other devices delivered.
+        case .iCloud: isRealStore = !launch.isDemo && !isPreview
+        case .local, .memory, .demo: isRealStore = false
         }
         isAvailable = isRealStore
+    }
+
+    /// 1.1.0 kept the switch on the device; carry a "switched off" over into the synced settings once.
+    private func migrateDeviceSwitch() {
+        let defaults = UserDefaults.standard
+        guard let old = defaults.object(forKey: Prefs.thaliaDeliver) as? Bool else { return }
+        defaults.removeObject(forKey: Prefs.thaliaDeliver)
+        if !old, store.settings.extras.bool(SettingsExtras.Key.thaliaDeliver) == nil {
+            store.settings.extras.set(false, for: SettingsExtras.Key.thaliaDeliver)
+            store.save()
+        }
     }
 
     /// Starts watching for changes; the first sync runs a few seconds after launch.
     func start() {
         guard isRealStore, !started else { return }
         started = true
+        migrateDeviceSwitch()
         observeRevision()
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: NSPersistentCloudKitContainer.eventChangedNotification, object: nil,

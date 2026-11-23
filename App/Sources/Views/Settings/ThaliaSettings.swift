@@ -26,7 +26,7 @@ struct ThaliaSettingsSection: View {
 
     private var footer: String {
         var text = "Thalia picks up your workouts as soon as Thalia is opened on this device. George only shares which workouts you finished – never numbers from Apple Health."
-        if !thalia.isAvailable { text += " Not available in this build." }
+        if !thalia.isAvailable { text += " Not active here: George sends workouts to Thalia only while it syncs with iCloud." }
         return text
     }
 }
