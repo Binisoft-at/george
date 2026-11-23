@@ -80,7 +80,12 @@ private struct SessionDocument: View {
         return $content
     }
 
+    // Split in three so the compiler type-checks it in time.
     var body: some View {
+        withTemplateOffer(withDialogs(mainList))
+    }
+
+    private var mainList: some View {
         List {
             if runsElsewhere {
                 runningElsewhereBanner
@@ -143,6 +148,10 @@ private struct SessionDocument: View {
             if nothingDone && oldContent.completedSets > 0 { confirmNotDone = true }
             store.save()
         }
+    }
+
+    private func withDialogs(_ base: some View) -> some View {
+        base
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 router.close(.session(session.id))
@@ -172,6 +181,10 @@ private struct SessionDocument: View {
         } message: {
             Text("No set is ticked any more. As not done, it doesn't count for your streak and stats.")
         }
+    }
+
+    private func withTemplateOffer(_ base: some View) -> some View {
+        base
         .confirmationDialog("Update “\(session.templateName)”?", isPresented: showsTemplateOffer, titleVisibility: .visible, presenting: templateOffer) { offer in
             if !offer.loads.isEmpty {
                 Button("Heavier Loads Only") { applyTemplateUpdate(.loads) }
