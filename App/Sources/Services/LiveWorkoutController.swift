@@ -2590,11 +2590,11 @@ final class LiveWorkoutController {
         case .pause: pause()
         case .resume: resume()
         case .finish(let effort):
-            guard session != nil else { return }
+            guard let current = session else { return }
             // "Save without rating" on the watch: no effort is stored (George and Apple Health).
             let rating = FinishRating.stored(effort)
             // Known at once, before the save starts: the watch's saved workout may arrive any moment.
-            pendingHealthSessionID = session.id
+            pendingHealthSessionID = current.id
             pendingEffort = rating
             // A watch's Finish ends the workout when it was tapped, also when it arrives late.
             Task { await finish(effort: rating, notes: nil, endedAt: sentAt) }

@@ -115,14 +115,14 @@ extension GeorgeStore {
         let templateFields: [PartialKeyPath<WorkoutTemplate>] = [
             \.id, \.name, \.kindRaw, \.scheduleRaw, \.isPinned, \.isFavorite, \.sortIndex, \.updatedAt,
         ]
-        let templateStamp = rowStamp(FetchDescriptor<WorkoutTemplate>(), fields: templateFields) { (template: WorkoutTemplate) -> TemplateRow in
-            TemplateRow(id: template.id, name: template.name, kind: template.kindRaw, schedule: template.scheduleRaw,
+        let templateStamp = rowStamp(FetchDescriptor<WorkoutTemplate>(), fields: templateFields) { (template: WorkoutTemplate) -> TemplateStampRow in
+            TemplateStampRow(id: template.id, name: template.name, kind: template.kindRaw, schedule: template.scheduleRaw,
                         isPinned: template.isPinned, isFavorite: template.isFavorite, sortIndex: template.sortIndex,
                         updatedAt: template.updatedAt)
         }
         let programFields: [PartialKeyPath<Program>] = [\.id, \.name, \.kindRaw, \.isArchived, \.isPinned, \.sortIndex, \.updatedAt]
-        let programStamp = rowStamp(FetchDescriptor<Program>(), fields: programFields) { (program: Program) -> ProgramRow in
-            ProgramRow(id: program.id, name: program.name, kind: program.kindRaw, isArchived: program.isArchived,
+        let programStamp = rowStamp(FetchDescriptor<Program>(), fields: programFields) { (program: Program) -> ProgramStampRow in
+            ProgramStampRow(id: program.id, name: program.name, kind: program.kindRaw, isArchived: program.isArchived,
                        isPinned: program.isPinned, sortIndex: program.sortIndex, updatedAt: program.updatedAt)
         }
         let tables: [String: TableStamp] = [
@@ -167,7 +167,7 @@ private struct PlanRow: Hashable {
     let updatedAt: Date
 }
 
-private struct TemplateRow: Hashable {
+private struct TemplateStampRow: Hashable {
     let id: UUID
     let name: String
     let kind: String
@@ -178,7 +178,7 @@ private struct TemplateRow: Hashable {
     let updatedAt: Date
 }
 
-private struct ProgramRow: Hashable {
+private struct ProgramStampRow: Hashable {
     let id: UUID
     let name: String
     let kind: String
