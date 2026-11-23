@@ -374,12 +374,16 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
     /// Which commands the phone's George reads (nil: a phone from before v7 – it drops a command
     /// it can't read). 1: `WatchCommand.undoSet`.
     public var protocolVersion: Int?
+    /// A workout this iPhone handed over to a Mac while the watch recorded it (nil from older
+    /// phones): the watch keeps recording it without showing it live, then ends that recording as
+    /// this says (`WatchHandOver`, `WatchRecordingEnd.verdict`).
+    public var handedOver: WatchHandOver?
 
     /// What this build of George reads.
     public static let currentProtocolVersion = 1
 
     public init(generatedAt: Date = Date(), templates: [WatchTemplate], upcoming: [WatchSessionSummary], streak: WatchStreak?, live: WatchLiveState?, unit: WeightUnit, discardedSessionID: UUID? = nil, lastFinished: WatchFinishSummary? = nil,
-                protocolVersion: Int? = WatchSnapshot.currentProtocolVersion) {
+                protocolVersion: Int? = WatchSnapshot.currentProtocolVersion, handedOver: WatchHandOver? = nil) {
         self.generatedAt = generatedAt
         self.templates = templates
         self.upcoming = upcoming
@@ -389,6 +393,7 @@ public struct WatchSnapshot: Codable, Hashable, Sendable {
         self.discardedSessionID = discardedSessionID
         self.lastFinished = lastFinished
         self.protocolVersion = protocolVersion
+        self.handedOver = handedOver
     }
 }
 

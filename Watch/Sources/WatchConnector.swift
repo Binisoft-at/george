@@ -117,7 +117,9 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     @ObservationIgnored private var lastPhoneDataAt: Date?
     /// Workouts that ended (on the phone or here), with when. Late live states for them are ignored.
     /// One the phone ended is reopened by a snapshot the phone made after that (it runs it again:
-    /// continued back on this iPhone from another device); one ended here never is (`distantFuture`).
+    /// continued back on this iPhone from another device); one finished here never is
+    /// (`distantFuture`); one discarded here is, by a snapshot made after the tap (a late Discard the
+    /// phone ignored).
     @ObservationIgnored private var closedSessionIDs: [UUID: Date] = [:]
     @ObservationIgnored private var outbox: [(packet: WirePacket, policy: DeliveryPolicy)] = []
     @ObservationIgnored private var lastSnapshotRequestAt: Date?
@@ -239,11 +241,16 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         case .finish:
             Haptics.success()
             close(state.sessionID)
-            WorkoutManager.shared.endRecording(sessionID: state.sessionID, discard: false)
+            // A strength workout left running for hours ends at its last set on the phone: the
+            // recording waits a moment for that end instead of covering the hours since.
+            let waits = isReachable && WatchRecordingEnd.waitsForPhoneEnd(kind: state.kind, activeSeconds: state.elapsed(at: now))
+            WorkoutManager.shared.endRecording(sessionID: state.sessionID, discard: false, waitForPhoneEnd: waits)
             return
         case .discard:
             Haptics.click()
-            close(state.sessionID)
+            // Closed from the tap: if the phone ignores this Discard (the workout went on there), its
+            // next snapshot shows it again here.
+            close(state.sessionID, from: WatchClosing.closedFrom(command, tappedAt: now))
             WorkoutManager.shared.endRecording(sessionID: state.sessionID, discard: true)
             return
         case .completeSet(let id, let reps, let weightKg):
@@ -594,9 +601,10 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         Haptics.success()
     }
 
-    private func close(_ sessionID: UUID) {
-        // Finished or discarded here: never reopened by a phone snapshot that crossed with it.
-        closedSessionIDs[sessionID] = .distantFuture
+    private func close(_ sessionID: UUID, from date: Date = .distantFuture) {
+        // Finished here: never reopened by a phone snapshot that crossed with it. Discarded here:
+        // reopened by a snapshot the phone made after the tap (`WatchClosing`).
+        closedSessionIDs[sessionID] = date
         setLive(nil)
         saveCache()
     }

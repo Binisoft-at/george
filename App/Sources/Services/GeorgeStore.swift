@@ -25,6 +25,8 @@ final class GeorgeStore {
     /// What saved changes move since the last bump (`save(bumping: false)` keeps it for the next one).
     @ObservationIgnored private var pendingChange: StoreChange = []
     @ObservationIgnored private var saveObserver: NSObjectProtocol?
+    /// Undo and redo of the context's changes (`undoneOrRedone`).
+    @ObservationIgnored private var undoObservers: [NSObjectProtocol] = []
     /// The user's exercise entries by key, per revision (`userExercise(forKey:)`).
     @ObservationIgnored var userExerciseCache: (revision: Int, entries: [String: UserExercise])?
 
@@ -36,10 +38,27 @@ final class GeorgeStore {
             guard Thread.isMainThread else { return }
             MainActor.assumeIsolated { self?.notePendingChanges() }
         }
+        // An undo or redo (Edit menu, ⌘Z, shake) changes the models without a save: the counters – and
+        // Today, the streak and the lists keyed on them – would wait for the next save.
+        for name in [Notification.Name.NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange] {
+            undoObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] note in
+                guard Thread.isMainThread else { return }
+                let sender = (note.object as? UndoManager).map { ObjectIdentifier($0) }
+                MainActor.assumeIsolated { self?.undoneOrRedone(by: sender) }
+            })
+        }
     }
 
     deinit {
         if let saveObserver { NotificationCenter.default.removeObserver(saveObserver) }
+        for observer in undoObservers { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    /// The context's undo manager undid or redid a change: saved once the undo has finished, which
+    /// moves the counters for what it changed (nothing more when the toast's Undo saved already).
+    private func undoneOrRedone(by sender: ObjectIdentifier?) {
+        guard let sender, let manager = context.undoManager, ObjectIdentifier(manager) == sender else { return }
+        Task { @MainActor [weak self] in self?.save() }
     }
 
     /// A routine template started from the streak rescue sheet: the session it starts counts as a
@@ -53,8 +72,9 @@ final class GeorgeStore {
     /// Apple Health's latest body weight (kept on this device, set by the views that read Health).
     /// Energy estimates use it before the body weight from Settings.
     @ObservationIgnored var healthBodyMassKg: Double?
-    /// Measured calories from Apple Health by session (device-only `HealthMetrics`), cached per revision.
-    @ObservationIgnored var measuredEnergyCache: (revision: Int, values: [UUID: Double])?
+    /// Measured calories from Apple Health by session (device-only `HealthMetrics`) and when they were
+    /// kept, cached per revision.
+    @ObservationIgnored var measuredEnergyCache: (revision: Int, values: [UUID: (kcal: Double, keptAt: Date)])?
     /// The last save that failed (nil again after one that works). RootView shows it once as a toast.
     private(set) var lastSaveError: String?
     /// An iCloud import has finished on this device at least once (Welcome waits for it on a new device).
@@ -728,6 +748,23 @@ final class GeorgeStore {
         if let averageHeartRate, averageHeartRate > 0 { metrics.averageHeartRate = averageHeartRate }
         if let maxHeartRate, maxHeartRate > 0 { metrics.maxHeartRate = maxHeartRate }
         if let activeEnergy, activeEnergy > 0 { metrics.activeEnergyKcal = activeEnergy }
+        metrics.updatedAt = Date()
+        save(bumping: bumping)
+    }
+
+    /// Sets a session's measured numbers to exactly `numbers` (0 where none): a workout continued
+    /// after "stopped early" gets the whole workout's, and one part's must not stay as them
+    /// (`MeasuredNumbers.combined`). A row of zeros also keeps the detail from reading heart rate
+    /// from Apple Health for the whole span, the time between the parts included.
+    func replaceHealthMetrics(sessionID: UUID, with numbers: MeasuredNumbers, bumping: Bool = true) {
+        let metrics = healthMetrics(for: sessionID) ?? {
+            let created = HealthMetrics(sessionID: sessionID)
+            context.insert(created)
+            return created
+        }()
+        metrics.averageHeartRate = numbers.averageHeartRate ?? 0
+        metrics.maxHeartRate = numbers.maxHeartRate ?? 0
+        metrics.activeEnergyKcal = numbers.activeEnergy ?? 0
         metrics.updatedAt = Date()
         save(bumping: bumping)
     }

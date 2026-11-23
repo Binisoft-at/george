@@ -272,7 +272,9 @@ final class CloudImportRefresher {
         ) { [weak self] note in
             guard let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
                 as? NSPersistentCloudKitContainer.Event,
-                  event.type == .import, event.endDate != nil, event.succeeded else { return }
+                  event.type == .import, let ended = event.endDate, event.succeeded else { return }
+            // Restore asks first while this device may be behind iCloud (`RestoreCaution`).
+            UserDefaults.standard.set(ended.timeIntervalSinceReferenceDate, forKey: Prefs.lastCloudImport)
             MainActor.assumeIsolated {
                 // Welcome on a new device waits for the first import before it offers a sample program.
                 self?.store.noteCloudImport()

@@ -373,13 +373,23 @@ struct InsightsView: View {
 struct SearchView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(ExerciseLibrary.self) private var library
-    @Query private var sessions: [WorkoutSession]
+    /// Everything but workouts in progress: a running workout saves on every set, and the search isn't
+    /// fetched again for that (those in progress come from the store, see `allSessions`).
+    @Query(filter: #Predicate<WorkoutSession> { $0.statusRaw != "active" }) private var stored: [WorkoutSession]
     @Query private var templates: [WorkoutTemplate]
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @Query private var customExercises: [UserExercise]
     @State private var query = ""
 
+    /// The stored workouts plus those in progress (fetched by status, 0–2 rows), as the Workouts list
+    /// has them: a workout started or ended elsewhere comes through the revision.
+    private var allSessions: [WorkoutSession] {
+        let _ = store.revision
+        return stored + store.activeSessions
+    }
+
     var body: some View {
+        let sessions = allSessions
         let words = query.lowercased().split(separator: " ").map(String.init)
         // The program label only helps with more than one program.
         let showProgram = programs.filter { !$0.isArchived }.count > 1
@@ -458,7 +468,7 @@ struct SearchView: View {
         .navigationTitle("Search")
         .searchable(text: $query, prompt: "Workouts, templates, exercises")
         .overlay {
-            if !words.isEmpty && noResults(words) {
+            if !words.isEmpty && noResults(words, sessions: sessions) {
                 ContentUnavailableView.search(text: query)
             }
         }
@@ -469,7 +479,7 @@ struct SearchView: View {
         return words.allSatisfy { haystack.contains($0) }
     }
 
-    private func noResults(_ words: [String]) -> Bool {
+    private func noResults(_ words: [String], sessions: [WorkoutSession]) -> Bool {
         !sessions.contains { matches([$0.title, $0.subtitle, $0.notes, $0.exerciseNames, $0.tagsRaw], words) }
             && !templates.contains { matches([$0.name, $0.subtitle, $0.notes, $0.exerciseNames, $0.tagsRaw], words) }
             && !programs.contains { matches([$0.name, $0.subtitle, $0.notes], words) }

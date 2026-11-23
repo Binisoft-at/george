@@ -68,7 +68,8 @@ struct WorkoutRecap: Identifiable, Equatable {
         let record = session.record()
         // The shared history index (kept between changes of the log), not a fresh decode of every workout.
         let found = records ?? StatsEngine.newRecords(in: record, comparedTo: SessionHistory.shared.records(store))
-        let metrics = store.healthMetrics(for: session.id)
+        // Kept on this device for the whole workout (none for one part of a continued one).
+        let metrics = store.measuredNumbers(for: session)
         // The streak as of when this workout ended – an old workout doesn't show today's streak.
         let streak = store.streakSummary(healthEntries: health.externalWorkouts, now: session.endedAt ?? session.date)
         let highlights: [Highlight] = content.allItems
@@ -85,14 +86,15 @@ struct WorkoutRecap: Identifiable, Equatable {
                 let sets = item.completedSets == 1 ? "1 set" : "\(item.completedSets) sets"
                 return Highlight(name: item.name, detail: best.isEmpty ? sets : "\(sets) · best \(best)")
             }
-        let heartRate = averageHeartRate ?? metrics?.averageHeartRate
         // Measured on this device (Watch) when there is a value, else George's estimate – the same
-        // number the lists and Today show. A value passed in (the finish screen) is measured when it
-        // matches the stored measurement.
-        let measuredEnergy = metrics?.activeEnergyKcal ?? 0
+        // numbers the workout's tiles, the lists and Today show. The values passed in (the finish
+        // screen) count until stored ones exist: the watch's final numbers may have replaced them
+        // since Finish (also the whole of a continued workout).
+        let heartRate = metrics?.averageHeartRate ?? averageHeartRate
+        let measuredEnergy = metrics?.activeEnergy ?? 0
         let shownEnergy = EnergyDisplay.choose(measured: measuredEnergy, estimated: session.energyKcal)
-        let energy = energyKcal ?? shownEnergy?.kcal ?? 0
-        let energyIsMeasured = measuredEnergy > 0 && abs(energy - measuredEnergy) < 0.5
+        let energy = measuredEnergy > 0 ? measuredEnergy : (energyKcal ?? shownEnergy?.kcal ?? 0)
+        let energyIsMeasured = measuredEnergy > 0
         return WorkoutRecap(
             id: session.id, title: session.title, date: session.startedAt ?? session.date, kind: session.kind,
             duration: session.durationSeconds, completedSets: content.completedSets, totalSets: content.totalSets,

@@ -48,21 +48,42 @@ extension GeorgeStore {
 
     // MARK: Calories
 
-    /// Measured calories from Apple Health for a session on this device (Watch-recorded workouts).
-    func measuredEnergy(for sessionID: UUID) -> Double? {
-        if let cache = measuredEnergyCache, cache.revision == revision { return cache.values[sessionID] }
-        let metrics = (try? context.fetch(FetchDescriptor<HealthMetrics>())) ?? []
-        var values: [UUID: Double] = [:]
-        for metric in metrics where metric.activeEnergyKcal > 0 {
-            values[metric.sessionID] = metric.activeEnergyKcal
+    /// Measured calories from Apple Health for a session on this device (Watch-recorded workouts) –
+    /// none when kept for one part of a workout continued and ended later (`keptNumbersCover`).
+    func measuredEnergy(for session: WorkoutSession) -> Double? {
+        let values: [UUID: (kcal: Double, keptAt: Date)]
+        if let cache = measuredEnergyCache, cache.revision == revision {
+            values = cache.values
+        } else {
+            let metrics = (try? context.fetch(FetchDescriptor<HealthMetrics>())) ?? []
+            var fetched: [UUID: (kcal: Double, keptAt: Date)] = [:]
+            for metric in metrics where metric.activeEnergyKcal > 0 {
+                fetched[metric.sessionID] = (kcal: metric.activeEnergyKcal, keptAt: metric.updatedAt)
+            }
+            measuredEnergyCache = (revision: revision, values: fetched)
+            values = fetched
         }
-        measuredEnergyCache = (revision: revision, values: values)
-        return values[sessionID]
+        guard let kept = values[session.id],
+              MeasuredNumbers.keptNumbersCover(workoutEnd: session.endedAt, keptAt: kept.keptAt) else { return nil }
+        return kept.kcal
     }
 
     /// What to show for a workout's calories: measured on this device when there is a value, else
     /// George's estimate (its text starts with "≈"). Measured values never sync (docs/HEALTH.md).
     func displayEnergy(for session: WorkoutSession) -> EnergyDisplay? {
-        EnergyDisplay.choose(measured: measuredEnergy(for: session.id), estimated: session.energyKcal)
+        EnergyDisplay.choose(measured: measuredEnergy(for: session), estimated: session.energyKcal)
+    }
+
+    /// The heart rate and calories this device keeps for a workout (`HealthMetrics`): nil without;
+    /// none (empty) when kept for one part only – continued after "stopped early" and ended later,
+    /// on another device or from outside – so one part's numbers never stand for the whole workout.
+    func measuredNumbers(for session: WorkoutSession) -> MeasuredNumbers? {
+        healthMetrics(for: session.id).map { measuredNumbers($0, for: session) }
+    }
+
+    /// `kept`'s numbers as `session` shows them (`measuredNumbers(for:)`).
+    func measuredNumbers(_ kept: HealthMetrics, for session: WorkoutSession) -> MeasuredNumbers {
+        MeasuredNumbers(averageHeartRate: kept.averageHeartRate, maxHeartRate: kept.maxHeartRate, activeEnergy: kept.activeEnergyKcal)
+            .shown(workoutEnd: session.endedAt, keptAt: kept.updatedAt)
     }
 }

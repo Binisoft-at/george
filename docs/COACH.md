@@ -24,6 +24,11 @@ Everything that makes live mode feel like training with a coach. Every extra can
   “Running on your Mac · Continue Here” instead of writing a stale copy. Continue Here moves it: the
   device that ran it lets go (“Continued on your iPhone”) and its watch, Live Activity and rest alert
   end; sets it saved late are merged in, never written over (see ARCHITECTURE.md, Live ownership).
+  Continued on a Mac, the iPhone's Apple Watch keeps recording heart rate and calories until the
+  workout ends there (HEALTH.md). “Start … Anyway” on another device ends the workout here with a
+  toast (“UPPER was ended on your iPad”). Deleting it on another device asks first (“Running on your
+  iPhone” – “It stops there too.”) and then ends it here as well. Undo brings back the record, not
+  live mode – Continue Here picks it up again.
 - **Stretch, yoga, mobility – a calm flow**: per-side holds run side 1 → “Switch sides” → side 2;
   the next hold starts by itself after the short rest (Settings → Coach → Auto-start holds); no
   banners, nudges or questions between poses, one short line “Next: Lizard Pose, 45 seconds”.
@@ -37,7 +42,8 @@ Everything that makes live mode feel like training with a coach. Every extra can
 - **At the station**: your own notes and links for an exercise (Exercise Library) show in live mode;
   *Band: red* chip for band work; *Add warm-up sets* (empty bar, 50 / 70 / 85 %) for heavy lifts;
   plates per side for barbell weights (bar weight in Settings) – in orange with “≈ 60 kg” when the
-  plates at hand can't make up the weight (`PlateMath.load`); “Last: …” opens the exercise's history.
+  plates at hand can't make up the weight (`PlateMath.load`), no hint above 1,000 kg (about 2,200 lb)
+  or 60 plates a side, so a stray number on the keypad stays quick; “Last: …” opens the exercise's history.
   “Last time” and the prefill of a new workout pair sets by role: warm-ups with warm-ups, working
   sets with working sets, drop sets with drop sets (`WorkoutSet.matchingPrevious`).
 - **The day steers the advice**: on a low-energy day or with high muscular load “Go up” becomes

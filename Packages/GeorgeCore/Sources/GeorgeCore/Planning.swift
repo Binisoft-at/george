@@ -94,14 +94,23 @@ public enum PlateMath {
         public var isExact: Bool { missingPerSideKg == 0 }
     }
 
+    /// No plate hint above this many kilograms a side (about 2,200 lb): no bar is loaded like that, and
+    /// a stray number on the keypad (9,999,999) must not build thousands of plates on every keystroke.
+    public static let maxPerSideKg: Double = 1000
+    /// No plate hint either when a side would need more plates than this (a set of small plates).
+    public static let maxPlatesPerSide = 60
+
     /// Plates per side for a barbell load (kg), greedy from the heaviest, with the leftover the plates
-    /// can't build; nil if the load is below the bar.
+    /// can't build; nil if the load is below the bar, above `maxPerSideKg` a side or would take more
+    /// than `maxPlatesPerSide` plates a side.
     public static func load(totalKg: Double, barKg: Double = 20, plates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]) -> Load? {
-        guard totalKg + 0.0001 >= barKg else { return nil }
+        guard totalKg.isFinite, barKg.isFinite, totalKg + 0.0001 >= barKg else { return nil }
         var remaining = max(0, (totalKg - barKg) / 2)
+        guard remaining <= maxPerSideKg + 0.0001 else { return nil }
         var result: [Double] = []
         for plate in plates.filter({ $0 > 0 }).sorted(by: >) {
             while remaining + 0.0001 >= plate {
+                guard result.count < maxPlatesPerSide else { return nil }
                 result.append(plate)
                 remaining -= plate
             }
@@ -110,15 +119,15 @@ public enum PlateMath {
         return Load(perSide: result, missingPerSideKg: missing, loadedKg: barKg + 2 * result.reduce(0, +))
     }
 
-    /// Plates per side for a barbell load (kg), greedy from the heaviest; nil if the load is below the bar.
-    /// Check `load(totalKg:barKg:plates:)` for what they can't make up.
+    /// Plates per side for a barbell load (kg), greedy from the heaviest; nil if the load is below the bar
+    /// or past the limits of `load(totalKg:barKg:plates:)` – check it for what they can't make up.
     public static func perSide(totalKg: Double, barKg: Double = 20, plates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]) -> [Double]? {
         load(totalKg: totalKg, barKg: barKg, plates: plates)?.perSide
     }
 
     /// "20 + 15 + 2.5 per side" (plates in kg; `plates` = the gym's plate set). When the plates can't
     /// make up the load, what they do make follows: "20 per side ≈ 60 kg" (show it as a caution –
-    /// `load(…)?.isExact` is false then).
+    /// `load(…)?.isExact` is false then). Nil – no hint – where `load` is nil (below the bar, too heavy).
     public static func text(totalKg: Double, barKg: Double = 20, plates available: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25], unit: WeightUnit = .kg) -> String? {
         guard let load = load(totalKg: totalKg, barKg: barKg, plates: available) else { return nil }
         let text = load.perSide.isEmpty

@@ -242,12 +242,21 @@ struct RestorePreviewView: View {
     @Environment(ToastCenter.self) private var toasts
     @Environment(\.dismiss) private var dismiss
     @State private var includeChanged = false
-    @State private var confirmBeforeSync = false
+    /// What Restore asked about (nil: no question open).
+    @State private var askedCaution: RestoreCaution?
+    /// When the last iCloud import finished here (0: not known) – redraws when one finishes.
+    @AppStorage(Prefs.lastCloudImport) private var lastImportStamp: Double = 0
 
-    /// iCloud hasn't brought this device's data yet (a new device): what it brings later would sit
-    /// next to what a restore adds now – two of each, as iCloud can't keep records unique.
-    private var iCloudStillLoading: Bool {
-        sync.state.mode.isSynced && !store.cloudImportSeen
+    /// This device may not have everything iCloud holds (first import pending, the last import over an
+    /// hour old, or a sync problem): what iCloud brings later would sit next to what a restore adds
+    /// now – two of each, as iCloud can't keep records unique.
+    private func currentCaution() -> RestoreCaution? {
+        let lastImport = lastImportStamp > 0 ? Date(timeIntervalSinceReferenceDate: lastImportStamp) : nil
+        return RestoreCaution.evaluate(sync.state, importSeen: store.cloudImportSeen, lastImport: lastImport, now: Date())
+    }
+
+    private var asksCaution: Binding<Bool> {
+        Binding(get: { askedCaution != nil }, set: { if !$0 { askedCaution = nil } })
     }
 
     var body: some View {
@@ -281,18 +290,18 @@ struct RestorePreviewView: View {
                      : "Changed ones keep their newer version, and workouts added since stay. A backup of how things are now is saved first.")
             }
 
-            if iCloudStillLoading {
+            if let note = currentCaution()?.note {
                 Section {
-                    Label("iCloud hasn't finished loading on this device. Restoring now can show workouts, templates and programs twice. Best wait until it's done.",
-                          systemImage: "exclamationmark.icloud")
+                    Label(note, systemImage: "exclamationmark.icloud")
                         .foregroundStyle(.orange)
                 }
             }
 
             Section {
                 Button {
-                    if iCloudStillLoading {
-                        confirmBeforeSync = true
+                    // Checked again now: the last import may have aged past the hour meanwhile.
+                    if let found = currentCaution() {
+                        askedCaution = found
                     } else {
                         restore()
                     }
@@ -317,11 +326,11 @@ struct RestorePreviewView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
         }
-        .alert("Restore Before iCloud Is Done?", isPresented: $confirmBeforeSync) {
+        .alert(askedCaution?.alertTitle ?? "", isPresented: asksCaution, presenting: askedCaution) { _ in
             Button("Restore Anyway", role: .destructive) { restore() }
             Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("What iCloud still brings would show twice.")
+        } message: { caution in
+            Text(caution.alertMessage)
         }
     }
 

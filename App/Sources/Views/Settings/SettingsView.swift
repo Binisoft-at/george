@@ -22,7 +22,6 @@ struct SettingsView: View {
     @AppStorage(Prefs.plateSet) private var plateSetRaw = PlateSet.standard.rawValue
     @AppStorage(Prefs.offerCoolDown) private var offerCoolDown = true
     @AppStorage(Prefs.countOtherSports) private var countOtherSports = true
-    @Query private var sessions: [WorkoutSession]
     @State private var exportPayload: ExportPayload?
     @State private var hintsReset = false
 
@@ -168,7 +167,9 @@ struct SettingsView: View {
                     Label("Import Program from CSV", systemImage: "square.and.arrow.down")
                 }
                 Button {
-                    exportPayload = ExportPayload(text: store.exportLogCSV(sessions: sessions), name: "George workout log")
+                    // Fetched when asked (the log holds performed workouts only), not kept as a query
+                    // that runs again on every set a running workout saves.
+                    exportPayload = ExportPayload(text: store.exportLogCSV(sessions: store.fetchPerformedSessions()), name: "George workout log")
                 } label: {
                     Label("Export Workout Log (CSV)", systemImage: "square.and.arrow.up")
                 }

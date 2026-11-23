@@ -34,6 +34,8 @@ struct SessionListView: View {
     /// Mac: rows ⌘-clicked or ⇧-clicked in the list. More than one shows the bulk actions.
     @State private var listSelection = Set<DetailItem>()
     @State private var confirmBulkDelete = false
+    /// A workout running on another device, to be deleted once asked ("Running on your iPhone").
+    @State private var deleteElsewhere: WorkoutSession?
     @State private var logSession: WorkoutSession?
 
     /// The Planned list reads soonest first unless another order was picked.
@@ -41,7 +43,13 @@ struct SessionListView: View {
         scope == .planned && sort == .date ? .planned : sort
     }
 
+    // Split so the compiler type-checks it in time: the Delete questions are in `withDeleteDialogs`.
     var body: some View {
+        withDeleteDialogs(listBody)
+    }
+
+    @ViewBuilder
+    private var listBody: some View {
         // Filtered once per update (the overlay, the tip and the animation use the same list).
         let filtered = self.filtered
         let groups = SessionGrouper.group(effectiveSort.sort(filtered), by: grouping, calendar: store.calendar)
@@ -63,7 +71,8 @@ struct SessionListView: View {
             }
         }
         #if os(macOS)
-        // The Delete key: the selected workout(s) go, with Undo – never one in progress.
+        // The Delete key: the selected workout(s) go, with Undo – never the one running here, and one
+        // running on another device only once asked.
         .onDeleteCommand(perform: deleteSelected)
         #endif
         .groupedList()
@@ -97,22 +106,6 @@ struct SessionListView: View {
             }
         }
         .toolbar { toolbarContent }
-        .confirmationDialog("Delete \(bulkIDs.count) workouts?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
-                // The running workout isn't deleted behind live mode's back (it's discarded there).
-                let deletable = selectedSessions.filter { $0.id != live.session?.id }
-                let keptRunning = deletable.count < selectedSessions.count
-                if deletable.isEmpty {
-                    if keptRunning { toasts.show("A running workout is discarded in live mode", symbol: "play.circle") }
-                } else {
-                    for session in deletable { router.close(.session(session.id)) }
-                    store.trash(deletable, toasts: toasts, keptRunning: keptRunning)
-                }
-                selection.removeAll()
-                listSelection.removeAll()
-                isSelecting = false
-            }
-        }
         .animation(.default, value: filtered.count)
         .sheet(item: $logSession) { session in
             NavigationStack { LogPastWorkoutSheet(session: session) }
@@ -175,6 +168,15 @@ struct SessionListView: View {
                                 Label("Open", systemImage: "play.fill")
                             }
                             .tint(.green)
+                        } else if session.status == .active {
+                            // Running on another device: asks first (not a destructive role – the row
+                            // would slide away before the answer).
+                            Button {
+                                deleteElsewhere = session
+                            } label: {
+                                Label("Delete…", systemImage: "trash")
+                            }
+                            .tint(.red)
                         } else {
                             Button(role: .destructive) {
                                 router.close(.session(session.id))
@@ -199,7 +201,8 @@ struct SessionListView: View {
                         }
                     }
                     .contextMenu {
-                        SessionMenuItems(session: session) { logSession = $0 }
+                        SessionMenuItems(session: session, onLogPast: { logSession = $0 },
+                                         onDeleteRunningElsewhere: { deleteElsewhere = $0 })
                     } preview: {
                         WorkoutPreview(session: session)
                     }
@@ -222,6 +225,71 @@ struct SessionListView: View {
                 SessionRow(session: session, showProgram: showProgramInRows)
             }
         }
+    }
+
+    // MARK: Delete
+
+    /// One rule on every path (`SessionDelete`): the workout running here is discarded in live mode,
+    /// one running on another device goes only once asked ("Running on your iPhone" – it stops
+    /// there too), the rest with Undo. Bulk Delete asks once and says so when one runs elsewhere.
+    private func withDeleteDialogs(_ base: some View) -> some View {
+        base
+        .confirmationDialog(SessionDelete.bulkTitle(count: bulkIDs.count), isPresented: $confirmBulkDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { deleteBulk() }
+        } message: {
+            if let message = SessionDelete.bulk(selectedSessions.map { deleteCandidate($0) }).message {
+                Text(message)
+            }
+        }
+        .confirmationDialog(elsewhereTitle, isPresented: confirmsElsewhere, titleVisibility: .visible, presenting: elsewhereTarget) { session in
+            Button("Delete", role: .destructive) { deleteAsked(session) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text(SessionDelete.stopsThereToo)
+        }
+    }
+
+    /// The workout asked about, while it still exists: one deleted meanwhile (on another device)
+    /// closes the question and isn't read any further.
+    private var elsewhereTarget: WorkoutSession? {
+        guard let session = deleteElsewhere, session.modelContext != nil, !session.isDeleted else { return nil }
+        return session
+    }
+
+    private var elsewhereTitle: String {
+        elsewhereTarget.map { ThisDevice.runningTitle(for: $0) } ?? ""
+    }
+
+    private var confirmsElsewhere: Binding<Bool> {
+        Binding(get: { elsewhereTarget != nil }, set: { if !$0 { deleteElsewhere = nil } })
+    }
+
+    private func deleteCandidate(_ session: WorkoutSession) -> SessionDelete.Candidate {
+        SessionDelete.Candidate(isActive: session.status == .active, isLiveHere: session.id == live.session?.id,
+                                deviceName: ThisDevice.ownerName(of: session))
+    }
+
+    /// The running workout isn't deleted behind live mode's back (it's discarded there).
+    private func deleteBulk() {
+        let chosen = selectedSessions
+        let plan = SessionDelete.bulk(chosen.map { deleteCandidate($0) })
+        let deletable = plan.deleted.map { chosen[$0] }
+        if deletable.isEmpty {
+            if plan.keptRunningHere { toasts.show("A running workout is discarded in live mode", symbol: "play.circle") }
+        } else {
+            for session in deletable { router.close(.session(session.id)) }
+            store.trash(deletable, toasts: toasts, keptRunning: plan.keptRunningHere)
+        }
+        selection.removeAll()
+        listSelection.removeAll()
+        isSelecting = false
+    }
+
+    /// Deletes with Undo once asked – unless it's gone meanwhile, or now runs here (Continue Here).
+    private func deleteAsked(_ session: WorkoutSession) {
+        guard session.modelContext != nil, !session.isDeleted, session.id != live.session?.id else { return }
+        router.close(.session(session.id))
+        store.trash(session, toasts: toasts)
     }
 
     // MARK: Data
@@ -305,8 +373,8 @@ struct SessionListView: View {
     }
 
     #if os(macOS)
-    /// The Delete key. Several rows: asks first, like the bulk Delete. One: gone with Undo. A workout
-    /// in progress (here or on another device) is ended in live mode, not deleted.
+    /// The Delete key. Several rows: asks first, like the bulk Delete. One: gone with Undo. The
+    /// workout running here is discarded in live mode; one running on another device asks first.
     private func deleteSelected() {
         if bulkIDs.count > 1 {
             confirmBulkDelete = true
@@ -318,8 +386,8 @@ struct SessionListView: View {
             return
         }
         if session.status == .active {
-            // Not live here: another device runs it ("Running on your iPhone – end it there first").
-            toasts.show("\(ThisDevice.runningTitle(for: session)) – end it there first", symbol: "iphone.and.arrow.forward")
+            // Not live here: another device runs it ("Running on your iPhone – It stops there too.").
+            deleteElsewhere = session
             return
         }
         router.close(.session(session.id))

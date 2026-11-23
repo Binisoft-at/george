@@ -12,6 +12,8 @@ struct StatsView: View {
     @Environment(MuscleAnalytics.self) private var muscleAnalytics
     @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
+    /// Break weeks (Streak → Take a break): grey in the days chart, as in the streak's history.
+    @Query private var excused: [ExcusedWeek]
     @State private var range: StatsRange = .twelveWeeks
     @State private var selectedWeek: Date?
     /// Built off the main thread whenever the inputs change (see `ModelKey`).
@@ -48,6 +50,10 @@ struct StatsView: View {
         var weeklyGoal: Int
         var minimumMinutes: Int
         var countHealthWorkouts: Bool
+        /// A rescue workout counts double (Settings → Streak): the bars' days and colours.
+        var rescueCountsDouble: Bool
+        /// The break weeks as stored (any day of the week; read like the streak reads them).
+        var breakWeeks: Set<Date>
     }
 
     var body: some View {
@@ -55,7 +61,8 @@ struct StatsView: View {
         let key = ModelKey(range: range, engine: muscleAnalytics.engineKey, sessionCount: store.historyRevision,
                            healthVersion: health.workoutsVersion, weekStartsOn: store.calendar.firstWeekday,
                            weeklyGoal: store.settings.weeklyGoal, minimumMinutes: store.settings.minimumMinutes,
-                           countHealthWorkouts: store.settings.countHealthWorkouts)
+                           countHealthWorkouts: store.settings.countHealthWorkouts,
+                           rescueCountsDouble: store.settings.rescueCountsDouble, breakWeeks: Set(excused.map(\.weekStart)))
         let unit = store.unit
         let target = store.profile.weeklySets
 
@@ -81,8 +88,7 @@ struct StatsView: View {
                 } header: {
                     Text("Workout days per week")
                 } footer: {
-                    let mac = MacHealth.streakMissesWorkouts(store)
-                    Text("Days that count for your streak (at least \(store.settings.minimumMinutes) min\(store.settings.countHealthWorkouts && !mac ? ", Apple Health workouts included" : "")). Dashed line: your weekly goal of that week." + (mac ? " " + MacHealth.note : ""))
+                    daysFooter(model)
                 }
 
                 Section {
@@ -138,7 +144,7 @@ struct StatsView: View {
                 records: records, external: health.healthWorkouts, engine: muscleAnalytics.engine,
                 calendar: store.calendar, weeks: range.weeks, now: Date(),
                 trainingDays: store.trainingEntries(healthEntries: health.externalWorkouts),
-                streakConfig: store.settings.streakConfig
+                streakConfig: store.settings.streakConfig, breakWeeks: key.breakWeeks
             )
             let built = await Task.detached(priority: .userInitiated) { ProgressModel.build(input) }.value
             guard !Task.isCancelled else { return }
@@ -147,6 +153,14 @@ struct StatsView: View {
     }
 
     // MARK: Sections
+
+    private func daysFooter(_ model: ProgressModel) -> Text {
+        let mac = MacHealth.streakMissesWorkouts(store)
+        let healthNote = store.settings.countHealthWorkouts && !mac ? ", Apple Health workouts included" : ""
+        let grey = model.weeks.contains { $0.effectiveDays > 0 && model.goals[$0.weekStart]?.state == .onBreak }
+        let breaks = grey ? " Gray bars: break weeks." : ""
+        return Text("Days that count for your streak (at least \(store.settings.minimumMinutes) min\(healthNote)). Dashed line: your weekly goal of that week." + breaks + (mac ? " " + MacHealth.note : ""))
+    }
 
     private func tiles(_ model: ProgressModel, unit: WeightUnit) -> some View {
         let now = model.current
@@ -253,11 +267,13 @@ struct ProgressModel: Sendable {
         /// The streak's training days (`GeorgeStore.trainingEntries`), so the days chart matches it.
         var trainingDays: [ActivityEntry]
         var streakConfig: StreakConfig
+        /// The break weeks as stored (`ExcusedWeek.weekStart`) – neutral, as in the streak.
+        var breakWeeks: Set<Date>
     }
 
     var weeks: [WeekStat]
-    /// Each week's goal (it can change over time).
-    var goals: [Date: Int]
+    /// Each week's goal (it can change over time) and how the week did: reached, below or a break.
+    var goals: [Date: WeekGoal]
     var current: PeriodTotals
     var previous: PeriodTotals
     /// How much of the period before has history – no "vs prev." against nothing.
@@ -284,8 +300,7 @@ struct ProgressModel: Sendable {
                                        rescueCountsDouble: input.streakConfig.rescueCountsDouble)
         return ProgressModel(
             weeks: weeks,
-            goals: Dictionary(weeks.map { ($0.weekStart, input.streakConfig.goal(forWeekStarting: $0.weekStart, calendar: calendar)) },
-                              uniquingKeysWith: { a, _ in a }),
+            goals: StatsEngine.weekGoals(weeks, config: input.streakConfig, breakWeeks: input.breakWeeks, calendar: calendar),
             current: StatsEngine.totals(of: input.records, in: window),
             previous: StatsEngine.totals(of: input.records, in: previous),
             previousCoverage: StatsEngine.coverage(of: input.records, in: previous),
@@ -462,25 +477,46 @@ struct Sparkline: View {
 struct WorkoutDaysChart: View {
     let weeks: [WeekStat]
     /// Each week's own goal (`StreakConfig.goal(forWeekStarting:)`) – a week is measured against the
-    /// goal it had, like the streak history.
-    let goals: [Date: Int]
+    /// goal it had, like the streak history – and its state (`StatsEngine.weekGoals`).
+    let goals: [Date: WeekGoal]
     @Binding var selection: Date?
 
-    private func goal(of week: WeekStat) -> Int { goals[week.weekStart] ?? 0 }
+    private func info(of week: WeekStat) -> WeekGoal {
+        goals[week.weekStart] ?? WeekGoal(goal: 0, isBreak: false, effectiveDays: week.effectiveDays)
+    }
+
+    private func goal(of week: WeekStat) -> Int { info(of: week).goal }
+
+    /// Full for a reached goal, light below it, grey for a break week (the streak's grey).
+    private func fill(_ state: WeekGoalState) -> Color {
+        switch state {
+        case .reached: return Tone.accent
+        case .below: return Tone.accent.opacity(0.4)
+        case .onBreak: return Color.gray.opacity(0.5)
+        }
+    }
+
+    private func barValue(_ week: WeekStat) -> String {
+        let info = info(of: week)
+        switch info.state {
+        case .reached: return "\(week.effectiveDays) of \(info.goal) days, goal reached"
+        case .below: return "\(week.effectiveDays) of \(info.goal) days"
+        case .onBreak: return "\(week.effectiveDays) day\(week.effectiveDays == 1 ? "" : "s"), break week"
+        }
+    }
 
     var body: some View {
         let distinctGoals = Set(weeks.map { goal(of: $0) })
         Chart {
             ForEach(weeks) { week in
-                let target = goal(of: week)
                 // Days as the streak counts them (a rescue workout counts double).
                 BarMark(
                     x: .value("Week", week.weekStart, unit: .weekOfYear),
                     y: .value("Days", week.effectiveDays)
                 )
-                .foregroundStyle(week.effectiveDays >= target ? Tone.accent : Tone.accent.opacity(0.4))
+                .foregroundStyle(fill(info(of: week).state))
                 .cornerRadius(4)
-                .accessibilityValue("\(week.effectiveDays) of \(target) days\(week.effectiveDays >= target ? ", goal reached" : "")")
+                .accessibilityValue(barValue(week))
             }
             if distinctGoals.count > 1 {
                 // The goal changed in this range: a step line, each week at its own goal.
@@ -503,15 +539,7 @@ struct WorkoutDaysChart: View {
                 RuleMark(x: .value("Selected", week.weekStart, unit: .weekOfYear))
                     .foregroundStyle(Color.secondary.opacity(0.3))
                     .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(week.weekStart.formatted(.dateTime.day().month(.abbreviated)))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text("\(week.effectiveDays) days\(week.effectiveDays > week.workoutDays ? " (rescue counts double)" : "") · \(week.sessions) workouts")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .padding(6)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                        tooltip(week)
                     }
             }
         }
@@ -523,6 +551,21 @@ struct WorkoutDaysChart: View {
             }
         }
         .chartXSelection(value: $selection)
+    }
+
+    /// The selected week: its date ("· Break week" when it's a grey bar), days and workouts.
+    private func tooltip(_ week: WeekStat) -> some View {
+        let date = week.weekStart.formatted(.dateTime.day().month(.abbreviated))
+        let onBreak = info(of: week).state == .onBreak
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(onBreak ? date + " · Break week" : date)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("\(week.effectiveDays) days\(week.effectiveDays > week.workoutDays ? " (rescue counts double)" : "") · \(week.sessions) workouts")
+                .font(.caption.weight(.semibold))
+        }
+        .padding(6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

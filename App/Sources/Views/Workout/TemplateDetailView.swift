@@ -32,7 +32,6 @@ private struct TemplateDocument: View {
     @Environment(ToastCenter.self) private var toasts
     @Environment(ThaliaSync.self) private var thalia: ThaliaSync?
     @Query(sort: \Program.sortIndex) private var programs: [Program]
-    @Query private var allSessions: [WorkoutSession]
     @State private var content = WorkoutContent()
     @State private var loadedData: Data?
     @State private var editor = EditorState()
@@ -403,24 +402,9 @@ private struct TemplateDocument: View {
         }
     }
 
-    @ViewBuilder
+    /// This template's performed workouts – its own query (`TemplateHistorySection`).
     private var historySection: some View {
-        let history = allSessions
-            .filter { $0.templateID == template.id && $0.status.isPerformed }
-            .sorted { $0.date > $1.date }
-        if !history.isEmpty {
-            Section("History · \(history.count)") {
-                ForEach(history.prefix(10)) { session in
-                    Button {
-                        // On top of the template, with Back – the list keeps the template selected.
-                        router.push(.session(session.id))
-                    } label: {
-                        SessionRow(session: session)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
+        TemplateHistorySection(templateID: template.id)
     }
 
     @ToolbarContentBuilder
@@ -448,6 +432,39 @@ private struct TemplateDocument: View {
                 Image(systemName: "ellipsis")
             }
             .help("More")
+        }
+    }
+}
+
+/// A template's performed workouts, newest first (the last 10, with the count). Fetched by template
+/// and status – not every workout – so a running workout's sets don't fetch it again.
+private struct TemplateHistorySection: View {
+    @Environment(Router.self) private var router
+    @Query private var performed: [WorkoutSession]
+
+    init(templateID: UUID) {
+        let id: UUID? = templateID
+        let completed = SessionStatus.completed.rawValue
+        let partial = SessionStatus.partial.rawValue
+        _performed = Query(filter: #Predicate<WorkoutSession> { session in
+            session.templateID == id && (session.statusRaw == completed || session.statusRaw == partial)
+        })
+    }
+
+    var body: some View {
+        let history = performed.sorted { $0.date > $1.date }
+        if !history.isEmpty {
+            Section("History · \(history.count)") {
+                ForEach(history.prefix(10)) { session in
+                    Button {
+                        // On top of the template, with Back – the list keeps the template selected.
+                        router.push(.session(session.id))
+                    } label: {
+                        SessionRow(session: session)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 }

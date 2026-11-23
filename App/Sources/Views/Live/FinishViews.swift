@@ -178,7 +178,8 @@ struct FinishWorkoutSheet: View {
 
     private var healthLine: String {
         if live.isWaitingForWatch { return "Waiting for Apple Watch…" }
-        if live.watchStoppedAt != nil { return "Apple Watch stopped recording — the rest is saved from iPhone" }
+        // The watch saved its part (the rest comes from the iPhone), or nothing (the iPhone saves it all).
+        if live.watchStoppedAt != nil { return WatchStopWording.finishLine(savedPart: live.watchSavedPart) }
         return live.watchIsRecording ? "Apple Watch recorded heart rate — saving from the watch" : "Will be saved to Apple Health"
     }
 

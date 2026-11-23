@@ -44,6 +44,11 @@ final class WorkoutManager: NSObject {
     @ObservationIgnored private var phoneStartedAt: Date?
     @ObservationIgnored private var endRequestedAt: Date?
     @ObservationIgnored private var discardOnEnd = false
+    /// Phone clock: when the phone says the workout ended (its finish time, or the end of a workout
+    /// handed over to a Mac) – the recording's collection ends there when that's earlier than now.
+    @ObservationIgnored private var requestedEnd: Date?
+    /// Finished here: wait a moment for the phone's end before saving (`WatchRecordingEnd.waitsForPhoneEnd`).
+    @ObservationIgnored private var waitsForPhoneEnd = false
     @ObservationIgnored private var isFinalizing = false
     /// Bumped on every start so late async steps of an older attempt bail out.
     @ObservationIgnored private var attempt = 0
@@ -91,6 +96,8 @@ final class WorkoutManager: NSObject {
         activeEnergy = nil
         lastError = nil
         discardOnEnd = false
+        requestedEnd = nil
+        waitsForPhoneEnd = false
         isFinalizing = false
         endRequestedAt = nil
         startDate = Date()
@@ -162,8 +169,9 @@ final class WorkoutManager: NSObject {
         session.resume()
     }
 
-    /// Ends the recording: saves it to Apple Health, or throws it away with `discard`.
-    func end(discard: Bool = false) {
+    /// Ends the recording: saves it to Apple Health, or throws it away with `discard`. `requested`:
+    /// the phone's end for it (phone clock), used when it lies inside the recording.
+    func end(discard: Bool = false, at requested: Date? = nil) {
         switch phase {
         case .idle, .ending:
             return
@@ -176,6 +184,7 @@ final class WorkoutManager: NSObject {
             break
         }
         discardOnEnd = discard
+        requestedEnd = requested
         phase = .ending
         endRequestedAt = Date()
         stopMetricsLoop()
@@ -183,10 +192,13 @@ final class WorkoutManager: NSObject {
         scheduleFinalizeFallback(token: attempt)
     }
 
-    /// The user finished or discarded the George workout on the watch.
-    func endRecording(sessionID id: UUID, discard: Bool) {
+    /// The user finished or discarded the George workout on the watch. `waitForPhoneEnd`: a Finish
+    /// the phone may move earlier (a strength workout left running ends at its last set there).
+    func endRecording(sessionID id: UUID, discard: Bool, waitForPhoneEnd: Bool = false) {
         recordedSessionIDs.insert(id)
         guard sessionID == nil || sessionID == id else { return }
+        guard phase.isActive else { return }
+        waitsForPhoneEnd = waitForPhoneEnd && !discard
         end(discard: discard)
     }
 
@@ -211,8 +223,11 @@ final class WorkoutManager: NSObject {
             if sessionID == live.sessionID {
                 if live.isPaused { pause() } else { resume() }
             } else if !isStale(snapshot?.generatedAt) {
-                // The phone moved on to another workout: save this one; the next starts once saved.
-                end(discard: false)
+                // The phone moved on to another workout: save this one (at the end the phone gives it,
+                // or thrown away as it says); the next starts once saved. A snapshot made before this
+                // recording's workout started says nothing about its end.
+                let latest = snapshot ?? WatchConnector.shared.snapshot
+                endAsPhoneSays(isStale(latest?.generatedAt) ? nil : latest)
             }
         }
     }
@@ -224,10 +239,27 @@ final class WorkoutManager: NSObject {
             if let startDate, Date().timeIntervalSince(startDate) > Self.orphanGrace { end(discard: true) }
             return
         }
-        // A discarded planned workout goes back to "upcoming" on the phone; a finished one never does.
-        let wasDiscarded = snapshot?.discardedSessionID == recordingID
-            || (snapshot?.upcoming.contains(where: { $0.id == recordingID }) ?? false)
-        end(discard: wasDiscarded)
+        // Handed over to a Mac: the recording goes on until the phone says the workout ended there.
+        if WatchRecordingEnd.verdict(for: recordingID, in: snapshot) == .keep { return }
+        endAsPhoneSays(snapshot)
+    }
+
+    /// Ends the recording as the phone's snapshot says: thrown away (discarded), or saved – at the
+    /// phone's end for it when that is earlier than now (finished at the last set, ended on a Mac).
+    private func endAsPhoneSays(_ snapshot: WatchSnapshot?) {
+        guard let recordingID = sessionID else {
+            end(discard: false)
+            return
+        }
+        switch WatchRecordingEnd.verdict(for: recordingID, in: snapshot) {
+        case .discard:
+            end(discard: true)
+        case .save(let endedAt):
+            end(discard: false, at: endedAt)
+        case .keep:
+            // Only one recording at a time: the phone's new workout gets it.
+            end(discard: false)
+        }
     }
 
     /// A snapshot generated before this recording's workout started cannot end it.
@@ -289,10 +321,27 @@ final class WorkoutManager: NSObject {
         if discardOnEnd {
             builder.discardWorkout()
         } else {
+            // Finished here: the phone may move the end earlier (left running past its believable length).
+            if waitsForPhoneEnd, requestedEnd == nil { requestedEnd = await phoneEndAfterFinishHere() }
+            // The phone's end (its finish time, the end on a Mac) when it lies inside the recording, so a
+            // workout finished at its last set doesn't cover the whole night; otherwise, and on any
+            // error, the moment the session ended.
+            // Never before a pause or resume HealthKit holds for it (a workout's events lie inside its time).
+            let lastEvent = builder.workoutEvents.map(\.dateInterval.end).max()
+            var collectionEnd = WatchRecordingEnd.collectionEnd(requested: requestedEnd, startedAt: builder.startDate ?? startDate,
+                                                                lastEvent: lastEvent, now: endDate)
             do {
-                try await builder.endCollection(at: endDate)
+                try await builder.endCollection(at: collectionEnd)
             } catch {
                 lastError = error.localizedDescription
+                if collectionEnd != endDate {
+                    collectionEnd = endDate
+                    do {
+                        try await builder.endCollection(at: endDate)
+                    } catch {
+                        lastError = error.localizedDescription
+                    }
+                }
             }
             let metadata = workoutMetadata()
             if !metadata.isEmpty {
@@ -302,20 +351,23 @@ final class WorkoutManager: NSObject {
                     lastError = error.localizedDescription
                 }
             }
-            var workoutID: UUID?
+            var saved: SavedWorkout?
             do {
-                workoutID = try await Self.finishedWorkoutID(of: builder)
+                saved = try await Self.finishedWorkout(of: builder)
             } catch {
                 lastError = error.localizedDescription
             }
+            // The running totals cover the time up to now: for an end moved earlier, the saved
+            // workout's own numbers (Apple Health works them out for its time), or none.
+            let moved = WatchRecordingEnd.endMovedEarlier(collectionEnd: collectionEnd, sessionEnd: endDate)
             // With the George session it belongs to: the phone links it by that, also when this
             // arrives late (after a relaunch, a watchOS-ended recording, or a queued Finish).
             WatchConnector.shared.send(WatchMetrics(
                 heartRate: heartRate,
-                averageHeartRate: averageHeartRate,
-                activeEnergy: activeEnergy,
-                healthWorkoutID: workoutID,
-                endedAt: endDate,
+                averageHeartRate: moved ? saved?.averageHeartRate : averageHeartRate,
+                activeEnergy: moved ? saved?.activeEnergy : activeEnergy,
+                healthWorkoutID: saved?.id,
+                endedAt: collectionEnd,
                 sessionID: sessionID
             ))
         }
@@ -323,12 +375,32 @@ final class WorkoutManager: NSObject {
         WatchConnector.shared.workoutRecordingDidEnd()
     }
 
-    /// Saves the workout and returns only its (Sendable) UUID, so the non-Sendable `HKWorkout`
-    /// never crosses into the main actor.
-    nonisolated private static func finishedWorkoutID(of builder: HKLiveWorkoutBuilder) async throws -> UUID? {
+    /// Saves the workout and returns only its (Sendable) id and numbers, so the non-Sendable
+    /// `HKWorkout` never crosses into the main actor.
+    nonisolated private static func finishedWorkout(of builder: HKLiveWorkoutBuilder) async throws -> SavedWorkout? {
         // Typed as optional so this compiles whether the SDK's async variant returns `HKWorkout` or `HKWorkout?`.
         let workout: HKWorkout? = try await builder.finishWorkout()
-        return workout?.uuid
+        guard let workout else { return nil }
+        let beatsPerMinute = HKUnit.count().unitDivided(by: HKUnit.minute())
+        return SavedWorkout(
+            id: workout.uuid,
+            averageHeartRate: workout.statistics(for: HKQuantityType(.heartRate))?.averageQuantity()?.doubleValue(for: beatsPerMinute),
+            activeEnergy: workout.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie())
+        )
+    }
+
+    /// After a Finish tapped here: the end the phone gives the workout, when its snapshot brings it
+    /// within `WatchRecordingEnd.phoneEndWait` (nil otherwise: the session's end counts).
+    private func phoneEndAfterFinishHere() async -> Date? {
+        guard let id = sessionID else { return nil }
+        let deadline = Date().addingTimeInterval(WatchRecordingEnd.phoneEndWait)
+        // An end from before this recording began (an earlier part of a continued workout) isn't it.
+        let recordingStart = builder?.startDate ?? startDate
+        while Date() < deadline {
+            if let phoneEnd = WatchRecordingEnd.phoneEnd(for: id, in: WatchConnector.shared.snapshot, recordingStart: recordingStart) { return phoneEnd }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        return nil
     }
 
     private func workoutMetadata() -> [String: Any] {
@@ -367,6 +439,8 @@ final class WorkoutManager: NSObject {
         phoneStartedAt = nil
         endRequestedAt = nil
         discardOnEnd = false
+        requestedEnd = nil
+        waitsForPhoneEnd = false
         isFinalizing = false
         RecoveryInfo.clear()
     }
@@ -485,6 +559,13 @@ extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
     }
 
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+}
+
+/// A saved workout's id and its own numbers, handed to the main actor (`HKWorkout` isn't Sendable).
+private struct SavedWorkout: Sendable {
+    var id: UUID
+    var averageHeartRate: Double?
+    var activeEnergy: Double?
 }
 
 /// Current values read from the builder on HealthKit's queue, handed to the main actor.

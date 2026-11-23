@@ -80,6 +80,11 @@ private struct SessionDocument: View {
     /// would overwrite any change made here.
     private var runsElsewhere: Bool { session.status == .active && !isLive }
 
+    /// "Running on your iPhone" when another device runs it (Delete stops it there too).
+    private var deleteTitle: String {
+        runsElsewhere ? ThisDevice.runningTitle(for: session) : "Delete this workout?"
+    }
+
     /// Ticks, swipes and "+" are off for a finished workout until Edit.
     private var isLocked: Bool { (session.status.isPerformed && !isLive && !isEditingPast) || !canEditContent || runsElsewhere }
 
@@ -251,7 +256,7 @@ private struct SessionDocument: View {
 
     private func withDialogs(_ base: some View) -> some View {
         base
-        .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .confirmationDialog(deleteTitle, isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 // Nothing typed is written into a deleted workout.
                 pendingEdit = nil
@@ -262,9 +267,13 @@ private struct SessionDocument: View {
                     let undo = live.discard(deleteSession: true)
                     toasts.show("Deleted \u{201C}\(title)\u{201D}", symbol: "trash.fill", undo: undo)
                 } else {
+                    // Running on another device too (`SessionDelete`): it stops there once this syncs.
                     store.trash(session, toasts: toasts)
                 }
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if runsElsewhere { Text(SessionDelete.stopsThereToo) }
         }
         .confirmationDialog("Reset all sets?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset All Sets", role: .destructive) {
@@ -650,8 +659,8 @@ private struct StatsTilesSection: View {
 
     var body: some View {
         // Measured (Watch, this device) or George's estimate – marked, so the two are never mixed up.
-        let energy = EnergyDisplay.choose(measured: metrics?.activeEnergyKcal, estimated: session.energyKcal)
-        let heartRate = metrics?.averageHeartRate ?? 0
+        let energy = EnergyDisplay.choose(measured: shown?.activeEnergy, estimated: session.energyKcal)
+        let heartRate = shown?.averageHeartRate ?? 0
         // Working volume (no warm-ups, both sides) – the same number as the share card and Progress.
         let volume = session.content.workingVolumeKg
         Section {
@@ -671,6 +680,12 @@ private struct StatsTilesSection: View {
             }
         }
         .task(id: session.id) { await loadMetrics() }
+    }
+
+    /// The numbers kept here as this workout shows them: none for one part of a continued workout
+    /// (the estimate then, and no heart rate).
+    private var shown: MeasuredNumbers? {
+        metrics.map { store.measuredNumbers($0, for: session) }
     }
 
     /// Heart rate is kept on-device; on another iPhone/iPad it's read back from Apple Health.

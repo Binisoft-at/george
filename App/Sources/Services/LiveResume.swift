@@ -106,4 +106,26 @@ struct LiveResume: Codable {
         }
         UserDefaults.standard.set(data, forKey: healthLinksKey)
     }
+
+    // MARK: The first part of a continued workout after Finish
+
+    private static let earlierPartsKey = "live.earlierParts"
+
+    /// What was measured before a finished workout was continued (`EarlierPartNumbers`): kept apart
+    /// from the per-workout state above (Finish clears it), for the watch's numbers that come late.
+    static func earlierPart(for sessionID: UUID, now: Date = Date()) -> EarlierPartNumbers? {
+        earlierParts(now: now).first { $0.sessionID == sessionID }
+    }
+
+    static func keepEarlierPart(_ part: EarlierPartNumbers) {
+        let parts = EarlierPartNumbers.adding(part, to: earlierParts(now: Date()), now: Date())
+        guard let data = try? JSONEncoder().encode(parts) else { return }
+        UserDefaults.standard.set(data, forKey: earlierPartsKey)
+    }
+
+    private static func earlierParts(now: Date) -> [EarlierPartNumbers] {
+        guard let data = UserDefaults.standard.data(forKey: earlierPartsKey),
+              let parts = try? JSONDecoder().decode([EarlierPartNumbers].self, from: data) else { return [] }
+        return EarlierPartNumbers.pruned(parts, now: now)
+    }
 }

@@ -78,6 +78,9 @@ enum Prefs {
     static let thaliaLastWritten = "thaliaLastWritten"
     /// An iCloud import has finished on this device at least once (Welcome stops waiting for it).
     static let cloudImportSeen = "george.cloudImportSeen"
+    /// When the last iCloud import finished on this device (seconds since the reference date; 0:
+    /// not known). Restore asks first when it's old (`RestoreCaution`).
+    static let lastCloudImport = "george.lastCloudImport"
 }
 
 /// Where the voice coach may speak.

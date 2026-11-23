@@ -506,6 +506,7 @@ struct LiveWorkoutView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 VoiceIntroBanner()
+                WatchStopNotice()
                 CoachBar(onExpand: { live.showPanel = true }, onFinish: { showFinish = true })
                     .transition(.opacity)
             }

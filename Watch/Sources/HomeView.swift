@@ -74,6 +74,12 @@ struct HomeView: View {
         )
     }
 
+    /// The recording is of a workout the iPhone handed over to a Mac (it goes on until that ends).
+    private var isHandedOver: Bool {
+        guard let id = workout.sessionID else { return false }
+        return WatchRecordingEnd.verdict(for: id, in: connector.snapshot) == .keep
+    }
+
     @ViewBuilder
     private var content: some View {
         if let snapshot = connector.snapshot {
@@ -89,7 +95,7 @@ struct HomeView: View {
                     }
                 } else if workout.phase.isActive {
                     Section {
-                        UnmatchedRecordingRow { workout.end() }
+                        UnmatchedRecordingRow(handedOver: isHandedOver) { workout.end() }
                     }
                 }
 
@@ -316,8 +322,10 @@ private struct ResumeRow: View {
     }
 }
 
-/// A HealthKit recording with no George workout behind it (e.g. the phone ended it while unreachable).
+/// A HealthKit recording with no George workout behind it (e.g. the phone ended it while unreachable),
+/// or one for a workout that continues on a Mac (`handedOver`).
 private struct UnmatchedRecordingRow: View {
+    var handedOver = false
     let onEnd: () -> Void
 
     var body: some View {
@@ -325,7 +333,7 @@ private struct UnmatchedRecordingRow: View {
             Label("Recording on watch", systemImage: "heart.fill")
                 .font(.headline)
                 .foregroundStyle(.red)
-            Text("No workout is running in George on your iPhone.")
+            Text(handedOver ? "The workout continues on your Mac. Heart rate and calories are recorded here." : "No workout is running in George on your iPhone.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Button("End recording", role: .destructive, action: onEnd)

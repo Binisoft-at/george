@@ -48,13 +48,11 @@ final class V7ReviewHealthwatchTests: XCTestCase {
                                              part: MeasuredNumbers(averageHeartRate: 140, maxHeartRate: 160, activeEnergy: 90), partSeconds: 900)
         XCTAssertNil(whole.activeEnergy)
         XCTAssertEqual(whole.averageHeartRate ?? 0, 125, accuracy: 0.001)
-        XCTAssertEqual(whole.maxHeartRate, 160)
-        // Part 2 without numbers: part 1's stand (nothing is cleared).
+        XCTAssertNil(whole.maxHeartRate, "only part 2 has a maximum (v7 wave 3: one part's never stands for the whole)")
+        // Part 2 without numbers: part 1's don't stand for the whole workout either (V7W3MeasuredTests).
         let kept = MeasuredNumbers.combined(earlier: MeasuredNumbers(averageHeartRate: 130, maxHeartRate: 170, activeEnergy: 320), earlierSeconds: 2700,
                                             part: MeasuredNumbers(), partSeconds: 900)
-        XCTAssertEqual(kept.averageHeartRate, 130)
-        XCTAssertEqual(kept.maxHeartRate, 170)
-        XCTAssertNil(kept.activeEnergy)
+        XCTAssertTrue(kept.isEmpty)
     }
 
     func testStoredZerosCountAsNotMeasured() {
@@ -63,8 +61,7 @@ final class V7ReviewHealthwatchTests: XCTestCase {
         XCTAssertTrue(none.isEmpty)
         let whole = MeasuredNumbers.combined(earlier: none, earlierSeconds: 2700,
                                              part: MeasuredNumbers(averageHeartRate: 140, activeEnergy: 90), partSeconds: 900)
-        XCTAssertEqual(whole.averageHeartRate, 140)
-        XCTAssertNil(whole.activeEnergy)
+        XCTAssertTrue(whole.isEmpty, "part 1 measured nothing: part 2's numbers aren't the workout's")
         // No active time known: a plain average.
         let untimed = MeasuredNumbers.combined(earlier: MeasuredNumbers(averageHeartRate: 120), earlierSeconds: 0,
                                                part: MeasuredNumbers(averageHeartRate: 140), partSeconds: 0)

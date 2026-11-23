@@ -211,6 +211,9 @@ struct SessionMenuItems: View {
     let session: WorkoutSession
     /// "Mark As → Completed" on a workout that wasn't done: opens the log sheet (date, minutes) instead.
     var onLogPast: ((WorkoutSession) -> Void)? = nil
+    /// Delete on a workout running on another device: the host asks first ("Running on your iPhone")
+    /// – a menu can't keep the question open. Without it, the menu offers no Delete for that workout.
+    var onDeleteRunningElsewhere: ((WorkoutSession) -> Void)? = nil
     @Environment(GeorgeStore.self) private var store
     @Environment(LiveWorkoutController.self) private var live
     @Environment(Router.self) private var router
@@ -317,6 +320,15 @@ struct SessionMenuItems: View {
                 live.discardRequest = true
             } label: {
                 Label("Discard Workout…", systemImage: "trash")
+            }
+        } else if session.status == .active {
+            // Another device runs it: asked first, then deleted with Undo (it stops there too).
+            if let onDeleteRunningElsewhere {
+                Button(role: .destructive) {
+                    onDeleteRunningElsewhere(session)
+                } label: {
+                    Label("Delete…", systemImage: "trash")
+                }
             }
         } else {
             Button(role: .destructive) {

@@ -37,7 +37,8 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
   (gym, stretches, bands, with start/end images animated like a GIF) plus 296 curated elastic-band, yoga,
   stretching, mobility and tennis-prehab moves. Every exercise has a one-tap YouTube tutorial search; save your own links.
 - **Smart streaks** — weekly goal (days/week, history-aware), saves earned every 2 successful weeks (max 3,
-  auto-used), a "rescue workout" that counts double, excused break weeks, and Apple Health workouts from
+  auto-used), a "rescue workout" that counts double, excused break weeks (neutral: grey in the streak
+  history and in Progress → Workout days unless the goal was met anyway), and Apple Health workouts from
   other apps count too.
 - **Apple Health** — workouts with the right activity type, calories, heart rate (via Watch) and effort score.
   See [docs/HEALTH.md](docs/HEALTH.md) for what Bevel can read.
@@ -49,6 +50,25 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
 - **Sync** — SwiftData + iCloud (CloudKit private database). Free, no account, works like Notes. Settings
   shows the sync status and explains where the data lives.
 - **Design** — native SwiftUI on iOS/macOS 26 with Liquid Glass controls, light/dark/system themes.
+
+### New in 1.2
+
+- **One workout, many devices**: "Continue Here" hands a running workout to your iPhone, iPad or Mac;
+  the other device lets go with a note, sets logged on both are merged, a second parallel workout is
+  never started by accident, and a forgotten workout elsewhere ends at its last set.
+- **Finish at the right time**: after a long idle stretch the finish sheet ends at your last set,
+  Today asks "Still training?", and Apple Health gets one workout per session (the watch's or the
+  iPhone's, never both), with pauses, and a continued workout only adds its new part.
+- **Safer data**: Discard keeps what was already saved, finished workouts open read-only until Edit,
+  Undo after deletes, full backups with automatic weekly copies and restore, CSV import that keeps
+  your notes and asks before replacing, and a banner when iCloud sync has a problem.
+- **Clearer numbers**: working volume and working sets everywhere, records that beat an earlier best,
+  averages over the weeks you trained, break and rescue weeks shown like the streak, and the same
+  streak on the watch, widgets and iPhone.
+- **Mac and iPad**: a stable sidebar with list and detail side by side, live mode in its own Mac
+  window, keyboard entry and Delete, two-column Today and Muscles, and list plus detail on iPad.
+- **Faster**: saves and iCloud imports only refresh what changed; typing in past workouts, the
+  exercise picker and Today no longer redo the whole history.
 
 ### New in 1.1
 

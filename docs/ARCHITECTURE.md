@@ -20,8 +20,16 @@ handbook workflows are synced from it – change them there, never here.
 - SwiftData models in `App/Sources/Model`. `Persistence.open()` (BinisoftKit `ModelStore`):
   `.private(iCloud.at.binisoft.george)` with `groupContainer: .none`; Apple Health numbers
   (`HealthMetrics`) in a device-only store; local-only fallback; `-Demo` in-memory sample data.
+  For a workout continued after "stopped early", `HealthMetrics` holds the whole workout's numbers
+  (`MeasuredNumbers.combined`); the first part's stay in this device's preferences for three days
+  after Finish (`LiveResume.keepEarlierPart`) for the watch's late numbers (docs/HEALTH.md). A row
+  last updated before the workout's end holds one part's numbers only and is shown as none
+  (`GeorgeStore.measuredNumbers(for:)`, `measuredEnergy(for:)`; `MeasuredNumbers.keptNumbersCover`).
 - `GeorgeStore` is the one place that changes data (naming, ordering, denormalised fields, save,
-  delete with Undo toasts). The window's undo manager is attached to the context (⌘Z, shake).
+  delete with Undo toasts). The window's undo manager is attached to the context (⌘Z, shake). An
+  undo or redo of the context (Edit menu, ⌘Z, shake) is saved through the store right after it
+  (`NSUndoManagerDidUndoChange` / `DidRedoChange`), so the change counters and the caches keyed on them
+  follow it at once.
 - The workout itself (`WorkoutContent`: blocks, exercises, sets) is a Codable value from GeorgeCore,
   stored as `contentData` on templates and sessions.
 - CloudKit can't keep records unique, so two devices may each create settings, an exercise's notes, a
@@ -39,7 +47,10 @@ handbook workflows are synced from it – change them there, never here.
   Export → Export Full Backup… / Restore from Backup…; automatic ones weekly and before every import
   or restore in Documents/Backups (last 8, visible in Files). A restore merges by id: missing records
   come back, changes made since stay unless asked for, records added since are never touched. Plain
-  files – no CloudKit schema change.
+  files – no CloudKit schema change. Records restored before iCloud has brought them would show twice,
+  so Restore asks first ("Restore Anyway" / Cancel, GeorgeCore `RestoreCaution`) while this device's
+  first iCloud import is pending, its last import (`Prefs.lastCloudImport`, kept on the device) is
+  over an hour old, or sync has an error or an account that can't sync.
 - Change counters (what views and caches refresh on): `GeorgeStore.revision` moves when a save or
   an iCloud import changed any data, `historyRevision` only when performed workouts changed (finished,
   logged, edited, deleted, synced), `liveRevision` when a workout running on another device moved on.
@@ -50,7 +61,10 @@ handbook workflows are synced from it – change them there, never here.
   (`SessionHistory`, GeorgeCore `HistoryIndex`) decodes only workouts that are new or changed since
   it last looked (the first build decodes on all cores); the muscle engine and "last time" rebuild only
   when its records really changed. Lists of numbers fetch without the content (`sessionScalars`) and by
-  date (`fetchSessions(datedFrom:)`) instead of the whole log.
+  date (`fetchSessions(datedFrom:)`) instead of the whole log. No screen keeps an unfiltered query of
+  every workout: the Workouts list and Search query all but workouts in progress (those come from
+  `store.activeSessions` per revision), a template's history queries its own performed workouts, and
+  the CSV log export fetches when asked – a running workout's sets don't fetch them again.
 - What views ask for on every redraw is kept until its inputs change (`GeorgeStore+Caches.swift`):
   the calendar (per week start and time zone), the profile, the training days and the streak (per
   `revision`, settings and Apple Health workouts; a streak stays for the day until a workout dated later
@@ -79,7 +93,8 @@ handbook workflows are synced from it – change them there, never here.
 - The device that ran it before sees the newer claim with the next iCloud import (`syncedStatusChanged`)
   or at the latest before its next save, tick, pause or Finish (`confirmOwnership`), and lets go
   without touching the synced session: live mode closes, the watch gets no workout (and drops its
-  recording – the device that finishes saves the workout to Apple Health), the Live Activity and rest
+  recording – the device that finishes saves the workout to Apple Health; for a Mac, which has no
+  Apple Health, the watch keeps recording until the workout ends there: `WatchOnlyLink`, HEALTH.md), the Live Activity and rest
   alert end, its resume state is cleared, and a toast says "Continued on your Mac". A relaunch doesn't
   take it back. A claim older than the device's own is answered with its claim again, so both
   devices end up agreeing (rules and tests: GeorgeCore `LiveOwnership`).
@@ -90,6 +105,11 @@ handbook workflows are synced from it – change them there, never here.
 - Screens name the owner's kind ("Running on your Mac", "On your iPad"). Watch starts go through
   the same start check as every Start button, so they never start a second workout next to one
   running elsewhere. The two fields are in `cloudkit/schema.ckdb` (deploy to Production before release).
+- Delete follows one rule on every path – the Mac's Delete key, swipe, the context menu, bulk Delete
+  and the workout page's ⋯ Delete (GeorgeCore `SessionDelete`): the workout running here is discarded
+  in live mode; one running on another device asks first ("Running on your iPhone" – "It stops there
+  too.", Delete / Cancel) and is then deleted with the usual Undo toast, and that device drops its live
+  mode once it syncs. Bulk Delete asks once and says so when a selected workout runs elsewhere.
 
 ## Coach, energy, profile
 
