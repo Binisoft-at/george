@@ -35,6 +35,8 @@ enum DetailItem: Hashable {
     case exercise(String)
     case muscle(String)
     case muscularLoad
+    /// A ready-made stretch or yoga routine (`RoutineLibrary` id) – Mac: Stretch & Yoga's selection.
+    case routine(String)
 }
 
 /// Tabs on iPhone and iPad. Programs appear as extra tabs in the iPad sidebar.
@@ -104,6 +106,9 @@ final class Router {
     @ObservationIgnored private var lastDetail: [SidebarItem: DetailItem] = [:]
     /// Main windows open right now (Mac): Settings brings one up before it shows something there.
     @ObservationIgnored var mainWindowCount = 0
+    /// The workout window is open (Mac, `LiveWindowRoot`): a main window that opens doesn't bring it
+    /// forward again.
+    @ObservationIgnored var liveWindowIsOpen = false
     /// A CSV opened from Finder, dropped on the window or shared from another app – the import
     /// sheet loads it (also when it's open already).
     var importURL: URL?
@@ -115,6 +120,11 @@ final class Router {
     /// Screenshots: a sheet opened straight from `-DemoScreen`.
     var demoSheet: DemoSheet?
     var workoutsFilter: WorkoutsFilter = .all
+    /// iPad at regular width (`SplitTabStack`): the item next to each tab's list, what was opened on
+    /// top of it, and the tabs shown that way right now.
+    var splitDetail: [AppTab: DetailItem] = [:]
+    var splitPaths: [AppTab: [Route]] = [:]
+    @ObservationIgnored var splitTabs: Set<AppTab> = []
 
     var pendingRequest: Request?
     var showSettings = false
@@ -136,7 +146,8 @@ final class Router {
 
     func request(_ request: Request) { pendingRequest = request }
 
-    /// Shows a workout, template, exercise or muscle: the detail column on the Mac, a push on iPhone/iPad.
+    /// Shows a workout, template, exercise or muscle: the detail column on the Mac and next to an
+    /// iPad list (`SplitTabStack`), a push on iPhone and elsewhere on iPad.
     func open(_ item: DetailItem, in sidebarItem: SidebarItem? = nil) {
         #if os(macOS)
         if let sidebarItem { sidebar = sidebarItem }
@@ -148,6 +159,11 @@ final class Router {
         }
         #else
         if let sidebarItem { show(sidebarItem) }
+        if splitTabs.contains(tab) {
+            // iPad: next to the list, not pushed over it.
+            showInSplit(item, in: tab)
+            return
+        }
         if paths[tab]?.last != .detail(item) {
             paths[tab, default: []].append(.detail(item))
         }
@@ -155,8 +171,8 @@ final class Router {
     }
 
     /// A link inside a detail (a workout in a template's history, an exercise from a workout): on
-    /// the Mac it opens on top of the detail with Back, and the list keeps its selection. On
-    /// iPhone/iPad the same as `open`.
+    /// the Mac and next to an iPad list it opens on top of the detail with Back, and the list keeps
+    /// its selection. Elsewhere on iPhone/iPad the same as `open`.
     func push(_ item: DetailItem) {
         #if os(macOS)
         if sidebar?.isDashboard != true && detail == nil {
@@ -165,6 +181,13 @@ final class Router {
             detailPath.append(item)
         }
         #else
+        if splitTabs.contains(tab), let shown = splitDetail[tab] {
+            // iPad: on top of the item next to the list, with Back; the list keeps its selection.
+            let onTop = splitPaths[tab] ?? []
+            let next = ListDetailPath.push(item, shown: shown, onTop: onTop, wrap: Route.detail)
+            if next != onTop { splitPaths[tab] = next }
+            return
+        }
         open(item)
         #endif
     }
@@ -176,6 +199,11 @@ final class Router {
         lastDetail = lastDetail.filter { $0.value != item }
         for key in Array(paths.keys) {
             paths[key]?.removeAll { $0 == .detail(item) }
+        }
+        // iPad: the detail column next to a list.
+        if splitDetail.values.contains(item) { splitDetail = splitDetail.filter { $0.value != item } }
+        for key in Array(splitPaths.keys) where splitPaths[key]?.contains(.detail(item)) == true {
+            splitPaths[key]?.removeAll { $0 == .detail(item) }
         }
     }
 
@@ -498,52 +526,25 @@ struct RootView: View {
 }
 
 #if os(macOS)
-/// Mac: sidebar → list → detail, like Notes.
+/// Mac: sidebar → list → detail, like Notes – one split view for every sidebar item, so switching
+/// never builds the sidebar anew (its counts, scroll position and width stay). macOS always shows a
+/// three-column split view's middle column, so the split view has two columns and the main column
+/// lays out a list next to its selection (`MacMainColumn`), or a dashboard at full width.
 struct SplitRootView: View {
-    @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
-    @Environment(LiveWorkoutController.self) private var live
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// Counted in `Router.mainWindowCount` (once, however the window closes).
+    @State private var isCounted = false
 
     var body: some View {
-        @Bindable var router = router
-        Group {
-            if router.sidebar?.isDashboard == true {
-                // Dashboards use the whole width; a tapped muscle or workout opens on top.
-                NavigationSplitView(columnVisibility: $columnVisibility) {
-                    SidebarView()
-                        .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
-                } detail: {
-                    // A tapped muscle or workout opens on top of the dashboard, with Back.
-                    NavigationStack(path: $router.detailPath) {
-                        ScreenView(item: router.sidebar)
-                            .frame(maxWidth: 980)
-                            .frame(maxWidth: .infinity)
-                            .navigationDestination(for: DetailItem.self) { item in
-                                DetailScreen(item: item)
-                            }
-                    }
-                    .id(router.sidebar)
-                }
-            } else {
-                NavigationSplitView(columnVisibility: $columnVisibility) {
-                    SidebarView()
-                        .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
-                } content: {
-                    ScreenView(item: router.sidebar)
-                        .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
-                } detail: {
-                    // The list's selection; links inside it (a template's history …) open on top, with Back.
-                    NavigationStack(path: $router.detailPath) {
-                        DetailScreen(item: router.detail, list: router.sidebar)
-                            .navigationDestination(for: DetailItem.self) { item in
-                                DetailScreen(item: item)
-                            }
-                    }
-                    .id(router.detail)
-                }
-            }
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
+        } detail: {
+            MacMainColumn()
         }
+        // Live mode is a window of its own (LiveWindow.swift): opened from here.
+        .modifier(LiveWindowPresenter())
         .safeAreaInset(edge: .bottom) {
             MacNowPlaying()
         }
@@ -556,26 +557,121 @@ struct SplitRootView: View {
         }
         .onAppear {
             if router.sidebar == nil { router.sidebar = .today }
-            router.mainWindowCount += 1
+            if !isCounted {
+                isCounted = true
+                router.mainWindowCount += 1
+            }
         }
-        .onDisappear {
-            router.mainWindowCount = max(0, router.mainWindowCount - 1)
+        .onDisappear { windowClosed() }
+        // `onDisappear` doesn't come when this is the last window that closes. The window in front
+        // last is the one menu commands and Settings bring forward (`MainWindowFront`).
+        .background {
+            WindowStateObserver(onClose: { windowClosed() }, onBecameMain: { MainWindowFront.note($0) })
         }
+    }
+
+    private func windowClosed() {
+        guard isCounted else { return }
+        isCounted = false
+        router.mainWindowCount = max(0, router.mainWindowCount - 1)
     }
 }
 
-/// The Mac's bar at the bottom: the workout running here (when live mode is closed), or a workout
-/// running on another device – read-only, with "Continue Here".
+/// The split view's main column. A list: the list, an edge to drag, and the list's selection (links
+/// inside it – a template's history, an exercise – open on top, with Back). A dashboard: the whole
+/// width, with a tapped muscle or workout on top (Back returns to the dashboard).
+private struct MacMainColumn: View {
+    @Environment(Router.self) private var router
+    /// The list's width – the same for every list, kept per window.
+    @SceneStorage("mac.listWidth") private var listWidth = 380.0
+
+    var body: some View {
+        if router.sidebar?.isDashboard == true {
+            dashboard
+        } else {
+            HStack(spacing: 0) {
+                ScreenView(item: router.sidebar)
+                    .frame(width: Self.listColumn.clamped(listWidth))
+                ColumnResizeHandle(width: $listWidth, column: Self.listColumn)
+                detail
+                    .frame(minWidth: 340, maxWidth: .infinity)
+            }
+        }
+    }
+
+    /// As wide as the split view's middle column was (GeorgeCore `ResizableColumn`).
+    static let listColumn = ResizableColumn(range: 300...560, ideal: 380)
+
+    private var dashboard: some View {
+        @Bindable var router = router
+        return NavigationStack(path: $router.detailPath) {
+            ScreenView(item: router.sidebar)
+                .frame(maxWidth: 980)
+                .frame(maxWidth: .infinity)
+                .navigationDestination(for: DetailItem.self) { item in
+                    DetailScreen(item: item)
+                }
+        }
+        // Each dashboard starts with its own stack.
+        .id(router.sidebar)
+    }
+
+    private var detail: some View {
+        @Bindable var router = router
+        return NavigationStack(path: $router.detailPath) {
+            DetailScreen(item: router.detail, list: router.sidebar)
+                .navigationDestination(for: DetailItem.self) { item in
+                    DetailScreen(item: item)
+                }
+        }
+        // Another selection starts a fresh stack.
+        .id(router.detail)
+    }
+}
+
+/// The edge between the list and the detail (Mac): drag it to make the list wider or narrower.
+private struct ColumnResizeHandle: View {
+    @Binding var width: Double
+    let column: ResizableColumn
+    @State private var dragStart: Double?
+
+    var body: some View {
+        Divider()
+            .overlay {
+                Color.clear
+                    .frame(width: 9)
+                    .contentShape(Rectangle())
+                    .pointerStyle(.columnResize)
+                    .gesture(
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { value in
+                                let start = dragStart ?? column.clamped(width)
+                                if dragStart == nil { dragStart = start }
+                                width = column.width(draggedFrom: start, by: Double(value.translation.width))
+                            }
+                            .onEnded { _ in dragStart = nil }
+                    )
+            }
+            .zIndex(1)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The Mac's bar at the bottom: the workout running here (a click opens its window or brings it
+/// forward), or a workout running on another device – read-only, with "Continue Here".
 private struct MacNowPlaying: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(LiveWorkoutController.self) private var live
 
     var body: some View {
-        // Synced changes (another device starting or ending a workout) bump the revision.
-        let _ = store.revision
+        // Synced changes: another device starting or ending a workout moves the revision, its sets
+        // move `liveRevision`.
+        let _ = (store.revision, store.liveRevision)
         let other = live.isActive ? nil : live.workoutOnOtherDevice
         Group {
-            if live.isActive && !live.isPresented {
+            // While a workout runs, also when its window is open: the bar stays put instead of
+            // coming and going each time the other window is clicked.
+            if live.isActive {
                 MiniPlayerBar()
                     .padding(.horizontal)
                     .padding(.bottom, 6)
@@ -587,7 +683,7 @@ private struct MacNowPlaying: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.snappy, value: live.isActive && !live.isPresented)
+        .animation(.snappy, value: live.isActive)
         .animation(.snappy, value: other?.id)
     }
 }
@@ -658,15 +754,30 @@ private extension View {
     }
 }
 
-/// A tab's navigation stack, bound to the router so any screen can push.
+/// A tab's navigation stack, bound to the router so any screen can push. On iPad at regular width,
+/// Workouts, Plans and the programs show their list with the chosen item next to it (`SplitTabStack`).
 struct TabStack<Root: View>: View {
     let tab: AppTab
     @ViewBuilder let root: () -> Root
     @Environment(Router.self) private var router
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let split = sizeClass == .regular && !PlatformInfo.isPhone && tab.showsListAndDetail
+        Group {
+            if split {
+                SplitTabStack(tab: tab, root: root)
+            } else {
+                stack
+            }
+        }
+        // What's open moves between the two layouts (multitasking, Slide Over).
+        .onChange(of: split, initial: true) { _, isSplit in router.setSplit(isSplit, for: tab) }
+    }
+
+    private var stack: some View {
         let path = router.paths[tab] ?? []
-        NavigationStack(path: Binding(get: { path }, set: { router.paths[tab] = $0 })) {
+        return NavigationStack(path: Binding(get: { path }, set: { router.paths[tab] = $0 })) {
             root()
                 .navigationDestination(for: Route.self) { route in
                     switch route {
@@ -707,10 +818,7 @@ struct RootPresentation: ViewModifier {
                 NavigationStack { SettingsView() }
             }
             #else
-            .sheet(isPresented: $live.isPresented) {
-                LiveWorkoutView()
-                    .frame(minWidth: 560, idealWidth: 640, minHeight: 680, idealHeight: 760)
-            }
+            // Live mode: a window of its own on the Mac (`LiveWindowPresenter` on `SplitRootView`).
             .sheet(isPresented: $router.showWelcome) {
                 WelcomeView()
                     .frame(minWidth: 620, idealWidth: 680, minHeight: 680, idealHeight: 740)
@@ -764,7 +872,8 @@ struct RootPresentation: ViewModifier {
                     router.offerTourIfNeeded(live: live, store: store)
                 }
             }
-            .onChange(of: router.pendingRequest) { _, request in
+            // Also one made just before this window opened (Mac: File → Create… with no main window).
+            .onChange(of: router.pendingRequest, initial: true) { _, request in
                 guard let request else { return }
                 router.pendingRequest = nil
                 handle(request)
@@ -800,7 +909,8 @@ struct RootPresentation: ViewModifier {
                     Text("Starting “\(target.title)” ends the running workout. Finishing first lets you rate it; saving keeps every set and the time so far.")
                 }
             }
-            // The workout ended on another device (synced through iCloud): let go here.
+            // The running workout was deleted or ended here (a list, another window): let go. iCloud
+            // imports call it directly (`CloudImportRefresher.didRefresh`).
             .onChange(of: store.revision) { _, _ in live.syncedStatusChanged() }
             // A save failed (details in the App Log): said once, until saving works again.
             .onChange(of: store.lastSaveError) { old, new in
@@ -812,6 +922,13 @@ struct RootPresentation: ViewModifier {
                 toasts.show(message, symbol: "exclamationmark.triangle.fill")
                 live.startRefusal = nil
             }
+            // The running workout was continued on another device ("Continued on your Mac"); also
+            // when that happened while George was closed (initial).
+            .onChange(of: live.handOverNotice, initial: true) { _, message in
+                guard let message else { return }
+                toasts.show(message, symbol: "iphone.and.arrow.forward")
+                live.handOverNotice = nil
+            }
             .onOpenURL { url in
                 if url.pathExtension.lowercased() == "csv" {
                     // The import sheet loads it – also when it's open already.
@@ -822,7 +939,7 @@ struct RootPresentation: ViewModifier {
     }
 
     private var startDialogTitle: String {
-        if let other = live.otherDeviceSession { return "“\(other.title)” is running on another device" }
+        if let other = live.otherDeviceSession { return "“\(other.title)” is running on \(ThisDevice.ownerName(of: other))" }
         return live.session.map { "“\($0.title)” is still running" } ?? "A workout is running"
     }
 
@@ -830,7 +947,7 @@ struct RootPresentation: ViewModifier {
         if live.pendingStartIsOtherDeviceWorkout {
             return "Continue it here to use this device from now on. Two devices running it would save over each other."
         }
-        return "Starting “\(target.title)” here ends “\(other.title)” on the other device – the sets done there are kept, as stopped early."
+        return "Starting “\(target.title)” here ends “\(other.title)” on \(ThisDevice.ownerName(of: other)) – the sets done there are kept, as stopped early."
     }
 
     private func handle(_ request: Router.Request) {
@@ -940,6 +1057,13 @@ struct DetailScreen: View {
             }
         case .muscularLoad:
             MuscularLoadDetailView(group: nil)
+        case .routine(let id):
+            if let routine = RoutineLibrary.routine(id: id) {
+                RoutineDetailView(routine: routine)
+                    .id(id)
+            } else {
+                MessageView(title: "Unknown routine", systemImage: "questionmark.circle")
+            }
         case .none:
             MessageView(title: "No Selection", systemImage: "square.text.square", message: emptyMessage)
         }
@@ -959,7 +1083,8 @@ struct DetailScreen: View {
 
 // MARK: - Navigation helpers
 
-/// A list that drives the Mac's detail column by selection and pushes on iPhone/iPad.
+/// A list that drives the Mac's detail column by selection (also next to an iPad list,
+/// `SplitTabStack`) and pushes on iPhone and compact iPad windows.
 ///
 /// Mac: ⌘-click and ⇧-click select several rows (`selection`, for the list's bulk actions); one
 /// selected row is the detail column's item. On a dashboard, a row opens on top of it.
@@ -968,6 +1093,10 @@ struct NavList<Content: View>: View {
     private let selection: Binding<Set<DetailItem>>?
     @Environment(Router.self) private var router
     @State private var ownSelection = Set<DetailItem>()
+    #if os(iOS)
+    /// iPad next to its detail (`SplitTabStack`): a row picks what the detail column shows.
+    @Environment(\.splitListTab) private var splitTab
+    #endif
 
     init(selection: Binding<Set<DetailItem>>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.selection = selection
@@ -987,8 +1116,17 @@ struct NavList<Content: View>: View {
             }
         }
         #else
-        List {
-            content()
+        if let splitTab {
+            List(selection: Binding<DetailItem?>(
+                get: { router.splitDetail[splitTab] },
+                set: { item in if let item { router.showInSplit(item, in: splitTab) } }
+            )) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
         }
         #endif
     }
@@ -1020,10 +1158,14 @@ struct NavList<Content: View>: View {
     #endif
 }
 
-/// A row that opens a detail item (selection on the Mac, push on iPhone/iPad).
+/// A row that opens a detail item (selection on the Mac and in an iPad list column, push elsewhere).
 struct DetailLink<Label: View>: View {
     let item: DetailItem
     @ViewBuilder let label: () -> Label
+    #if os(iOS)
+    /// iPad next to its detail (`SplitTabStack`): a selectable row of `NavList`, like the Mac.
+    @Environment(\.splitListTab) private var splitTab
+    #endif
 
     init(_ item: DetailItem, @ViewBuilder label: @escaping () -> Label) {
         self.item = item
@@ -1037,7 +1179,12 @@ struct DetailLink<Label: View>: View {
         label()
             .tag(item)
         #else
-        NavigationLink(value: Route.detail(item), label: label)
+        if splitTab != nil {
+            label()
+                .tag(item)
+        } else {
+            NavigationLink(value: Route.detail(item), label: label)
+        }
         #endif
     }
 }
@@ -1075,10 +1222,11 @@ struct NowPlayingAccessory: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-    @Query private var templates: [WorkoutTemplate]
 
     var body: some View {
-        let _ = templates.count + store.revision
+        // Saved changes (templates, plans) move the revision, a workout on another device's sets
+        // `liveRevision` – the bar isn't refetched on every tick of the workout running here.
+        let _ = (store.revision, store.liveRevision)
         if live.isActive {
             active
         } else if let other = live.workoutOnOtherDevice {
@@ -1095,7 +1243,7 @@ struct NowPlayingAccessory: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 0) {
-                Text("Running on another device")
+                Text(ThisDevice.runningTitle(for: session))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 if placement != .inline {
@@ -1311,7 +1459,7 @@ struct OtherDevicePlayerBar: View {
                     }
                     .frame(width: 34, height: 34)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Running on another device")
+                        Text(ThisDevice.runningTitle(for: session))
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
                         Text(RunningWorkout.progressLine(title: session.title, content: content))

@@ -15,13 +15,19 @@ struct SessionListView: View {
     @Environment(Router.self) private var router
     @Environment(ToastCenter.self) private var toasts
     @Environment(LiveWorkoutController.self) private var live
-    @Query private var sessions: [WorkoutSession]
+    /// Everything but workouts in progress: a running workout saves on every tick, and the list isn't
+    /// fetched again for that – its row (`sessions`) follows the workout by itself.
+    @Query(filter: #Predicate<WorkoutSession> { $0.statusRaw != "active" }) private var stored: [WorkoutSession]
     @Query(sort: \Program.sortIndex) private var programs: [Program]
 
     @AppStorage("sessionGrouping") private var grouping: SessionGrouping = .date
     @AppStorage("sessionSort") private var sort: SessionSort = .date
     @AppStorage("hideSkipped") private var hideSkipped = false
     @State private var query = ""
+    /// `query` once typing pauses: the list filters per word, not per letter.
+    @State private var appliedQuery = ""
+    /// Each workout's lowercased search text, kept between redraws.
+    @State private var searchTexts = SearchTextCache()
     @State private var tokens: [SearchToken] = []
     @State private var isSelecting = false
     @State private var selection = Set<UUID>()
@@ -36,12 +42,14 @@ struct SessionListView: View {
     }
 
     var body: some View {
+        // Filtered once per update (the overlay, the tip and the animation use the same list).
+        let filtered = self.filtered
         let groups = SessionGrouper.group(effectiveSort.sort(filtered), by: grouping, calendar: store.calendar)
 
         Group {
             if isSelecting {
                 List(selection: $selection) {
-                    headerSection
+                    headerSection(hasRows: !filtered.isEmpty)
                     listContent(groups)
                 }
                 #if os(iOS)
@@ -49,7 +57,7 @@ struct SessionListView: View {
                 #endif
             } else {
                 NavList(selection: $listSelection) {
-                    headerSection
+                    headerSection(hasRows: !filtered.isEmpty)
                     listContent(groups)
                 }
             }
@@ -71,10 +79,11 @@ struct SessionListView: View {
                 }
             }
         }
+        .task(id: query) { await applyQuery() }
         .overlay {
             if filtered.isEmpty {
-                if !query.isEmpty || !tokens.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                if !appliedQuery.isEmpty || !tokens.isEmpty {
+                    ContentUnavailableView.search(text: appliedQuery)
                 } else {
                     EmptyStateView(
                         title: "No Workouts Yet",
@@ -104,14 +113,14 @@ struct SessionListView: View {
                 isSelecting = false
             }
         }
-        .animation(.default, value: filtered.map(\.id))
+        .animation(.default, value: filtered.count)
         .sheet(item: $logSession) { session in
             NavigationStack { LogPastWorkoutSheet(session: session) }
         }
     }
 
     @ViewBuilder
-    private var headerSection: some View {
+    private func headerSection(hasRows: Bool) -> some View {
         if let programHeader {
             Section {
                 programHeader
@@ -119,7 +128,7 @@ struct SessionListView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         }
-        if !isSelecting && !filtered.isEmpty {
+        if !isSelecting && hasRows {
             TipView(GeorgeTips.SwipeTip())
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
@@ -192,7 +201,7 @@ struct SessionListView: View {
                     .contextMenu {
                         SessionMenuItems(session: session) { logSession = $0 }
                     } preview: {
-                        WorkoutPreview(title: session.title, subtitle: session.subtitle, kind: session.kind, content: session.content)
+                        WorkoutPreview(session: session)
                     }
                     .draggable("session:\(session.id.uuidString)")
                 }
@@ -217,6 +226,14 @@ struct SessionListView: View {
 
     // MARK: Data
 
+    /// The stored workouts plus those in progress (here or on another device; fetched by status, 0–2
+    /// rows). A running workout's row redraws from its own changes; the list follows Start and Finish
+    /// through `stored`, and a workout started or ended elsewhere through the revision.
+    private var sessions: [WorkoutSession] {
+        let _ = store.revision
+        return stored + store.activeSessions
+    }
+
     /// The program label only helps when there's more than one program to tell apart.
     private var showProgramInRows: Bool {
         if case .program = scope { return false }
@@ -236,15 +253,26 @@ struct SessionListView: View {
         }
     }
 
+    /// Typing waits for a short pause before the list filters; clearing the search shows all at once.
+    private func applyQuery() async {
+        if !query.isEmpty {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+        }
+        appliedQuery = query
+    }
+
     private var filtered: [WorkoutSession] {
-        let words = query.lowercased().split(separator: " ").map(String.init)
+        let words = appliedQuery.lowercased().split(separator: " ").map(String.init)
+        let texts = searchTexts
         return scoped.filter { session in
             if hideSkipped && session.status == .skipped { return false }
             if !tokens.allSatisfy({ $0.matches(session) }) { return false }
             guard !words.isEmpty else { return true }
-            let haystack = [session.title, session.subtitle, session.notes, session.exerciseNames, session.tagsRaw, session.program?.name ?? ""]
+            let raw = [session.title, session.subtitle, session.notes, session.exerciseNames, session.tagsRaw, session.program?.name ?? ""]
                 .joined(separator: " ")
-                .lowercased()
+            // Lowercased once per change of the workout, not on every redraw.
+            let haystack = texts.lowercased(raw, for: session)
             return words.allSatisfy { haystack.contains($0) }
         }
     }
@@ -398,15 +426,45 @@ struct SessionListView: View {
     }
 }
 
-/// Context-menu preview of a workout's exercises.
+/// Each workout's lowercased search text (the Workouts list's search), made again only when the
+/// text it's made from changes – not for every workout on every redraw.
+final class SearchTextCache {
+    private var entries: [ObjectIdentifier: (raw: String, lowered: String)] = [:]
+
+    func lowercased(_ raw: String, for object: AnyObject) -> String {
+        let key = ObjectIdentifier(object)
+        if let entry = entries[key], entry.raw == raw { return entry.lowered }
+        let lowered = raw.lowercased()
+        entries[key] = (raw, lowered)
+        return lowered
+    }
+}
+
+/// Context-menu preview of a workout's exercises. Takes the workout and reads its exercises in its
+/// own body – that runs when the preview opens, not for every row when the list is built.
 struct WorkoutPreview: View {
     let title: String
     let subtitle: String
     let kind: WorkoutKind
-    let content: WorkoutContent
+    private let loadContent: () -> WorkoutContent
     @Environment(GeorgeStore.self) private var store
 
+    init(session: WorkoutSession) {
+        title = session.title
+        subtitle = session.subtitle
+        kind = session.kind
+        loadContent = { session.content }
+    }
+
+    init(template: WorkoutTemplate) {
+        title = template.name
+        subtitle = template.subtitle
+        kind = template.kind
+        loadContent = { template.content }
+    }
+
     var body: some View {
+        let content = loadContent()
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 KindIcon(kind: kind, size: 34)

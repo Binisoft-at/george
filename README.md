@@ -9,8 +9,10 @@ training mode, a real exercise library, smart streaks, Apple Health and a Watch 
 ## Highlights
 
 - **Find your way in seconds** — iPhone/iPad: a Liquid Glass tab bar (Today · Workouts · Plans · Insights ·
-  Search) with the running workout as a "now playing" bar above it; iPad shows programs in the sidebar.
-  Mac: a three-column layout like Notes. **Today** shows what's next with one big Start button.
+  Search) with the running workout as a "now playing" bar above it; iPad shows programs in the sidebar
+  and keeps lists next to the workout or template you pick. Today and Muscles use two columns on wide screens.
+  Mac: a three-column layout like Notes, with live mode in a window of its own next to your plan and
+  history. **Today** shows what's next with one big Start button.
 - **One place to create** — the **+** button starts, plans or logs a workout, creates templates (straight into
   the exercise picker) and programs, or imports a CSV. An interactive tutorial with try-it demos runs on
   first launch (Settings → Show the Tutorial).

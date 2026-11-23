@@ -308,12 +308,15 @@ final class WorkoutManager: NSObject {
             } catch {
                 lastError = error.localizedDescription
             }
+            // With the George session it belongs to: the phone links it by that, also when this
+            // arrives late (after a relaunch, a watchOS-ended recording, or a queued Finish).
             WatchConnector.shared.send(WatchMetrics(
                 heartRate: heartRate,
                 averageHeartRate: averageHeartRate,
                 activeEnergy: activeEnergy,
                 healthWorkoutID: workoutID,
-                endedAt: endDate
+                endedAt: endDate,
+                sessionID: sessionID
             ))
         }
         reset()
@@ -393,7 +396,8 @@ final class WorkoutManager: NSObject {
         WatchConnector.shared.send(WatchMetrics(
             heartRate: heartRate,
             averageHeartRate: averageHeartRate,
-            activeEnergy: activeEnergy
+            activeEnergy: activeEnergy,
+            sessionID: sessionID
         ))
     }
 

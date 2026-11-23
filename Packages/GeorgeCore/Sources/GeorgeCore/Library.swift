@@ -187,11 +187,23 @@ public final class ExerciseCatalog: @unchecked Sendable {
     private let imageBase: String
     private let byID: [String: LibraryExercise]
     private let byName: [String: LibraryExercise]
-    private let searchText: [String: String]
+    /// Per exercise, in `exercises` order: everything a search looks in (folded) …
+    private let searchTexts: [String]
+    /// … its folded name …
+    private let foldedNames: [String]
+    /// … and its place in the alphabetical order of names (ties keep the file's order). Built once,
+    /// so a search sorts by two integers instead of comparing localized names.
+    private let alphabeticalRanks: [Int]
     /// Name and alias words per exercise, for fuzzy matching.
     private let nameTokens: [(exercise: LibraryExercise, tokens: Set<String>)]
     private let lock = NSLock()
     private var fuzzyCache: [String: String] = [:]
+    /// Muscles any exercise trains first, sorted (the muscle filter).
+    public let allMuscles: [String]
+    /// Equipment of the exercises, sorted.
+    public let allEquipment: [String]
+    /// Kinds that have exercises, in display order (the kind filter).
+    public let kinds: [WorkoutKind]
 
     public init(file: LibraryFile) {
         exercises = file.exercises
@@ -208,10 +220,22 @@ public final class ExerciseCatalog: @unchecked Sendable {
         }
         byID = ids
         byName = names
-        searchText = texts
+        let all = file.exercises
+        searchTexts = all.map { texts[$0.id] ?? "" }
+        foldedNames = all.map { ExerciseCatalog.fold($0.name) }
+        let alphabetical = all.indices.sorted { a, b in
+            let order = all[a].name.localizedCaseInsensitiveCompare(all[b].name)
+            return order == .orderedSame ? a < b : order == .orderedAscending
+        }
+        var ranks = [Int](repeating: 0, count: all.count)
+        for (rank, index) in alphabetical.enumerated() { ranks[index] = rank }
+        alphabeticalRanks = ranks
         nameTokens = file.exercises.flatMap { exercise in
             ([exercise.name] + exercise.aliases).map { (exercise: exercise, tokens: ExerciseCatalog.tokens($0)) }
         }
+        allMuscles = Array(Set(all.flatMap(\.primary))).sorted()
+        allEquipment = Array(Set(all.compactMap(\.equipment))).sorted()
+        kinds = Array(Set(all.map(\.kind))).sorted()
     }
 
     public convenience init(data: Data) throws {
@@ -296,41 +320,31 @@ public final class ExerciseCatalog: @unchecked Sendable {
         }
     }
 
-    public var allMuscles: [String] {
-        Array(Set(exercises.flatMap(\.primary))).sorted()
-    }
-
-    public var allEquipment: [String] {
-        Array(Set(exercises.compactMap(\.equipment))).sorted()
-    }
-
-    public var kinds: [WorkoutKind] {
-        Array(Set(exercises.map(\.kind))).sorted()
-    }
-
-    /// Simple ranked search: every word must match; name prefix matches rank first.
+    /// Simple ranked search: every word must match; name prefix matches rank first, then A–Z.
     public func search(_ query: String, kind: WorkoutKind? = nil, muscle: String? = nil, equipment: String? = nil, limit: Int = 400) -> [LibraryExercise] {
         let words = ExerciseCatalog.fold(query).split(separator: " ").map(String.init)
-        var scored: [(Int, LibraryExercise)] = []
-        for exercise in exercises {
+        let phrase = words.joined(separator: " ")
+        // (score, alphabetical rank, index): integers only – the order of names was worked out once.
+        var scored: [(score: Int, rank: Int, index: Int)] = []
+        for (index, exercise) in exercises.enumerated() {
             if let kind, exercise.kind != kind { continue }
             if let muscle, !exercise.primary.contains(muscle) && !exercise.secondary.contains(muscle) { continue }
             if let equipment, exercise.equipment != equipment { continue }
             if words.isEmpty {
-                scored.append((0, exercise))
+                scored.append((0, alphabeticalRanks[index], index))
                 continue
             }
-            let haystack = searchText[exercise.id] ?? ""
+            let haystack = searchTexts[index]
             guard words.allSatisfy({ haystack.contains($0) }) else { continue }
-            let name = ExerciseCatalog.fold(exercise.name)
+            let name = foldedNames[index]
             var score = 3
-            if name == words.joined(separator: " ") { score = 0 }
+            if name == phrase { score = 0 }
             else if name.hasPrefix(words[0]) { score = 1 }
-            else if name.contains(words.joined(separator: " ")) { score = 2 }
-            scored.append((score, exercise))
+            else if name.contains(phrase) { score = 2 }
+            scored.append((score, alphabeticalRanks[index], index))
         }
-        scored.sort { a, b in a.0 != b.0 ? a.0 < b.0 : a.1.name.localizedCaseInsensitiveCompare(b.1.name) == .orderedAscending }
-        return Array(scored.prefix(limit).map(\.1))
+        scored.sort { a, b in a.score != b.score ? a.score < b.score : a.rank < b.rank }
+        return scored.prefix(limit).map { exercises[$0.index] }
     }
 }
 

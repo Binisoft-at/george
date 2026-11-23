@@ -92,8 +92,8 @@ extension GeorgeStore {
     /// How long the template's last performed workouts took (seconds, the most recent first).
     func recentDurations(ofTemplate templateID: UUID?, excluding sessionID: UUID? = nil) -> [Double] {
         guard let templateID else { return [] }
-        return fetchSessions()
-            .filter { $0.templateID == templateID && $0.id != sessionID && $0.status.isPerformed && $0.durationSeconds > 0 }
+        return fetchPerformedSessions(scalarsOnly: true)
+            .filter { $0.templateID == templateID && $0.id != sessionID && $0.durationSeconds > 0 }
             .sorted { $0.date > $1.date }
             .prefix(5)
             .map(\.durationSeconds)
@@ -102,8 +102,7 @@ extension GeorgeStore {
     /// When the last performed workout started (its time of day becomes a bare day's start).
     func lastPerformedStart() -> Date? {
         let cal = calendar
-        return fetchSessions()
-            .filter { $0.status.isPerformed }
+        return fetchPerformedSessions(scalarsOnly: true)
             .compactMap(\.startedAt)
             .filter { !PastLog.isBareDay($0, calendar: cal) }
             .max()
@@ -201,10 +200,13 @@ extension GeorgeStore {
         suggestedTemplate(in: activeProgram, on: date)
     }
 
-    /// Workouts done today, the latest first.
-    func performedToday() -> [WorkoutSession] {
-        fetchSessions()
-            .filter { $0.status.isPerformed && calendar.isDateInToday($0.date) }
+    /// Workouts done today, the latest first. Callers use `performedToday()` (GeorgeStore+Caches),
+    /// which keeps the answer until the log or the day changes.
+    func uncachedPerformedToday() -> [WorkoutSession] {
+        let cal = calendar
+        // Only today's workouts are fetched, not the whole log.
+        return fetchSessions(datedFrom: cal.startOfDay(for: Date()))
+            .filter { $0.status.isPerformed && cal.isDateInToday($0.date) }
             .sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
     }
 
@@ -218,16 +220,17 @@ extension GeorgeStore {
     }
 
     func nextUp(after day: Date = Date()) -> NextUp? {
-        let start = calendar.startOfDay(for: day)
+        let cal = calendar
+        let start = cal.startOfDay(for: day)
         let planned = fetchPlannedSessions().filter { !isBlankPlan($0) }
         let program = activeProgram
         let templates = program?.orderedTemplates ?? []
         for offset in 1...7 {
-            let date = calendar.addingDays(offset, to: start)
-            if let session = planned.filter({ calendar.isDate(plannedDay(of: $0), inSameDayAs: date) }).min(by: { $0.createdAt < $1.createdAt }) {
+            let date = cal.addingDays(offset, to: start)
+            if let session = planned.filter({ cal.isDate(plannedDay(of: $0), inSameDayAs: date) }).min(by: { $0.createdAt < $1.createdAt }) {
                 return NextUp(name: displayName(of: session), date: date, template: template(id: session.templateID), session: session)
             }
-            let weekday = calendar.component(.weekday, from: date)
+            let weekday = cal.component(.weekday, from: date)
             if let template = templates.first(where: { $0.scheduleDays.contains(weekday) }) {
                 return NextUp(name: template.name, date: date, template: template, session: nil)
             }
@@ -281,6 +284,8 @@ extension GeorgeStore {
         // Templates with nothing in them yet aren't planned.
         let templates = program.orderedTemplates.filter(\.isPlannable)
         guard !templates.isEmpty else { return [] }
+        // Read once: the loops below use it for every workout and training day.
+        let calendar = self.calendar
         let start = calendar.startOfDay(for: day)
         let end = calendar.addingDays(days, to: start)
         let weekStart = calendar.weekStart(for: start)
@@ -288,7 +293,8 @@ extension GeorgeStore {
         let busyFrom = min(weekStart, calendar.addingDays(-1, to: start))
         // Planned days count toward their week's goal – this week's and next week's in full.
         let plannedUntil = calendar.addingWeeks(1, to: calendar.weekStart(for: calendar.addingDays(-1, to: end)))
-        let sessions = fetchSessions().filter { $0.status != .skipped }
+        // Only workouts from `busyFrom` on, without their content.
+        let sessions = fetchSessions(datedFrom: busyFrom, scalarsOnly: true).filter { $0.status != .skipped }
         var busy = Set<Date>()
         var plannedDays = Set<Date>()
         for session in sessions {
@@ -341,17 +347,18 @@ extension GeorgeStore {
     }
 
     func dayMarks(for week: CurrentWeek) -> [Date: DayMark] {
-        let today = calendar.startOfDay(for: Date())
+        let cal = calendar
+        let today = cal.startOfDay(for: Date())
         let planned = fetchPlannedSessions().filter { !isBlankPlan($0) }
         let templates = activeProgram?.orderedTemplates ?? []
         func initial(_ name: String) -> String {
             name.trimmingCharacters(in: .whitespacesAndNewlines).first.map { String($0).uppercased() } ?? "•"
         }
         var result: [Date: DayMark] = [:]
-        for dot in week.dots where !dot.didWorkout && calendar.startOfDay(for: dot.date) >= today {
-            if let session = planned.first(where: { calendar.isDate(plannedDay(of: $0), inSameDayAs: dot.date) }) {
+        for dot in week.dots where !dot.didWorkout && cal.startOfDay(for: dot.date) >= today {
+            if let session = planned.first(where: { cal.isDate(plannedDay(of: $0), inSameDayAs: dot.date) }) {
                 result[dot.date] = DayMark(initial: initial(displayName(of: session)), isPlanned: true)
-            } else if let template = templates.first(where: { $0.scheduleDays.contains(calendar.component(.weekday, from: dot.date)) }) {
+            } else if let template = templates.first(where: { $0.scheduleDays.contains(cal.component(.weekday, from: dot.date)) }) {
                 result[dot.date] = DayMark(initial: initial(template.name), isPlanned: false, templateID: template.id)
             }
         }
@@ -363,20 +370,21 @@ extension GeorgeStore {
     /// Training days in the next `days` days (start of day → workout name): planned sessions, else the
     /// active program's template on that weekday. Days already trained are left out.
     func reminderWorkouts(days: Int = 7) -> [Date: String] {
-        let start = calendar.startOfDay(for: Date())
-        let end = calendar.addingDays(days, to: start)
+        let cal = calendar
+        let start = cal.startOfDay(for: Date())
+        let end = cal.addingDays(days, to: start)
         let trainedToday = !performedToday().isEmpty
         var result: [Date: String] = [:]
         for session in fetchPlannedSessions().sorted(by: { $0.createdAt < $1.createdAt }) where !isBlankPlan(session) {
-            let day = calendar.startOfDay(for: plannedDay(of: session))
+            let day = cal.startOfDay(for: plannedDay(of: session))
             guard day >= start, day < end, result[day] == nil else { continue }
             result[day] = displayName(of: session)
         }
         let templates = activeProgram?.orderedTemplates ?? []
         for offset in 0..<days {
-            let day = calendar.addingDays(offset, to: start)
+            let day = cal.addingDays(offset, to: start)
             guard result[day] == nil else { continue }
-            let weekday = calendar.component(.weekday, from: day)
+            let weekday = cal.component(.weekday, from: day)
             if let template = templates.first(where: { $0.scheduleDays.contains(weekday) }) {
                 result[day] = template.name
             }

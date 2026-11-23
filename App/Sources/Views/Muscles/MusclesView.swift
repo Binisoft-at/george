@@ -45,7 +45,6 @@ struct MusclesView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Query private var sessions: [WorkoutSession]
     @AppStorage("muscleMetric") private var metric: MuscleMetric = .freshness
     @State private var range: MuscleRange = .month
     @State private var offset = 0
@@ -54,6 +53,8 @@ struct MusclesView: View {
     @State private var sortAscending = true
     /// Computed off the main thread whenever the inputs change (see `valuesKey`).
     @State private var values: [MuscleValue] = []
+    /// 760 pt or wider (Mac, iPad): two columns. Read from the screen's width.
+    @State private var isWide = PlatformInfo.isMac
 
     /// Everything the list depends on.
     private struct ValuesKey: Hashable {
@@ -71,7 +72,7 @@ struct MusclesView: View {
     var body: some View {
         let target = store.profile.weeklySets
         let key = ValuesKey(metric: metric, range: range, offset: offset, dayOffset: dayOffset, engine: analytics.engineKey,
-                            sessionCount: sessions.count, targetLow: target.lowerBound, targetHigh: target.upperBound,
+                            sessionCount: store.historyRevision, targetLow: target.lowerBound, targetHigh: target.upperBound,
                             unit: store.unit.rawValue)
         let visible = values
             .filter { bucketFilter == nil || $0.bucket == bucketFilter }
@@ -79,51 +80,31 @@ struct MusclesView: View {
             .sorted { sortAscending ? $0.sortKey < $1.sortKey : $0.sortKey > $1.sortKey }
         let colors = Dictionary(values.map { ($0.group, $0.color) }, uniquingKeysWith: { a, _ in a })
 
-        NavList {
-            Section {
-                MuscularLoadCard()
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
-
-            Section {
-                metricPicker
-                BodyMapPair(fill: { colors[$0] ?? MusclePalette.empty }, onTap: { router.open(.muscle($0.rawValue)) })
-                    .frame(height: 300)
-                    .padding(.vertical, 8)
-                bucketChips
-                periodControl
-            }
-            .listRowSeparator(.hidden)
-
-            Section {
-                ForEach(visible) { value in
-                    DetailLink(.muscle(value.group.rawValue)) {
-                        MuscleRow(value: value)
+        Group {
+            if isWide {
+                // Mac and iPad: controls and a taller body map on the left, the muscles on the right.
+                HStack(alignment: .top, spacing: 0) {
+                    List {
+                        controlsSection(colors: colors, wide: true)
                     }
-                }
-                if visible.isEmpty {
-                    Text(metric == .freshness ? "No muscles match this filter." : "No training in this period.")
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                HStack {
-                    Text(bucketFilter ?? "All Muscles")
-                    Spacer()
-                    Button {
-                        sortAscending.toggle()
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
+                    .groupedList()
+                    .frame(width: 420)
+                    NavList {
+                        loadSection
+                        musclesSection(visible)
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Reverse order")
-                    .help("Reverse order")
+                    .groupedList()
                 }
-            } footer: {
-                Text(footer)
+            } else {
+                NavList {
+                    loadSection
+                    controlsSection(colors: colors, wide: false)
+                    musclesSection(visible)
+                }
+                .groupedList()
             }
         }
-        .groupedList()
+        .onGeometryChange(for: Bool.self) { $0.size.width >= 760 } action: { isWide = $0 }
         .navigationTitle("Muscles")
         .onChange(of: metric) { _, newMetric in
             bucketFilter = nil
@@ -139,6 +120,58 @@ struct MusclesView: View {
             let computed = await Task.detached(priority: .userInitiated) { MuscleValues.compute(input) }.value
             guard !Task.isCancelled else { return }
             values = computed
+        }
+    }
+
+    // MARK: Sections
+
+    private var loadSection: some View {
+        Section {
+            MuscularLoadCard()
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+    }
+
+    /// Metric, body map, filter chips and period. Two columns: a taller map.
+    private func controlsSection(colors: [MuscleGroup: Color], wide: Bool) -> some View {
+        Section {
+            metricPicker
+            BodyMapPair(fill: { colors[$0] ?? MusclePalette.empty }, onTap: { router.open(.muscle($0.rawValue)) })
+                .frame(height: wide ? 420 : 300)
+                .padding(.vertical, 8)
+            bucketChips
+            periodControl
+        }
+        .listRowSeparator(.hidden)
+    }
+
+    private func musclesSection(_ visible: [MuscleValue]) -> some View {
+        Section {
+            ForEach(visible) { value in
+                DetailLink(.muscle(value.group.rawValue)) {
+                    MuscleRow(value: value)
+                }
+            }
+            if visible.isEmpty {
+                Text(metric == .freshness ? "No muscles match this filter." : "No training in this period.")
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            HStack {
+                Text(bucketFilter ?? "All Muscles")
+                Spacer()
+                Button {
+                    sortAscending.toggle()
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Reverse order")
+                .help("Reverse order")
+            }
+        } footer: {
+            Text(footer)
         }
     }
 

@@ -115,8 +115,10 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     @ObservationIgnored private var liveIsFromPhone = false
     @ObservationIgnored private var lastLiveMessageAt: Date?
     @ObservationIgnored private var lastPhoneDataAt: Date?
-    /// Workouts that ended (on the phone or here). Late live states for them are ignored.
-    @ObservationIgnored private var closedSessionIDs: Set<UUID> = []
+    /// Workouts that ended (on the phone or here), with when. Late live states for them are ignored.
+    /// One the phone ended is reopened by a snapshot the phone made after that (it runs it again:
+    /// continued back on this iPhone from another device); one ended here never is (`distantFuture`).
+    @ObservationIgnored private var closedSessionIDs: [UUID: Date] = [:]
     @ObservationIgnored private var outbox: [(packet: WirePacket, policy: DeliveryPolicy)] = []
     @ObservationIgnored private var lastSnapshotRequestAt: Date?
     @ObservationIgnored private var alarmTask: Task<Void, Never>?
@@ -518,6 +520,12 @@ final class WatchConnector: NSObject, WCSessionDelegate {
         if let current = snapshot, incoming.generatedAt < current.generatedAt { return }
         snapshot = incoming
         if origin == .phone { lastPhoneDataAt = Date() }
+        // The phone runs a workout again that it had ended here (continued back on it from another
+        // device): a snapshot it made after that reopens it.
+        if origin == .phone, let id = incoming.live?.sessionID, let closedAt = closedSessionIDs[id],
+           incoming.generatedAt > closedAt {
+            closedSessionIDs[id] = nil
+        }
         if shouldAdoptLive(from: incoming) {
             let adopted = openState(incoming.live)
             if origin == .phone { noticeRemoteProgress(from: live, to: adopted) }
@@ -533,7 +541,7 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     }
 
     private func applyLive(_ incoming: WatchLiveState) {
-        guard !closedSessionIDs.contains(incoming.sessionID) else { return }
+        guard closedSessionIDs[incoming.sessionID] == nil else { return }
         let now = Date()
         lastLiveMessageAt = now
         lastPhoneDataAt = now
@@ -558,13 +566,13 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     }
 
     private func openState(_ state: WatchLiveState?) -> WatchLiveState? {
-        guard let state, !closedSessionIDs.contains(state.sessionID) else { return nil }
+        guard let state, closedSessionIDs[state.sessionID] == nil else { return nil }
         return state
     }
 
     private func setLive(_ newValue: WatchLiveState?) {
-        if let old = live, old.sessionID != newValue?.sessionID {
-            closedSessionIDs.insert(old.sessionID)
+        if let old = live, old.sessionID != newValue?.sessionID, closedSessionIDs[old.sessionID] == nil {
+            closedSessionIDs[old.sessionID] = Date()
         }
         if live != newValue { live = newValue }
         // A live workout arrived: the pending start is answered (or overtaken by one from the phone).
@@ -587,7 +595,8 @@ final class WatchConnector: NSObject, WCSessionDelegate {
     }
 
     private func close(_ sessionID: UUID) {
-        closedSessionIDs.insert(sessionID)
+        // Finished or discarded here: never reopened by a phone snapshot that crossed with it.
+        closedSessionIDs[sessionID] = .distantFuture
         setLive(nil)
         saveCache()
     }

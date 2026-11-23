@@ -19,8 +19,12 @@ final class MuscleAnalytics {
     /// Everything the engine is built from; views use it as their `.task(id:)` so they recompute
     /// exactly when the analytics change.
     struct EngineKey: Hashable {
+        /// The history index's version: moves only when performed workouts really changed (not with
+        /// template edits, plans, settings or a running workout's sets).
         var revision: Int
         var libraryCount: Int
+        var firstWeekday: Int
+        var setCeiling: Double
         var recoveryScale: Double
         var bandLow: Double
         var bandHigh: Double
@@ -64,8 +68,10 @@ final class MuscleAnalytics {
         let band = profile.loadRatioBand
         let countsOtherSports = health != nil && self.countsOtherSports
         return EngineKey(
-            revision: store.revision,
+            revision: SessionHistory.shared.version(store),
             libraryCount: library.catalog.exercises.count,
+            firstWeekday: store.settings.weekStartsOn,
+            setCeiling: Double(profile.weeklySets.upperBound),
             // Recovery takes a little longer with age (Settings → Your Profile).
             recoveryScale: profile.recoveryScale,
             bandLow: band.lowerBound,
@@ -92,7 +98,7 @@ final class MuscleAnalytics {
         // A jump over the usual week only warns when a muscle got more than the profile's weekly target.
         let engine = MuscleEngine(events: events, calendar: store.calendar, recoveryScale: key.recoveryScale,
                                   loadBand: key.bandLow...key.bandHigh,
-                                  setCeiling: Double(store.profile.weeklySets.upperBound))
+                                  setCeiling: key.setCeiling)
         cachedEngine = engine
         cachedKey = key
         return engine
@@ -123,47 +129,139 @@ final class MuscleAnalytics {
             .filter { $0.status != .recovered }
             .sorted { $0.freshness < $1.freshness }
     }
+
+    // MARK: Muscular load
+
+    private struct LoadSummaryKey: Hashable {
+        var group: MuscleGroup?
+        var days: Int
+        var day: Date
+    }
+
+    /// Load summaries of the current engine (`loadSummary(group:days:now:)`).
+    @ObservationIgnored private var loadSummaries: (key: EngineKey, values: [LoadSummaryKey: LoadSummary])?
+
+    /// The engine's muscular load (whole body or one muscle), kept per muscle, days and day while the
+    /// engine stays the same: the load card, the muscle detail and every exercise's progression chip in
+    /// live mode ask for the same ones on each redraw. It only depends on the day of `now`.
+    func loadSummary(group: MuscleGroup? = nil, days: Int = 30, now: Date = Date()) -> LoadSummary {
+        let engine = self.engine
+        guard let engineKey = cachedKey else { return engine.loadSummary(group: group, days: days, now: now) }
+        let key = LoadSummaryKey(group: group, days: days, day: engine.calendar.startOfDay(for: now))
+        var values = loadSummaries?.key == engineKey ? (loadSummaries?.values ?? [:]) : [:]
+        if let hit = values[key] { return hit }
+        let summary = engine.loadSummary(group: group, days: days, now: now)
+        if values.count >= 64 { values.removeAll() }
+        values[key] = summary
+        loadSummaries = (key: engineKey, values: values)
+        return summary
+    }
 }
 
 // MARK: - History index
 
-/// The performed sessions as plain records, decoded once per store revision and shared by the
-/// muscle engine, the Progress tab, exercise history and "last time" lookups.
+/// The performed sessions as plain records, shared by the muscle engine, the Progress tab, exercise
+/// history and "last time" lookups. Checked when `historyRevision` moves – only the workouts that are
+/// new or changed since are decoded (`HistoryIndex`); the first build decodes on all cores.
 @MainActor
 final class SessionHistory {
     static let shared = SessionHistory()
 
-    private var cached: [SessionRecord] = []
-    private var efforts: [UUID: Int] = [:]
+    private var index = HistoryIndex()
     private var cachedRevision = -1
     private var cachedStore: ObjectIdentifier?
+    /// Moves whenever the records change (also when the index changes stores: never repeats).
+    private var currentVersion = 0
 
     /// Performed sessions, oldest first.
     func records(_ store: GeorgeStore) -> [SessionRecord] {
-        let id = ObjectIdentifier(store)
-        if cachedRevision == store.revision, cachedStore == id { return cached }
-        let sessions = store.fetchSessions().filter { $0.status.isPerformed }
-        efforts = Dictionary(sessions.map { ($0.id, $0.effort) }, uniquingKeysWith: { a, _ in a })
-        cached = sessions.map { $0.record() }.sorted { $0.date < $1.date }
-        cachedRevision = store.revision
-        cachedStore = id
-        return cached
+        refresh(store)
+        return index.records
+    }
+
+    /// Moves only when the records really changed – caches built from them key on it (a history
+    /// bump that changed nothing costs one look at the stamps, no rebuild).
+    func version(_ store: GeorgeStore) -> Int {
+        refresh(store)
+        return currentVersion
     }
 
     /// The effort rating (1–10, 0 = none) of a session in the last `records` result.
-    func effort(of sessionID: UUID) -> Int { efforts[sessionID] ?? 0 }
+    func effort(of sessionID: UUID) -> Int { index.effort(of: sessionID) }
+
+    /// Whether the session was performed when the index last looked (a save that makes it planned
+    /// again still changes the history). False while the index belongs to another store.
+    func contains(_ sessionID: UUID, in store: GeorgeStore) -> Bool {
+        cachedStore == ObjectIdentifier(store) && index.contains(sessionID)
+    }
+
+    private func refresh(_ store: GeorgeStore) {
+        let id = ObjectIdentifier(store)
+        let revision = store.historyRevision
+        if cachedRevision == revision, cachedStore == id { return }
+        if cachedStore != id {
+            index = HistoryIndex()
+            currentVersion &+= 1
+        }
+        cachedStore = id
+        cachedRevision = revision
+        if index.isEmpty {
+            // First build: one fetch with the content, decoded on all cores.
+            let sessions = store.fetchPerformedSessions()
+            let contents = WorkoutContent.decodeAll(sessions.map(\.contentData))
+            var entries: [UUID: HistoryIndex.Entry] = [:]
+            var stamps: [UUID: HistoryStamp] = [:]
+            for (session, content) in zip(sessions, contents) {
+                let stamp = session.historyStamp
+                stamps[session.id] = stamp
+                entries[session.id] = HistoryIndex.Entry(stamp: stamp, record: session.record(content: content), effort: session.effort)
+            }
+            if index.update(to: stamps, decode: { _ in entries }) { currentVersion &+= 1 }
+            return
+        }
+        // Later: the stamps without the content; only new and changed workouts are read and decoded.
+        let sessions = store.fetchPerformedSessions(scalarsOnly: true)
+        var byID: [UUID: WorkoutSession] = [:]
+        var stamps: [UUID: HistoryStamp] = [:]
+        for session in sessions {
+            byID[session.id] = session
+            stamps[session.id] = session.historyStamp
+        }
+        let didChange = index.update(to: stamps) { changed in
+            if changed.count > 32 {
+                // Many at once (a big import): one fetch with the content instead of one per workout.
+                for session in store.fetchPerformedSessions() { byID[session.id] = session }
+            }
+            let contents = WorkoutContent.decodeAll(changed.map { byID[$0]?.contentData })
+            var entries: [UUID: HistoryIndex.Entry] = [:]
+            for (sessionID, content) in zip(changed, contents) {
+                guard let session = byID[sessionID] else { continue }
+                entries[sessionID] = HistoryIndex.Entry(stamp: session.historyStamp, record: session.record(content: content), effort: session.effort)
+            }
+            return entries
+        }
+        if didChange { currentVersion &+= 1 }
+    }
 }
 
 // MARK: - Fresh after iCloud
 
-/// Workouts that arrive through iCloud don't go through the store, so nothing bumps its revision:
-/// this bumps it (debounced) after every finished import, and analytics, Progress and "last time"
-/// refresh after a sync.
+/// Workouts that arrive through iCloud don't go through the store's saves: after every finished
+/// import (debounced) this compares a cheap fingerprint of the store and moves only the counters the
+/// import changed – the history for performed workouts, the data for plans, templates and settings,
+/// `liveRevision` for a workout running on another device. A set ticked on the iPhone while the Mac
+/// sits idle doesn't make the Mac rebuild its history, muscles or Today.
 @MainActor
 final class CloudImportRefresher {
+    /// Posted after each import was looked at (the running workout checks whether it ended or moved
+    /// to another device: `LiveWorkoutController.syncedStatusChanged`).
+    static let didRefresh = Notification.Name("George.cloudImportRefreshed")
+
     private let store: GeorgeStore
     private var observer: NSObjectProtocol?
     private var pending: Task<Void, Never>?
+    /// The store as the last import (or the launch) left it.
+    private var fingerprint: SyncFingerprint?
 
     init(store: GeorgeStore) {
         self.store = store
@@ -182,8 +280,12 @@ final class CloudImportRefresher {
             }
         }
         // Copies two devices made before they synced (settings, exercise notes, break weeks): merged
-        // once at launch, then after every import.
-        Task { @MainActor [weak self] in self?.store.resolveDuplicates() }
+        // once at launch, then after every import. The fingerprint the first import is compared with.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.store.resolveDuplicates()
+            if self.fingerprint == nil { self.fingerprint = self.store.syncFingerprint() }
+        }
     }
 
     deinit {
@@ -197,9 +299,24 @@ final class CloudImportRefresher {
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled, let self else { return }
             self.store.resolveDuplicates()
-            self.store.bump()
-            AppLog.info("iCloud import – analytics refreshed", category: "sync")
+            let now = self.store.syncFingerprint()
+            let change = now.changes(since: self.fingerprint)
+            self.fingerprint = now
+            self.store.bump(change)
+            // Ended, deleted or continued elsewhere – also when no counter moved (sets merged in).
+            NotificationCenter.default.post(name: Self.didRefresh, object: self.store)
+            if !change.isEmpty {
+                AppLog.info("iCloud import – refreshed \(Self.describe(change))", category: "sync")
+            }
         }
+    }
+
+    private static func describe(_ change: StoreChange) -> String {
+        var parts: [String] = []
+        if change.contains(.history) { parts.append("history") }
+        if change.contains(.data) { parts.append("data") }
+        if change.contains(.live) { parts.append("running workout") }
+        return parts.joined(separator: ", ")
     }
 }
 

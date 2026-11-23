@@ -66,6 +66,12 @@ enum Prefs {
     static let plateSet = "plateSet"
     /// The running workout started on this device (only this device attaches to it on launch).
     static let liveSessionID = "george.liveSessionID"
+    /// When this device claimed that workout (Start, Continue Here) – compared with a claim synced
+    /// from another device (`LiveOwnership.verdict`).
+    static let liveClaimedAt = "george.liveClaimedAt"
+    /// This install's id for live ownership (`ThisDevice.installID`): made once, never synced as such
+    /// and never the device's name.
+    static let installID = "george.installID"
     /// Settings → Thalia: write finished workouts for Thalia on this device (default on).
     static let thaliaDeliver = "thaliaDeliver"
     /// When George last wrote a Thalia exchange file on this device.

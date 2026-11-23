@@ -41,7 +41,8 @@ and no fractional seconds. Writes are atomic, and the Darwin notification
 The last 62 days are rebuilt from the synced store and only changed days are written (compared
 without `generatedAt`, so unchanged files keep their bytes):
 
-- about 2 s after George saves (store revision),
+- about 2 s after George saves a change (store `revision` / `historyRevision` – not on every set of a
+  running workout),
 - right after an iCloud import (`NSPersistentCloudKitContainer` import event),
 - when George comes to the foreground, and when the day changes.
 

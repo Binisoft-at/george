@@ -33,6 +33,8 @@ final class HealthKitManager {
         var muscles: [String]
         var completedSets: Int
         var volumeKg: Double
+        /// Pauses inside start…end: saved as pause/resume events, so Health's duration leaves them out.
+        var pauses: [PauseSpan] = []
     }
 
     struct HeartRateSummary {
@@ -283,6 +285,15 @@ final class HealthKitManager {
                     if let error { continuation.resume(throwing: error) } else { continuation.resume() }
                 }
             }
+            // Pauses: Apple Health counts only the time in between as the workout's duration.
+            let events = Self.pauseEvents(request.pauses, start: request.start, end: end)
+            if !events.isEmpty {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    builder.addWorkoutEvents(events) { _, error in
+                        if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                    }
+                }
+            }
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 builder.endCollection(withEnd: end) { _, error in
                     if let error { continuation.resume(throwing: error) } else { continuation.resume() }
@@ -308,6 +319,61 @@ final class HealthKitManager {
         #endif
     }
 
+    /// Removes a workout George saved, with the calories and effort score saved with it – the
+    /// iPhone's copy once the watch's own recording of the same workout turned up, or a recording
+    /// of a discarded workout. Health only lets an app remove what it saved itself; anything else
+    /// stays (logged). Returns whether it was removed.
+    @discardableResult
+    func deleteWorkout(id: UUID) async -> Bool {
+        #if os(iOS)
+        guard isAvailable else { return false }
+        let descriptor = HKSampleQueryDescriptor(predicates: [.workout(HKQuery.predicateForObject(with: id))], sortDescriptors: [], limit: 1)
+        guard let workout = try? await descriptor.result(for: healthStore).first else { return false }
+        // The calories it added (Move ring) and its effort score go with it.
+        await deleteObjects(of: HKQuantityType(.activeEnergyBurned), predicate: HKQuery.predicateForObjects(from: workout))
+        await deleteObjects(of: HKQuantityType(.workoutEffortScore),
+                            predicate: HKQuery.predicateForWorkoutEffortSamplesRelated(workout: workout, activity: nil))
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                healthStore.delete(workout) { _, error in
+                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                }
+            }
+            AppLog.info("Removed a duplicate workout from Apple Health", category: "health")
+            return true
+        } catch {
+            AppLog.warning("Apple Health: couldn't remove a workout – \(error.localizedDescription)", category: "health")
+            return false
+        }
+        #else
+        return false
+        #endif
+    }
+
+    /// George's workouts in Apple Health for these sessions, found by the session id in their
+    /// metadata (the newest per session). For links that never arrived from the watch.
+    func workoutIDs(forSessionIDs ids: [UUID]) async -> [UUID: UUID] {
+        #if os(iOS)
+        guard isAvailable, !ids.isEmpty else { return [:] }
+        let predicate = HKQuery.predicateForObjects(withMetadataKey: HealthMetadataKey.sessionID, allowedValues: ids.map(\.uuidString))
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.workout(predicate)],
+            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+            limit: 200
+        )
+        guard let workouts = try? await descriptor.result(for: healthStore) else { return [:] }
+        var found: [UUID: UUID] = [:]
+        for workout in workouts {
+            guard let raw = workout.metadata?[HealthMetadataKey.sessionID] as? String,
+                  let sessionID = UUID(uuidString: raw), found[sessionID] == nil else { continue }
+            found[sessionID] = workout.uuid
+        }
+        return found
+        #else
+        return [:]
+        #endif
+    }
+
     /// Attach an effort score to a workout recorded elsewhere (e.g. by the watch app).
     func relateEffort(_ effort: Int, toWorkoutWithID id: UUID) async {
         #if os(iOS)
@@ -320,6 +386,25 @@ final class HealthKitManager {
     }
 
     #if os(iOS)
+    /// Pause at each pause's start, resume at its end (none for a pause that lasted to the end).
+    private static func pauseEvents(_ pauses: [PauseSpan], start: Date, end: Date) -> [HKWorkoutEvent] {
+        PauseLog.clipped(pauses, from: start, to: end).flatMap { span -> [HKWorkoutEvent] in
+            var events = [HKWorkoutEvent(type: .pause, dateInterval: DateInterval(start: span.start, duration: 0), metadata: nil)]
+            if let resumed = span.end {
+                events.append(HKWorkoutEvent(type: .resume, dateInterval: DateInterval(start: resumed, duration: 0), metadata: nil))
+            }
+            return events
+        }
+    }
+
+    /// Removes the samples of `type` matching `predicate` that George saved (errors are ignored: what
+    /// can't be removed stays).
+    private func deleteObjects(of type: HKObjectType, predicate: NSPredicate) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            healthStore.deleteObjects(of: type, predicate: predicate) { _, _, _ in continuation.resume() }
+        }
+    }
+
     private func relateEffort(_ effort: Int, to workout: HKWorkout) async {
         let sample = HKQuantitySample(
             type: HKQuantityType(.workoutEffortScore),

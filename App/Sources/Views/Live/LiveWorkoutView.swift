@@ -26,6 +26,9 @@ struct LiveWorkoutView: View {
     @State private var showCoachSettings = false
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
+    #else
+    /// Mac: live mode is a window of its own (LiveWindow.swift).
+    @Environment(\.dismissWindow) private var dismissWindow
     #endif
     @State private var showReorder = false
     @State private var history: ExerciseHistoryRequest?
@@ -67,7 +70,8 @@ struct LiveWorkoutView: View {
         }
         .task {
             // Opened by such a request: the flag was set in the same tick as live mode itself, so the
-            // changes above never fire. Wait until the cover (or Mac sheet) is up, then open it.
+            // changes above never fire. Wait until the cover (or the Mac's workout window) is up, then
+            // open it.
             guard live.finishRequest || live.discardRequest || live.requestAddExercise else { return }
             try? await Task.sleep(nanoseconds: 450_000_000)
             consumeRequests()
@@ -98,17 +102,14 @@ struct LiveWorkoutView: View {
             LiveSwapSheet(itemID: wrapper.id)
                 .presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: Binding(get: { live.showPanel }, set: { live.showPanel = $0 })) {
-            LivePanelSheet(onFinish: {
-                live.showPanel = false
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 450_000_000)
-                    showFinish = true
-                }
-            })
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        }
+        // Pace & Controls: a sheet on iPhone/iPad, a column next to live mode on the Mac.
+        .modifier(LivePanelPresentation(onFinish: {
+            live.showPanel = false
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                showFinish = true
+            }
+        }))
         .sheet(isPresented: $showFinish) {
             FinishWorkoutSheet()
                 .presentationDetents([.medium, .large])
@@ -160,6 +161,13 @@ struct LiveWorkoutView: View {
             Text(live.discardKeepsSavedPart ? "The earlier sets stay saved." : "Nothing is saved and it won't count toward your streak.")
         }
         .onAppear { if !LaunchOptions.current.isDemo { live.requestNotificationPermission() } }
+        #if os(macOS)
+        // The workout ended (finished, discarded, ended elsewhere): its sheets close first, so the
+        // window can close after them (a window with a sheet on it can't close).
+        .onChange(of: live.isActive) { _, active in
+            if !active { closePresentations() }
+        }
+        #endif
         .background {
             // Keyboard: ←/→ look at the previous/next exercise, ⌥←/⌥→ move the plan's thread.
             Group {
@@ -172,6 +180,24 @@ struct LiveWorkoutView: View {
             .accessibilityHidden(true)
         }
     }
+
+    #if os(macOS)
+    private func closePresentations() {
+        showFinish = false
+        showEditor = false
+        showAdd = false
+        confirmDiscard = false
+        editingSet = nil
+        valuePad = nil
+        tutorial = nil
+        dropRequest = nil
+        swapItem = nil
+        showCoachSettings = false
+        showReorder = false
+        history = nil
+        live.showPanel = false
+    }
+    #endif
 
     /// Opens what was asked for from outside live mode and clears the request, so the next one
     /// (another Finish… from the menu bar) works again.
@@ -199,17 +225,7 @@ struct LiveWorkoutView: View {
     private func topBar(_ session: WorkoutSession) -> some View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
-                Button {
-                    live.isPresented = false
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.headline)
-                        .frame(width: 40, height: 40)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .keyboardShortcut(.escape, modifiers: [])
-                .accessibilityLabel("Minimise")
+                hideButton
 
                 VStack(spacing: 2) {
                     Text(session.title)
@@ -234,6 +250,9 @@ struct LiveWorkoutView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
+                #if os(iOS)
+                // Pull the title down to minimise (a full-screen cover; on the Mac a drag here moved
+                // the content inside the window).
                 .gesture(
                     DragGesture()
                         .onChanged { dragOffset = $0.translation.height }
@@ -242,6 +261,7 @@ struct LiveWorkoutView: View {
                             withAnimation(.snappy) { dragOffset = 0 }
                         }
                 )
+                #endif
 
                 Button {
                     showAdd = true
@@ -269,6 +289,39 @@ struct LiveWorkoutView: View {
         }
         .padding(.horizontal)
         .padding(.top, 8)
+    }
+
+    /// Minimise live mode (iPhone/iPad) or close its window (Mac) – the workout keeps running; the
+    /// bar at the bottom brings it back.
+    private var hideButton: some View {
+        Button {
+            #if os(macOS)
+            dismissWindow(id: LiveWindow.id)
+            #else
+            live.isPresented = false
+            #endif
+        } label: {
+            Image(systemName: hideSymbol)
+                .font(.headline)
+                .frame(width: 40, height: 40)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        #if os(iOS)
+        .keyboardShortcut(.escape, modifiers: [])
+        .accessibilityLabel("Minimise")
+        #else
+        .accessibilityLabel("Hide live mode")
+        .help("Hide live mode – the workout keeps running")
+        #endif
+    }
+
+    private var hideSymbol: String {
+        #if os(macOS)
+        return "arrow.down.right.and.arrow.up.left"
+        #else
+        return "chevron.down"
+        #endif
     }
 
     private var menu: some View {
@@ -558,14 +611,14 @@ struct LiveExerciseCard: View {
     @Environment(ExerciseLibrary.self) private var library
     @Environment(GeorgeStore.self) private var store
     @Environment(\.liveActions) private var actions
-    @Query private var userExercises: [UserExercise]
 
-    /// The user's own notes and links for this exercise ("Seat 4, red band").
+    /// The user's own notes and links for this exercise ("Seat 4, red band"), from one index for all
+    /// cards (kept per revision) – no query per card that refetches on every tick.
     private var userEntry: UserExercise? {
         let key = item.exerciseID ?? library.exercise(for: item)?.id
         guard let key else { return nil }
         // Two devices' copies (before they're merged): the one with notes or links, then the newest.
-        return UserExercise.preferred(userExercises, key: key)
+        return store.userExercise(forKey: key)
     }
 
     var body: some View {
@@ -749,7 +802,8 @@ struct ProgressionChip: View {
     private func currentLoadStatus() -> LoadStatus? {
         let order: [LoadStatus] = [.calibrating, .detraining, .peaking, .maintaining, .productive, .fatigued, .overtraining]
         let groups = analytics.contributions(for: item).filter { $0.weight >= 1 }.map(\.group)
-        let statuses = groups.map { analytics.engine.loadSummary(group: $0, days: 1).current.status }
+        // Kept per muscle and day by the analytics (the chip of every exercise asks).
+        let statuses = groups.map { analytics.loadSummary(group: $0, days: 1).current.status }
         return statuses.max { (order.firstIndex(of: $0) ?? 0) < (order.firstIndex(of: $1) ?? 0) }
     }
 
@@ -800,6 +854,8 @@ struct LiveSetRow: View {
     @Environment(LiveWorkoutController.self) private var live
     @Environment(\.liveActions) private var actions
     @AppStorage(Prefs.motivation) private var motivationRaw = MotivationStyle.full.rawValue
+    /// Mac: the keypad, as a popover on the set's numbers.
+    @State private var pad: ValuePadRequest?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -829,10 +885,11 @@ struct LiveSetRow: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { actions.editValue(set.id, item.id, primaryField) }
+                .onTapGesture { openPad() }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isButton)
-                .accessibilityAction { actions.editValue(set.id, item.id, primaryField) }
+                .accessibilityAction { openPad() }
+                .modifier(ValuePadPopover(request: $pad))
                 Spacer(minLength: 4)
                 CheckButton(isDone: set.isDone, isCurrent: isCurrent, burst: (MotivationStyle(rawValue: motivationRaw) ?? .full) == .full,
                             label: "\(item.name), set \(item.displayIndex(of: set)) of \(item.sets.count), \(set.label(mode: item.mode, unit: live.unit))") {
@@ -914,6 +971,14 @@ struct LiveSetRow: View {
         case .time: return .seconds
         case .distance: return .meters
         }
+    }
+
+    private func openPad() {
+        #if os(macOS)
+        pad = ValuePadRequest(setID: set.id, itemID: item.id, field: primaryField)
+        #else
+        actions.editValue(set.id, item.id, primaryField)
+        #endif
     }
 }
 
@@ -1002,6 +1067,8 @@ struct ValueTiles: View {
     let set: WorkoutSet
     @Environment(LiveWorkoutController.self) private var live
     @Environment(\.liveActions) private var actions
+    /// Mac: the keypad, as a popover on the tile that was clicked.
+    @State private var pad: ValuePadRequest?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -1010,11 +1077,30 @@ struct ValueTiles: View {
                     text: text(for: field),
                     caption: caption(for: field),
                     accessibilityName: accessibilityName(for: field),
-                    onTap: { actions.editValue(set.id, item.id, field) },
+                    onTap: { openPad(field) },
                     onStep: { steps in step(field, by: steps) }
                 )
+                .modifier(ValuePadPopover(request: padBinding(for: field)))
             }
         }
+    }
+
+    private func openPad(_ field: SetField) {
+        #if os(macOS)
+        pad = ValuePadRequest(setID: set.id, itemID: item.id, field: field)
+        #else
+        actions.editValue(set.id, item.id, field)
+        #endif
+    }
+
+    /// The popover stays on the tile it was opened from (the pad switches fields inside).
+    private func padBinding(for field: SetField) -> Binding<ValuePadRequest?> {
+        Binding(
+            get: { pad?.field == field ? pad : nil },
+            set: { newValue in
+                if newValue != nil || pad?.field == field { pad = newValue }
+            }
+        )
     }
 
     private var fields: [SetField] {
@@ -1305,6 +1391,17 @@ struct SupersetCell: View {
     let isCurrent: Bool
     @Environment(LiveWorkoutController.self) private var live
     @Environment(\.liveActions) private var actions
+    /// Mac: the keypad, as a popover on the cell.
+    @State private var pad: ValuePadRequest?
+
+    private func openPad() {
+        let field: SetField = item.mode == .reps ? .reps : (item.mode == .time ? .seconds : .meters)
+        #if os(macOS)
+        pad = ValuePadRequest(setID: set.id, itemID: item.id, field: field)
+        #else
+        actions.editValue(set.id, item.id, field)
+        #endif
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -1316,7 +1413,8 @@ struct SupersetCell: View {
                 .foregroundStyle(set.isDone || isCurrent ? Color.primary : Color.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
-                .onTapGesture { actions.editValue(set.id, item.id, item.mode == .reps ? .reps : (item.mode == .time ? .seconds : .meters)) }
+                .onTapGesture { openPad() }
+                .modifier(ValuePadPopover(request: $pad))
             Button {
                 live.toggleSet(set.id)
             } label: {

@@ -77,8 +77,16 @@ final class LiveActivityBridge {
 
     // MARK: Widgets
 
+    /// The controller just wrote a snapshot built after everything so far (`syncWatch` at the end of
+    /// Start and detach): a refresh asked for before it isn't needed – the snapshot isn't built twice.
+    func widgetsWritten() {
+        widgetRefresh?.cancel()
+        widgetRefresh = nil
+    }
+
     /// Rebuilds the widget snapshot once the current change has settled (after `end`, the
-    /// controller first detaches and saves – the snapshot must see that).
+    /// controller first detaches and saves – the snapshot must see that). When the controller writes
+    /// one itself in the same turn (`widgetsWritten`), that one is used.
     private func refreshWidgetsSoon() {
         widgetRefresh?.cancel()
         widgetRefresh = Task { @MainActor in

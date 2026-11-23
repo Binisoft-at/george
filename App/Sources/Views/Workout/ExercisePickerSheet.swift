@@ -14,7 +14,6 @@ struct ExercisePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var customExercises: [UserExercise]
-    @Query(sort: \WorkoutSession.updatedAt, order: .reverse) private var recentSessions: [WorkoutSession]
 
     @State private var query = ""
     @State private var kindFilter: WorkoutKind?
@@ -22,6 +21,26 @@ struct ExercisePickerSheet: View {
     @State private var selected: [LibraryExercise] = []
     @State private var asGroup = false
     @State private var didSetDefaultKind = false
+    /// The search's result, worked out when the search changes – not on every redraw or tap.
+    @State private var results: [LibraryExercise] = []
+    /// What `results` was searched with.
+    @State private var searchedKey: SearchKey?
+    /// Exercises of the last workouts, read once when the sheet opens.
+    @State private var recent: [LibraryExercise] = []
+
+    /// Everything the result list depends on.
+    private struct SearchKey: Hashable {
+        var query: String
+        var kind: WorkoutKind?
+        var muscle: String?
+        var customCount: Int
+        var libraryCount: Int
+    }
+
+    private var searchKey: SearchKey {
+        SearchKey(query: trimmedQuery, kind: kindFilter, muscle: muscleFilter,
+                  customCount: customExercises.count, libraryCount: library.catalog.exercises.count)
+    }
 
     var body: some View {
         NavigationStack {
@@ -104,6 +123,9 @@ struct ExercisePickerSheet: View {
                     }
                 }
             }
+            .task(id: searchKey) { await runSearch(searchKey) }
+            // Once – again only if the library finishes loading while the sheet is open.
+            .task(id: library.isLoaded) { loadRecent() }
         }
         .macSheet(width: 520, height: 640)
     }
@@ -199,8 +221,16 @@ struct ExercisePickerSheet: View {
 
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    private var results: [LibraryExercise] {
-        library.search(trimmedQuery, kind: kindFilter, muscle: muscleFilter, equipment: nil, custom: customExercises)
+    /// Searches when the query, a filter or the library changes. Typing waits for a short pause
+    /// (one search per word, not per letter); filters and the first list come at once.
+    private func runSearch(_ key: SearchKey) async {
+        guard key != searchedKey else { return }
+        if searchedKey != nil && !key.query.isEmpty {
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+        }
+        results = library.search(key.query, kind: key.kind, muscle: key.muscle, equipment: nil, custom: customExercises)
+        searchedKey = key
     }
 
     private var resultsTitle: String {
@@ -208,11 +238,20 @@ struct ExercisePickerSheet: View {
         return trimmedQuery.isEmpty ? "All Exercises" : "Results · \(results.count)"
     }
 
-    /// Exercises from recent sessions, resolved against the library when possible.
-    private var recent: [LibraryExercise] {
+    /// Exercises from the last 15 workouts done, resolved against the library when possible. Fetched
+    /// once (newest first, at most 15) instead of watching every workout with its stored sets.
+    private func loadRecent() {
+        let completed = SessionStatus.completed.rawValue
+        let partial = SessionStatus.partial.rawValue
+        var descriptor = FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.statusRaw == completed || $0.statusRaw == partial },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 15
+        let sessions = (try? modelContext.fetch(descriptor)) ?? []
         var seen = Set<String>()
         var result: [LibraryExercise] = []
-        for session in recentSessions.prefix(15) {
+        for session in sessions {
             for item in session.content.allItems where !seen.contains(item.exerciseKey) {
                 seen.insert(item.exerciseKey)
                 if let match = library.exercise(for: item) {
@@ -220,10 +259,13 @@ struct ExercisePickerSheet: View {
                 } else {
                     result.append(LibraryExercise(id: item.exerciseKey, name: item.name, kind: item.kind ?? session.kind, mode: item.mode, perSide: item.perSide))
                 }
-                if result.count >= 12 { return result }
+                if result.count >= 12 {
+                    recent = result
+                    return
+                }
             }
         }
-        return result
+        recent = result
     }
 
     private func toggle(_ exercise: LibraryExercise) {

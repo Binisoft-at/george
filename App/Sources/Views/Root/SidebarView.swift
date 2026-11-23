@@ -9,9 +9,10 @@ struct SidebarView: View {
     @Environment(ToastCenter.self) private var toasts
     @Environment(HealthKitManager.self) private var health
     @Query(sort: \Program.sortIndex) private var programs: [Program]
-    @Query private var sessions: [WorkoutSession]
-    @Query private var templates: [WorkoutTemplate]
-    /// Kept per window – and over the switch between dashboards and lists, which builds the sidebar anew.
+    /// The counts next to the rows: counted by the store when a save or an import changed something –
+    /// not by loading every workout on each tick of a running one.
+    @State private var counts = SidebarCounts()
+    /// Kept per window (the Mac's one split view keeps the sidebar over every switch, and relaunches).
     @SceneStorage("sidebar.showArchived") private var showArchived = false
     @State private var editingProgram: Program?
     @State private var programToDelete: Program?
@@ -25,10 +26,10 @@ struct SidebarView: View {
             }
 
             Section("Workouts") {
-                row(.allSessions, title: "All Workouts", symbol: "list.bullet.rectangle", count: sessions.count)
-                row(.planned, title: "Planned", symbol: "calendar", count: sessions.filter { $0.status == .planned }.count)
-                row(.favorites, title: "Favorites", symbol: "star", count: sessions.filter(\.isFavorite).count)
-                row(.templates, title: "All Templates", symbol: "square.on.square", count: templates.count)
+                row(.allSessions, title: "All Workouts", symbol: "list.bullet.rectangle", count: counts.all)
+                row(.planned, title: "Planned", symbol: "calendar", count: counts.planned)
+                row(.favorites, title: "Favorites", symbol: "star", count: counts.favorites)
+                row(.templates, title: "All Templates", symbol: "square.on.square", count: counts.templates)
                 row(.routines, title: "Stretch & Yoga", symbol: "figure.yoga", count: nil, tint: .teal)
             }
 
@@ -59,7 +60,7 @@ struct SidebarView: View {
             if !usedKinds.isEmpty {
                 Section("By Type") {
                     ForEach(usedKinds) { kind in
-                        row(.kind(kind.rawValue), title: kind.displayName, symbol: kind.symbol, count: sessions.filter { $0.kind == kind }.count, tint: kind.color)
+                        row(.kind(kind.rawValue), title: kind.displayName, symbol: kind.symbol, count: counts.kinds[kind] ?? 0, tint: kind.color)
                     }
                 }
             }
@@ -127,6 +128,9 @@ struct SidebarView: View {
         .refreshable {
             await refreshData()
         }
+        .onChange(of: store.revision, initial: true) {
+            counts = SidebarCounts(context: store.context)
+        }
     }
 
     private func refreshData() async {
@@ -144,7 +148,7 @@ struct SidebarView: View {
     }
 
     private var usedKinds: [WorkoutKind] {
-        Array(Set(sessions.map(\.kind))).sorted()
+        counts.kinds.keys.sorted()
     }
 
     private func movePrograms(from source: IndexSet, to destination: Int) {
@@ -257,5 +261,31 @@ struct SidebarView: View {
         }
         if moved { Haptics.success() }
         return moved
+    }
+}
+
+/// The sidebar's counts, counted by the store – no workout is loaded with its content for them.
+private struct SidebarCounts {
+    var all = 0
+    var planned = 0
+    var favorites = 0
+    var templates = 0
+    var kinds: [WorkoutKind: Int] = [:]
+
+    init() {}
+
+    @MainActor
+    init(context: ModelContext) {
+        let plannedRaw = SessionStatus.planned.rawValue
+        all = (try? context.fetchCount(FetchDescriptor<WorkoutSession>())) ?? 0
+        planned = (try? context.fetchCount(FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.statusRaw == plannedRaw }))) ?? 0
+        favorites = (try? context.fetchCount(FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.isFavorite == true }))) ?? 0
+        templates = (try? context.fetchCount(FetchDescriptor<WorkoutTemplate>())) ?? 0
+        // Each workout's kind only.
+        var byKind = FetchDescriptor<WorkoutSession>()
+        byKind.propertiesToFetch = [\.kindRaw]
+        for session in (try? context.fetch(byKind)) ?? [] {
+            kinds[session.kind, default: 0] += 1
+        }
     }
 }

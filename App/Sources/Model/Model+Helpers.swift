@@ -224,6 +224,11 @@ extension WorkoutSession {
     }
 
     func record() -> SessionRecord {
+        record(content: content)
+    }
+
+    /// The record with content decoded elsewhere (the history index decodes many at once).
+    func record(content: WorkoutContent) -> SessionRecord {
         SessionRecord(
             id: id, date: date, title: title, kind: kind, durationSeconds: durationSeconds,
             energyKcal: energyKcal, isCompleted: status == .completed, content: content

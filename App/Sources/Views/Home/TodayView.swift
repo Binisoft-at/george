@@ -10,13 +10,15 @@ struct TodayView: View {
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
     @Environment(HealthKitManager.self) private var health
-    @Query private var sessions: [WorkoutSession]
-    @Query private var templates: [WorkoutTemplate]
     @AppStorage(Prefs.energyCheckIn) private var energyCheckIn = true
     @State private var showPlanWeek = false
+    /// 840 pt or wider (Mac, iPad): two columns. Read from the screen's width.
+    @State private var isWide = PlatformInfo.isMac
 
     var body: some View {
-        let _ = sessions.count + templates.count + store.revision
+        // Saved changes (workouts, templates) move the revision; a running workout's sets don't, so
+        // Today isn't fetched and laid out again on every tick.
+        let _ = store.revision
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -24,31 +26,46 @@ struct TodayView: View {
                     // Not saving or not syncing: says so at the top (the Mac shows it in the sidebar).
                     SyncHealthBanner()
                     #endif
+                    // A workout left running for hours: finish it at the last set, or carry on.
+                    StillTrainingBanner()
                     Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
                 }
 
-                UpNextCard()
-                MissedPlansCard()
-                WhatsNewCard()
-                StreakCard()
-                if energyCheckIn {
-                    EnergyTodayCard()
+                if isWide {
+                    // Mac and iPad: what to do on the left, how you're doing on the right.
+                    HStack(alignment: .top, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            nowCards
+                            quickActions
+                            plannedSection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 16) {
+                            statusCards
+                            bodySection
+                            recentSection
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    nowCards
+                    statusCards
+                    quickActions
+                    plannedSection
+                    bodySection
+                    recentSection
                 }
-                quickActions
-                plannedSection
-                sectionTitle("Body", symbol: "figure.arms.open")
-                MuscleFreshnessCard()
-                MuscularLoadCard(openIn: .muscles)
-                recentSection
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
-            .frame(maxWidth: 720)
+            .frame(maxWidth: isWide ? 1100 : 720)
             .frame(maxWidth: .infinity)
         }
+        // 840: an 11" iPad in landscape with the sidebar shown still gets two columns.
+        .onGeometryChange(for: Bool.self) { $0.size.width >= 840 } action: { isWide = $0 }
         .background(BrandBackdrop())
         .navigationTitle("Today")
         .toolbar {
@@ -89,8 +106,32 @@ struct TodayView: View {
 
     // MARK: Sections
 
+    /// What to do now: the next workout, missed plans, what's new.
+    @ViewBuilder
+    private var nowCards: some View {
+        UpNextCard()
+        MissedPlansCard()
+        WhatsNewCard()
+    }
+
+    /// The streak and today's energy check-in.
+    @ViewBuilder
+    private var statusCards: some View {
+        StreakCard()
+        if energyCheckIn {
+            EnergyTodayCard()
+        }
+    }
+
+    @ViewBuilder
+    private var bodySection: some View {
+        sectionTitle("Body", symbol: "figure.arms.open")
+        MuscleFreshnessCard()
+        MuscularLoadCard(openIn: .muscles)
+    }
+
     private var quickActions: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: quickActionColumns, spacing: 10) {
             QuickAction(title: "Empty Workout", symbol: "bolt.fill", tint: .accentColor) {
                 live.requestStart(.empty(program: store.activeProgram, kind: nil, rescue: false))
             }
@@ -106,6 +147,13 @@ struct TodayView: View {
                 router.showCreate = true
             }
         }
+    }
+
+    /// Two by two in a column of the wide layout (not three and one); as many as fit otherwise.
+    private var quickActionColumns: [GridItem] {
+        isWide
+            ? [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+            : [GridItem(.adaptive(minimum: 150), spacing: 10)]
     }
 
     /// Coming planned workouts – without the one Today's hero already shows.
@@ -157,10 +205,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private var recentSection: some View {
-        let recent = sessions
-            .filter { $0.status.isPerformed }
-            .sorted { $0.date > $1.date }
-            .prefix(3)
+        let recent = store.recentPerformed(limit: 3)
         if !recent.isEmpty {
             HStack {
                 sectionTitle("Recent", symbol: "clock")

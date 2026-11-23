@@ -20,8 +20,10 @@ Everything that makes live mode feel like training with a coach. Every extra can
 - **Pause really pauses**: the clock, the rest and a running hold stop and resume where they were;
   no countdown or notification in between, and the pause doesn't count as rest (`PaceTracker.shift`).
 - **Relaunch picks up where you were** (`LiveResume`): the rest still running, a started set, the
-  plan's place, a pause. Only the device that started a workout attaches to it; others show
-  “Running on another device · Continue here” instead of writing a stale copy.
+  plan's place, a pause. Only the device that runs a workout attaches to it; others show
+  “Running on your Mac · Continue Here” instead of writing a stale copy. Continue Here moves it: the
+  device that ran it lets go (“Continued on your iPhone”) and its watch, Live Activity and rest alert
+  end; sets it saved late are merged in, never written over (see ARCHITECTURE.md, Live ownership).
 - **Stretch, yoga, mobility – a calm flow**: per-side holds run side 1 → “Switch sides” → side 2;
   the next hold starts by itself after the short rest (Settings → Coach → Auto-start holds); no
   banners, nudges or questions between poses, one short line “Next: Lizard Pose, 45 seconds”.
@@ -161,6 +163,7 @@ and the key cues), a **George file** (`.csv` – opens straight in George as a t
 |---|---|---|
 | **No big Done button** | Each set is clearly *done* (filled, ✓), *current* (highlighted, "NOW", big numbers) or *open*. Tick whichever you did. The bottom bar shows what's next and a set timer instead. ␣ still completes the current set on a keyboard. | `LiveWorkoutView`, `LiveSetRow` |
 | **Typing numbers** | Tap a number → big keypad with the phone's decimal key; "62,5" and "62.5" both work. Chips: last time, previous set, plan, ± one step. "Same for the rest" copies to the following open sets. Drag a number sideways to step it. Long-press a set for every field. | `ValuePadSheet`, `ValueTile`, `NumberParser` |
+| **On the Mac** | Live mode is a window of its own ("Workout"), so templates, history and muscles stay usable next to it. Closing it only hides live mode; the bar at the bottom of the main window or ⌘↩ bring it back, and the Workout menu (Add Exercise, Finish, Discard …) brings it forward. The keypad opens as a popover on the clicked number, Pace & Controls as a column on the right. | `LiveWindowRoot`, `ValuePadPopover`, `LivePanelPresentation` |
 | **Edits that stick** | In a workout a number changes what was done; while the set is still open the plan follows, so the set always shows what you typed. Templates change their plan. Finished sets show "Plan was …" when they differ. | `WorkoutSet.setValue(_:_:inSession:)` |
 | **Supersets side by side** | One page per superset/circuit: exercises as columns (A1, A2), a warm-up row first, then one row per round, the current cell highlighted. "Match sets" evens out different round counts (adds copies of the last working set to each exercise's last part – a swapped exercise's replacement, never the one it replaced – and removes only open sets). Also in the editor's group header. | `SupersetCard`, `WorkoutContent.matchSetCounts`, `WorkoutBlock.matchRounds` |
 | **Set timer against dawdling** | Time since the last set; turns orange, then red, once it's past the planned rest + set time + slack (calm 90 s, normal 30 s, full energy 15 s). Up to two gentle nudges per gap (haptic + voice), never on calm days. | `PaceTracker`, `SetTimerBar` |
@@ -173,7 +176,17 @@ and the key cues), a **George file** (`.csv` – opens straight in George as a t
 ## Finish
 
 Finish sheet: progress ring, effort pre-filled from the reps-in-reserve answers, a big "Finish &
-Celebrate" button. Then **full screen** (v4, `FinishCelebrationView`): a moving George-blue mesh,
+Celebrate" button. **Left running?** (v7) After half an hour without a set the sheet offers *End at
+last set* (on by default: last set + its rest, the time can be changed), so a workout finished the
+next morning doesn't become a 12-hour, 5,000 kcal one; without a chosen time a gym, band or bodyweight
+workout whose clock passed 4 h ends at its last set anyway, and a watch's Finish counts from its tap
+(also when it arrives hours late). After three hours without a set Today asks *Still training?* –
+*Finish at 18:45* or *Continue* – instead of reopening live mode (`FinishTime`, `StillTrainingBanner`).
+Finish reads the history from the shared index before it saves (records, "compared with last time")
+and moves the store's counters once, before the summary and the watch's snapshot; Start opens live
+mode first and works out the best weights at the first weighted tick. A tick sends the watch and Lock
+Screen one update and writes where the workout stands once (`syncLive` runs once per main-actor turn).
+Then **full screen** (v4, `FinishCelebrationView`): a moving George-blue mesh,
 the ring fills up, check (or trophy) springs in with confetti, the numbers count up, records light up
 in gold, the muscles worked in blue, and a line that fits the workout (`FinishQuote` – written for
 George: records, low-energy days, streaks, stopping early, long sessions). Then Share, View Workout,

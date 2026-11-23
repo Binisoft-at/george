@@ -152,6 +152,30 @@ struct GeorgeApp: App {
         }
 
         #if os(macOS)
+        // Live mode in a window of its own (LiveWindow.swift), so the main window stays usable while
+        // logging. Opened by the main window or the Workout menu – never at launch on its own, never
+        // restored with the other windows, and not listed in the Window menu while nothing runs.
+        Window("Workout", id: LiveWindow.id) {
+            LiveWindowRoot()
+                .environment(store)
+                .environment(library)
+                .environment(health)
+                .environment(watch)
+                .environment(live)
+                .environment(muscles)
+                .environment(sync)
+                .environment(thalia)
+                .environment(toasts)
+                .environment(router)
+                .modelContainer(container)
+                .appearanceFromSettings()
+        }
+        .defaultSize(width: 860, height: 840)
+        .windowResizability(.contentMinSize)
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
+        .commandsRemoved()
+
         Settings {
             NavigationStack {
                 SettingsView()
@@ -197,7 +221,10 @@ struct GeorgeCommands: Commands {
     }
 
     private func startFromMenu() {
-        if !live.isActive, let startTarget {
+        if live.isActive {
+            // Shows the running workout (on the Mac `LiveMenuButton` also brings its window forward).
+            live.isPresented = true
+        } else if let startTarget {
             startTarget.perform()
         } else {
             router.request(.startSuggested)
@@ -205,22 +232,29 @@ struct GeorgeCommands: Commands {
     }
 
     var body: some Commands {
+        // File, Go and Help show things in the main window – on the Mac it opens again first when it
+        // was closed (the workout window can stay open without it).
         CommandGroup(replacing: .newItem) {
-            Button("Create…") { router.request(.create) }
-                .keyboardShortcut("n", modifiers: .command)
-            Button("New Empty Workout") { router.request(.newSession) }
-            Button("New Template") { router.request(.newTemplate) }
-                .keyboardShortcut("n", modifiers: [.command, .option])
-            Button("New Program") { router.request(.newProgram) }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
+            MainWindowMenuButton(title: "Create…", router: router, shortcut: KeyboardShortcut("n", modifiers: .command)) {
+                router.request(.create)
+            }
+            MainWindowMenuButton(title: "New Empty Workout", router: router) { router.request(.newSession) }
+            MainWindowMenuButton(title: "New Template", router: router, shortcut: KeyboardShortcut("n", modifiers: [.command, .option])) {
+                router.request(.newTemplate)
+            }
+            MainWindowMenuButton(title: "New Program", router: router, shortcut: KeyboardShortcut("n", modifiers: [.command, .shift])) {
+                router.request(.newProgram)
+            }
             Divider()
-            Button("Import CSV…") { router.request(.importCSV) }
-                .keyboardShortcut("i", modifiers: .command)
+            MainWindowMenuButton(title: "Import CSV…", router: router, shortcut: KeyboardShortcut("i", modifiers: .command)) {
+                router.request(.importCSV)
+            }
         }
         CommandMenu("Workout") {
-            Button(startTitle) { startFromMenu() }
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(!live.isActive && startTarget?.isEnabled == false)
+            LiveMenuButton(title: startTitle, shortcut: KeyboardShortcut(.return, modifiers: .command), showsLive: live.isActive) {
+                startFromMenu()
+            }
+            .disabled(!live.isActive && startTarget?.isEnabled == false)
             Button(live.isPaused ? "Resume Workout" : (live.primaryIsStart ? "Start Set" : "Complete Set")) { live.primaryAction() }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(!live.isActive || live.currentSet == nil)
@@ -244,41 +278,93 @@ struct GeorgeCommands: Commands {
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 .disabled(!live.isActive)
             Divider()
-            Button("Finish Workout…") {
+            // These open in live mode (its window on the Mac, brought forward even when it is behind).
+            LiveMenuButton(title: "Add Exercise…", shortcut: KeyboardShortcut("a", modifiers: [.command, .shift])) {
+                live.isPresented = true
+                live.requestAddExercise = true
+            }
+            .disabled(!live.isActive)
+            LiveMenuButton(title: "Finish Workout…", shortcut: KeyboardShortcut("f", modifiers: [.command, .shift])) {
                 live.isPresented = true
                 live.finishRequest = true
             }
-            .keyboardShortcut("f", modifiers: [.command, .shift])
             .disabled(!live.isActive)
-            Button("Discard Workout…") {
+            LiveMenuButton(title: "Discard Workout…") {
                 live.isPresented = true
                 live.discardRequest = true
             }
             .disabled(!live.isActive)
         }
         CommandMenu("Go") {
-            Button("Today") { router.show(.today) }
-                .keyboardShortcut("1")
-            Button("Workouts") { router.show(.allSessions) }
-                .keyboardShortcut("2")
-            Button("Templates") { router.show(.templates) }
-                .keyboardShortcut("3")
-            Button("Muscles") { router.show(.muscles) }
-                .keyboardShortcut("4")
-            Button("Stats & Records") { router.show(.stats) }
-                .keyboardShortcut("5")
-            Button("Energy") { router.show(.energy) }
-                .keyboardShortcut("6")
-            Button("Streak") { router.show(.streak) }
-                .keyboardShortcut("7")
-            Button("Exercise Library") { router.show(.library) }
-                .keyboardShortcut("8")
-            Button("Stretch & Yoga") { router.show(.routines) }
-                .keyboardShortcut("9")
+            goItem("Today", "1", .today)
+            goItem("Workouts", "2", .allSessions)
+            goItem("Templates", "3", .templates)
+            goItem("Muscles", "4", .muscles)
+            goItem("Stats & Records", "5", .stats)
+            goItem("Energy", "6", .energy)
+            goItem("Streak", "7", .streak)
+            goItem("Exercise Library", "8", .library)
+            goItem("Stretch & Yoga", "9", .routines)
         }
         CommandGroup(replacing: .help) {
-            Button("George Tour") { router.startTour() }
-            Button("Welcome & Setup…") { router.showWelcome = true }
+            MainWindowMenuButton(title: "George Tour", router: router) { router.startTour() }
+            MainWindowMenuButton(title: "Welcome & Setup…", router: router) { router.showWelcome = true }
         }
+    }
+
+    private func goItem(_ title: String, _ key: KeyEquivalent, _ item: SidebarItem) -> some View {
+        MainWindowMenuButton(title: title, router: router, shortcut: KeyboardShortcut(key, modifiers: .command)) {
+            router.show(item)
+        }
+    }
+}
+
+/// A menu item that shows something in the main window. On the Mac the window comes forward first
+/// (it may be behind the workout window), or opens again when none is open – live mode's window can
+/// stay open without it, and nothing would show.
+private struct MainWindowMenuButton: View {
+    let title: String
+    let router: Router
+    var shortcut: KeyboardShortcut? = nil
+    let action: @MainActor () -> Void
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+
+    var body: some View {
+        Button(title) {
+            #if os(macOS)
+            if router.mainWindowCount == 0 {
+                openWindow(id: "main")
+            } else {
+                MainWindowFront.bringForward()
+            }
+            #endif
+            action()
+        }
+        .keyboardShortcut(shortcut)
+    }
+}
+
+/// A Workout menu item that shows live mode. On the Mac it also opens the workout window, or brings
+/// it to the front – also when no main window is open to notice the request (`LiveWindowPresenter`).
+private struct LiveMenuButton: View {
+    let title: String
+    var shortcut: KeyboardShortcut? = nil
+    /// Whether the item ends up in live mode (⌘↩ only does when a workout runs).
+    var showsLive = true
+    let action: @MainActor () -> Void
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+
+    var body: some View {
+        Button(title) {
+            action()
+            #if os(macOS)
+            if showsLive { openWindow(id: LiveWindow.id) }
+            #endif
+        }
+        .keyboardShortcut(shortcut)
     }
 }

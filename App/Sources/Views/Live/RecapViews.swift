@@ -66,7 +66,8 @@ struct WorkoutRecap: Identifiable, Equatable {
                      records: [PersonalRecord]? = nil, energyKcal: Double? = nil, averageHeartRate: Double? = nil) -> WorkoutRecap {
         let content = session.content
         let record = session.record()
-        let found = records ?? StatsEngine.newRecords(in: record, comparedTo: store.performedRecords())
+        // The shared history index (kept between changes of the log), not a fresh decode of every workout.
+        let found = records ?? StatsEngine.newRecords(in: record, comparedTo: SessionHistory.shared.records(store))
         let metrics = store.healthMetrics(for: session.id)
         // The streak as of when this workout ended – an old workout doesn't show today's streak.
         let streak = store.streakSummary(healthEntries: health.externalWorkouts, now: session.endedAt ?? session.date)
@@ -437,6 +438,25 @@ struct RecapOverviewSection: View {
     /// An older workout opens on one compact row; "Show recap" brings the full one back.
     @State private var showsRecap = false
 
+    /// What the recap is built from. Not the stored workout itself: a typed number that isn't done
+    /// yet changes nothing here. The revision brings the rest (records of others, a finished edit).
+    private struct RecapKey: Hashable {
+        var revision: Int
+        var doneSets: Int
+        var volumeKg: Double
+        var status: String
+        var endedAt: Date?
+        var effort: Int
+        var energyKcal: Double
+        var title: String
+    }
+
+    private var recapKey: RecapKey {
+        RecapKey(revision: store.revision, doneSets: session.doneSetCount, volumeKg: session.volumeKg,
+                 status: session.statusRaw, endedAt: session.endedAt, effort: session.effort,
+                 energyKcal: session.energyKcal, title: session.title)
+    }
+
     /// The celebration belongs to the day of the workout – opened later, the sets come first.
     private var finishedToday: Bool {
         store.calendar.isDateInToday(session.endedAt ?? session.date)
@@ -455,7 +475,7 @@ struct RecapOverviewSection: View {
                 ProgressView().frame(maxWidth: .infinity, minHeight: finishedToday ? 120 : 44)
             }
         }
-        .task(id: session.contentData) {
+        .task(id: recapKey) {
             recap = WorkoutRecap.make(session: session, store: store, muscles: muscles, health: health)
         }
     }

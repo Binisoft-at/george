@@ -41,17 +41,18 @@ enum ReminderScheduler {
         #if os(iOS)
         let center = UNUserNotificationCenter.current()
         let enabled = isEnabled
+        let calendar = store.calendar
         let reminders: [PlannedReminder]
         if enabled {
+            // The streak is kept for the day by the store (no walk over the whole log per reschedule).
             let week = store.streakSummary(healthEntries: healthEntries).thisWeek
             reminders = ReminderPlanner.plan(
                 now: Date(), workouts: store.reminderWorkouts(), neededThisWeek: week.neededDays, weekStart: week.weekStart,
-                minutesAfterMidnight: minutesAfterMidnight, rescueMinutes: store.settings.rescueMinutes, calendar: store.calendar
+                minutesAfterMidnight: minutesAfterMidnight, rescueMinutes: store.settings.rescueMinutes, calendar: calendar
             )
         } else {
             reminders = []
         }
-        let calendar = store.calendar
         Task {
             let pending = await center.pendingNotificationRequests()
             let ours = pending.map(\.identifier).filter { $0.hasPrefix(identifierPrefix) }

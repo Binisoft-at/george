@@ -254,9 +254,10 @@ struct URLItem: Identifiable {
     let url: URL
 }
 
-/// "Last time" sets per exercise from one index of the performed history: built once per store
-/// revision (the revision also moves after iCloud imports, see `CloudImportRefresher`), newest
-/// session first per exercise, so a row's lookup doesn't rescan or re-sort the history.
+/// "Last time" sets per exercise from one index of the performed history: built again only when the
+/// history really changed (`SessionHistory.version` – not with template edits, plans or a running
+/// workout's sets; iCloud imports too, see `CloudImportRefresher`), newest session first per
+/// exercise, so a row's lookup doesn't rescan or re-sort the history.
 @MainActor
 final class PreviousPerformanceCache {
     static let shared = PreviousPerformanceCache()
@@ -282,7 +283,8 @@ final class PreviousPerformanceCache {
 
     private func refresh(_ store: GeorgeStore) {
         let id = ObjectIdentifier(store)
-        guard loadedRevision != store.revision || loadedStore != id else { return }
+        let version = SessionHistory.shared.version(store)
+        guard loadedRevision != version || loadedStore != id else { return }
         var built: [String: [Entry]] = [:]
         // Oldest first from the shared history – walk it backwards so each list is newest first.
         for record in SessionHistory.shared.records(store).reversed() {
@@ -293,7 +295,7 @@ final class PreviousPerformanceCache {
             }
         }
         index = built
-        loadedRevision = store.revision
+        loadedRevision = version
         loadedStore = id
     }
 }

@@ -449,14 +449,24 @@ public struct WatchCommandEnvelope: Codable, Hashable, Sendable {
         }
     }
 
+    /// Finish or Discard: they end the workout they name, so they count however late they arrive
+    /// (the phone finishes at the time of the tap, `sentAt`).
+    public var endsWorkout: Bool {
+        switch command {
+        case .finish, .discard: return true
+        default: return false
+        }
+    }
+
     /// Whether the phone should act on it, given the running workout and the time now.
     public func isFresh(activeSessionID: UUID?, now: Date = Date()) -> Bool {
         if case .requestSnapshot = command { return true }
         if isStart { return activeSessionID == nil && now.timeIntervalSince(sentAt) <= 120 }
         guard let activeSessionID else { return false }
         if let sessionID, sessionID != activeSessionID { return false }
-        // A tick made out of range still counts, however late, as long as it's the same workout.
-        if targetsOneSet, sessionID == activeSessionID { return true }
+        // A tick made out of range still counts, however late, as long as it's the same workout –
+        // and so does a Finish or Discard (else the workout would run on on the phone for hours).
+        if targetsOneSet || endsWorkout, sessionID == activeSessionID { return true }
         // Live commands that are very old are no longer meaningful (the set has moved on).
         return now.timeIntervalSince(sentAt) <= 15 * 60
     }
@@ -469,12 +479,20 @@ public struct WatchMetrics: Codable, Hashable, Sendable {
     public var activeEnergy: Double?
     public var healthWorkoutID: UUID?
     public var endedAt: Date?
+    /// The George workout this recording belongs to (nil from older watches, or before the watch
+    /// knows it). The phone links the saved workout by it – also when the message comes late.
+    public var sessionID: UUID?
 
-    public init(heartRate: Double? = nil, averageHeartRate: Double? = nil, activeEnergy: Double? = nil, healthWorkoutID: UUID? = nil, endedAt: Date? = nil) {
+    public init(heartRate: Double? = nil, averageHeartRate: Double? = nil, activeEnergy: Double? = nil, healthWorkoutID: UUID? = nil,
+                endedAt: Date? = nil, sessionID: UUID? = nil) {
         self.heartRate = heartRate
         self.averageHeartRate = averageHeartRate
         self.activeEnergy = activeEnergy
         self.healthWorkoutID = healthWorkoutID
         self.endedAt = endedAt
+        self.sessionID = sessionID
     }
+
+    /// The recording ended (saved, with its id, or not).
+    public var isFinal: Bool { healthWorkoutID != nil || endedAt != nil }
 }

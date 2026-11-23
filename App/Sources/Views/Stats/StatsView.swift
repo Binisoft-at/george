@@ -12,7 +12,6 @@ struct StatsView: View {
     @Environment(MuscleAnalytics.self) private var muscleAnalytics
     @Environment(HealthKitManager.self) private var health
     @Environment(Router.self) private var router
-    @Query private var sessions: [WorkoutSession]
     @State private var range: StatsRange = .twelveWeeks
     @State private var selectedWeek: Date?
     /// Built off the main thread whenever the inputs change (see `ModelKey`).
@@ -52,7 +51,8 @@ struct StatsView: View {
     }
 
     var body: some View {
-        let key = ModelKey(range: range, engine: muscleAnalytics.engineKey, sessionCount: sessions.count,
+        // Performed workouts move `historyRevision` (not a running workout's sets: no refetch per tick).
+        let key = ModelKey(range: range, engine: muscleAnalytics.engineKey, sessionCount: store.historyRevision,
                            healthVersion: health.workoutsVersion, weekStartsOn: store.calendar.firstWeekday,
                            weeklyGoal: store.settings.weeklyGoal, minimumMinutes: store.settings.minimumMinutes,
                            countHealthWorkouts: store.settings.countHealthWorkouts)

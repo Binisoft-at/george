@@ -467,19 +467,31 @@ public struct MuscleEngine: Sendable {
         let dayIndex = Dictionary(uniqueKeysWithValues: series.enumerated().map { ($1.day, $0) })
         var setsPerDay = [Double](repeating: 0, count: series.count)
         var muscleSetsPerDay: [MuscleGroup: [Double]] = [:]
-        for event in list where event.sets > 0 {
-            guard let i = dayIndex[calendar.startOfDay(for: event.date)] else { continue }
-            if group != nil || event.countsOnce { setsPerDay[i] += group == nil ? 1 : event.sets }
-            muscleSetsPerDay[event.group, default: [Double](repeating: 0, count: series.count)][i] += event.sets
+        // Only the events of the shown days are visited (binary search to the first one), not the
+        // whole history: an earlier event's day is before the first day, and days only grow.
+        if let firstDay = series.first?.day, let lastDay = series.last?.day {
+            var position = MuscleEngine.firstIndex(in: list, notBefore: firstDay)
+            while position < list.count {
+                let event = list[position]
+                position += 1
+                guard event.sets > 0 else { continue }
+                let day = calendar.startOfDay(for: event.date)
+                if day > lastDay { break }
+                guard let i = dayIndex[day] else { continue }
+                if group != nil || event.countsOnce { setsPerDay[i] += group == nil ? 1 : event.sets }
+                muscleSetsPerDay[event.group, default: [Double](repeating: 0, count: series.count)][i] += event.sets
+            }
         }
         func rolling(_ values: [Double], endingAt index: Int, days window: Int) -> Double {
             values[max(0, index - window + 1)...index].reduce(0, +)
         }
-        // Sessions that meaningfully trained the muscle(s), for the calibration rule (sliding 42-day window).
-        let qualifying = list.filter { $0.load >= 0.5 }
+        // Sessions that meaningfully trained the muscle(s) (load ≥ 0.5), for the calibration rule:
+        // a sliding 42-day window. It starts 42 days before the first shown day – everything older
+        // would leave the window on that first day anyway – and ends with the last shown day.
         var windowCounts: [UUID: Int] = [:]
-        var head = 0
-        var tail = 0
+        let firstWindowStart = series.first.map { calendar.addingDays(-42, to: $0.day) } ?? end
+        var head = MuscleEngine.firstIndex(in: list, notBefore: firstWindowStart)
+        var tail = head
         let minimumSessions = group == nil ? 4 : 3
         var points: [LoadPoint] = []
         var recentRatios: [Double] = []
@@ -503,14 +515,16 @@ public struct MuscleEngine: Sendable {
 
             let dayEnd = calendar.addingDays(1, to: entry.day)
             let windowStart = calendar.addingDays(-42, to: entry.day)
-            while head < qualifying.count && qualifying[head].date < dayEnd {
-                windowCounts[qualifying[head].sessionID, default: 0] += 1
+            while head < list.count && list[head].date < dayEnd {
+                if list[head].load >= 0.5 { windowCounts[list[head].sessionID, default: 0] += 1 }
                 head += 1
             }
-            while tail < head && qualifying[tail].date < windowStart {
-                let id = qualifying[tail].sessionID
-                windowCounts[id, default: 1] -= 1
-                if windowCounts[id] ?? 0 <= 0 { windowCounts.removeValue(forKey: id) }
+            while tail < head && list[tail].date < windowStart {
+                if list[tail].load >= 0.5 {
+                    let id = list[tail].sessionID
+                    windowCounts[id, default: 1] -= 1
+                    if windowCounts[id] ?? 0 <= 0 { windowCounts.removeValue(forKey: id) }
+                }
                 tail += 1
             }
 

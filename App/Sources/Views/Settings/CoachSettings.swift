@@ -377,10 +377,9 @@ struct ProfileSettingsSection: View {
 }
 
 extension GeorgeStore {
-    /// Age, experience and goal from Settings → Your Profile (defaults when not set).
-    var profile: TrainingProfile {
-        TrainingProfile(birthYear: birthYear, experienceRaw: settings.experienceRaw, goalRaw: settings.goalRaw, calendar: calendar)
-    }
+    /// Age, experience and goal from Settings → Your Profile (defaults when not set). Made again
+    /// only when one of them changes (`cachedProfile`) – views read it on every redraw.
+    var profile: TrainingProfile { cachedProfile() }
 
     /// The year picked in Settings, else the one read from Apple Health on this device.
     var birthYear: Int {

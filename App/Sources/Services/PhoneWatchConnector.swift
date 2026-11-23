@@ -19,6 +19,8 @@ final class PhoneWatchConnector: NSObject {
     var onMetrics: ((WatchMetrics) -> Void)?
     /// Supplies a fresh snapshot when the watch asks for one.
     var snapshotProvider: (() -> WatchSnapshot)?
+    /// Just the running workout (cheap: no streak, no plans) – sent when the watch comes into reach.
+    var liveProvider: (() -> WatchLiveState?)?
     /// Called each time activation completes (paired / installed are known from then on).
     var onActivated: (() -> Void)?
 
@@ -78,8 +80,11 @@ final class PhoneWatchConnector: NSObject {
                 ?? WatchWire.unpack(message, as: WatchCommand.self).map { WatchCommandEnvelope(command: $0, sessionID: nil) }
             guard let envelope else { return }
             if envelope.command == .requestSnapshot {
-                if let snapshot = snapshotProvider?() { sendSnapshot(snapshot) }
-                if let live = snapshotProvider?().live { sendLive(live) }
+                // One snapshot for both (it carries the running workout).
+                if let snapshot = snapshotProvider?() {
+                    sendSnapshot(snapshot)
+                    if let live = snapshot.live { sendLive(live) }
+                }
             } else {
                 onCommand?(envelope)
             }
@@ -125,7 +130,7 @@ extension PhoneWatchConnector: WCSessionDelegate {
         let reachable = session.isReachable
         Task { @MainActor in
             self.updateState(paired: paired, installed: installed, reachable: reachable)
-            if reachable, let live = self.snapshotProvider?().live { self.sendLive(live) }
+            if reachable, let live = self.liveProvider?() { self.sendLive(live) }
         }
     }
 

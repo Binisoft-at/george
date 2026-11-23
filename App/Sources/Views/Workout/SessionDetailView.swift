@@ -48,6 +48,21 @@ private struct SessionDocument: View {
     @State private var templateOffer: TemplateOffer?
     /// Whether this device can read and edit the stored workout (see `StoredContent`).
     @State private var readState: StoredContent.ReadState = .readable
+    /// The workout as last loaded or written: an edit is compared with it, not with a fresh decode.
+    @State private var lastSaved = WorkoutContent()
+    /// Typed numbers not written yet: they're written once typing pauses (`editCount`), not per keystroke.
+    @State private var pendingEdit: PendingEdit?
+    /// Counts edits; the debounce task restarts with each one.
+    @State private var editCount = 0
+    /// Written without a revision bump: Today, the streak and stats refresh once editing ends.
+    @State private var needsRefresh = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// An edit waiting to be written, with the workout it belongs to (the list may switch to another).
+    private struct PendingEdit {
+        let session: WorkoutSession
+        let content: WorkoutContent
+    }
 
     private struct TemplateOffer {
         /// Heavier loads only (empty: none).
@@ -80,9 +95,9 @@ private struct SessionDocument: View {
         return $content
     }
 
-    // Split in three so the compiler type-checks it in time.
+    // Split in four so the compiler type-checks it in time.
     var body: some View {
-        withTemplateOffer(withDialogs(mainList))
+        withTemplateOffer(withDialogs(withSaving(mainList)))
     }
 
     private var mainList: some View {
@@ -124,8 +139,15 @@ private struct SessionDocument: View {
                              onToggleSet: isLive ? { (setID: UUID) in live.toggleSet(setID) } : nil)
         .onChange(of: session.id) { _, _ in isEditingPast = false }
         // "New Empty Workout" left without adding anything goes again (no empty "Missed" tomorrow).
-        .onChange(of: session.id) { oldID, _ in discardDraftIfEmpty(oldID) }
-        .onDisappear { discardDraftIfEmpty(session.id) }
+        // Edits still waiting are written first, so a just-added exercise counts.
+        .onChange(of: session.id) { oldID, _ in
+            commitEdits()
+            discardDraftIfEmpty(oldID)
+        }
+        .onDisappear {
+            commitEdits()
+            discardDraftIfEmpty(session.id)
+        }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .inlineTitle()
         .toolbar { toolbarItems }
@@ -134,26 +156,93 @@ private struct SessionDocument: View {
         .onAppear { isShown = true }
         .onDisappear { isShown = false }
         .onAppear(perform: load)
-        .onChange(of: session.contentData) { _, newData in
-            // External change (sync, watch, live view): reload unless it's our own write.
-            if newData != loadedData && !isLive { load() }
+    }
+
+    /// Edits are written once typing pauses (not on every keystroke) and saved without a revision
+    /// bump; the bump comes once, when editing ends (leaving the screen or the app, Done, Start …).
+    private func withSaving(_ base: some View) -> some View {
+        base
+        .onChange(of: session.contentData) { _, newData in externalChange(newData) }
+        .onChange(of: content) { _, newContent in contentEdited(newContent) }
+        .task(id: editCount) {
+            guard pendingEdit != nil else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            writePendingEdit()
         }
-        .onChange(of: content) { oldContent, newContent in
-            guard !isLive, !runsElsewhere, canEditContent, newContent != session.content else { return }
-            session.content = newContent
-            loadedData = session.contentData
-            // A finished workout's status follows its ticks: all done → completed, some → stopped early,
-            // the last tick taken back → ask.
-            let nothingDone = store.deriveStatus(of: session, from: newContent)
-            if nothingDone && oldContent.completedSets > 0 { confirmNotDone = true }
-            store.save()
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { commitEdits() }
         }
+    }
+
+    /// External change (sync, watch, live view): reload unless it's our own write.
+    private func externalChange(_ newData: Data?) {
+        guard newData != loadedData, !isLive else { return }
+        if let edit = pendingEdit, edit.session !== session {
+            // The list switched to another workout: the one before keeps what was typed into it.
+            writePendingEdit()
+        } else {
+            // This workout changed elsewhere: that change wins, as it did when each keystroke was saved.
+            pendingEdit = nil
+        }
+        load()
+    }
+
+    private func contentEdited(_ newContent: WorkoutContent) {
+        guard !isLive, !runsElsewhere, canEditContent else { return }
+        guard newContent != lastSaved else {
+            // Typed back to what's stored: nothing to write.
+            pendingEdit = nil
+            return
+        }
+        pendingEdit = PendingEdit(session: session, content: newContent)
+        if newContent.completedSets != lastSaved.completedSets {
+            // A tick (or one taken back) is written at once: the status follows it.
+            writePendingEdit()
+        } else {
+            editCount &+= 1
+        }
+    }
+
+    /// Writes the waiting edit. A finished workout's status follows its ticks: all done → completed,
+    /// some → stopped early, the last tick taken back → ask.
+    private func writePendingEdit() {
+        guard let edit = pendingEdit else { return }
+        pendingEdit = nil
+        let target = edit.session
+        // Deleted meanwhile, or started (a running workout is written by live mode, not here).
+        guard target.modelContext != nil, !target.isDeleted, target.status != .active else { return }
+        let isShownOne = target === session
+        let doneBefore = lastSaved.completedSets
+        guard target.storeContent(edit.content) else {
+            // Kept as stored (a newer George wrote it meanwhile): show what's there.
+            if isShownOne { load() }
+            return
+        }
+        if isShownOne {
+            lastSaved = edit.content
+            loadedData = target.contentData
+        }
+        let nothingDone = store.deriveStatus(of: target, from: edit.content)
+        if nothingDone && doneBefore > 0 && isShownOne { confirmNotDone = true }
+        store.save(bumping: false)
+        needsRefresh = true
+    }
+
+    /// Writes what's waiting and lets Today, the streak and stats catch up (one revision bump).
+    private func commitEdits() {
+        writePendingEdit()
+        guard needsRefresh else { return }
+        needsRefresh = false
+        store.save()
     }
 
     private func withDialogs(_ base: some View) -> some View {
         base
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
+                // Nothing typed is written into a deleted workout.
+                pendingEdit = nil
                 router.close(.session(session.id))
                 if isLive {
                     // The running workout itself is deleted (not just what was done since Start).
@@ -208,6 +297,7 @@ private struct SessionDocument: View {
 
     private func load() {
         content = session.content
+        lastSaved = content
         loadedData = session.contentData
         readState = session.contentReadState
     }
@@ -220,6 +310,7 @@ private struct SessionDocument: View {
 
     /// Works out what the update would write, then asks with those lines.
     private func offerTemplateUpdate() {
+        commitEdits()
         let all = store.templateChanges(from: session, mode: .everything)
         guard !all.isEmpty else {
             templateDiffers = false
@@ -334,6 +425,8 @@ private struct SessionDocument: View {
 
     /// Start, continue – or take over a workout another device runs (asks first while one runs here).
     private func startOrContinue() {
+        // Live mode starts from the stored workout: what was just typed goes with it.
+        commitEdits()
         if runsElsewhere && !live.isActive {
             live.continueHere(session)
         } else {
@@ -362,7 +455,7 @@ private struct SessionDocument: View {
         Section {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Running on another device")
+                    Text(ThisDevice.runningTitle(for: session))
                         .font(.subheadline.weight(.semibold))
                     Text("Read-only here – changes would be overwritten. Continue Here to take it over.")
                         .font(.caption)
@@ -401,6 +494,7 @@ private struct SessionDocument: View {
         Menu {
             ForEach(SessionStatus.allCases.filter { $0 != .active }) { status in
                 Button {
+                    commitEdits()
                     if status == .completed && !session.status.isPerformed && !isLive {
                         logSession = session
                     } else {
@@ -484,6 +578,7 @@ private struct SessionDocument: View {
             if session.status.isPerformed && !isLive && canEditContent {
                 // A finished workout is read-only until Edit (ticks, swipes and "+" change history).
                 Button(isEditingPast ? "Done" : "Edit") {
+                    if isEditingPast { commitEdits() }
                     withAnimation(.snappy) { isEditingPast.toggle() }
                 }
                 .fontWeight(isEditingPast ? .semibold : .regular)
@@ -493,10 +588,12 @@ private struct SessionDocument: View {
                 if canEditContent {
                     // Opens on top (with Back on the Mac); the list keeps this workout selected.
                     Button {
+                        commitEdits()
                         let copy = store.duplicate(session, asPlannedOn: Date())
                         router.push(.session(copy.id))
                     } label: { Label("Do Again Today", systemImage: "arrow.clockwise") }
                     Button {
+                        commitEdits()
                         let template = store.saveAsTemplate(session, into: session.program)
                         router.push(.template(template.id))
                     } label: { Label("Save as New Template", systemImage: "square.on.square") }

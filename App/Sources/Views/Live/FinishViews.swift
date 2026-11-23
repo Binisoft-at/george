@@ -12,6 +12,11 @@ struct FinishWorkoutSheet: View {
     @State private var notes = ""
     @State private var isSaving = false
     @State private var prefilled = false
+    /// Nothing happened for half an hour (left running after the gym): "End at last set" is offered,
+    /// on by default, with this time (last set + rest).
+    @State private var earlierEnd: Date?
+    @State private var endAtLastSet = true
+    @State private var endTime = Date()
 
     var body: some View {
         NavigationStack {
@@ -36,7 +41,7 @@ struct FinishWorkoutSheet: View {
                         }
                     }
                     HStack {
-                        stat("Time", Format.minutes(live.elapsed()))
+                        stat("Time", Format.minutes(shownDuration))
                         stat("Sets", "\(live.content.completedSets)/\(live.content.totalSets)")
                         // Working volume – the number the finish screen and Progress show.
                         if live.content.workingVolumeKg > 0 {
@@ -48,6 +53,9 @@ struct FinishWorkoutSheet: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+                if let earlierEnd {
+                    endSection(suggested: earlierEnd)
                 }
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
@@ -72,7 +80,7 @@ struct FinishWorkoutSheet: View {
                 }
                 Section {
                     if health.isAvailable && store.settings.saveToHealth {
-                        Label(live.watchIsRecording ? "Apple Watch recorded heart rate — saving from the watch" : "Will be saved to Apple Health", systemImage: "heart.text.square.fill")
+                        Label(healthLine, systemImage: "heart.text.square.fill")
                             .foregroundStyle(.pink)
                             .font(.subheadline)
                     }
@@ -106,7 +114,10 @@ struct FinishWorkoutSheet: View {
                         .disabled(isSaving)
                 }
             }
-            .onAppear(perform: prefillEffort)
+            .onAppear {
+                prefillEffort()
+                prefillEnd()
+            }
         }
     }
 
@@ -114,10 +125,61 @@ struct FinishWorkoutSheet: View {
         guard !isSaving else { return }
         isSaving = true
         Haptics.heavy()
+        // With the offer shown, the time is chosen here (now when switched off); without it George
+        // decides (a strength workout left running for hours still ends at its last set).
+        let offered = earlierEnd != nil
+        let end = offered ? (endAtLastSet ? endTime : Date()) : nil
         Task {
-            await live.finish(effort: effort, notes: notes)
+            await live.finish(effort: effort, notes: notes, endedAt: end, endIsChosen: offered)
             isSaving = false
         }
+    }
+
+    // MARK: End time
+
+    /// "End at last set": on by default when nothing happened for half an hour; the time can be changed.
+    private func endSection(suggested: Date) -> some View {
+        Section {
+            Toggle(isOn: $endAtLastSet) {
+                Text("End at last set")
+                Text("\(suggested.formatted(date: .omitted, time: .shortened)) · last set + rest")
+            }
+            if endAtLastSet {
+                DatePicker("Ended", selection: $endTime, in: endRange, displayedComponents: endComponents)
+            }
+        } footer: {
+            Text(endAtLastSet ? "No sets for a while – the time after that doesn't count." : "Saved with the time until now.")
+        }
+    }
+
+    private func prefillEnd() {
+        guard earlierEnd == nil, let suggested = live.earlierFinishEnd() else { return }
+        earlierEnd = suggested
+        endTime = suggested
+    }
+
+    /// From the start to now.
+    private var endRange: ClosedRange<Date> {
+        let now = Date()
+        return min(live.session?.startedAt ?? endTime, now)...now
+    }
+
+    /// The date too when the workout started on another day.
+    private var endComponents: DatePickerComponents {
+        let start = live.session?.startedAt ?? endTime
+        return Calendar.current.isDate(start, inSameDayAs: Date()) ? [.hourAndMinute] : [.date, .hourAndMinute]
+    }
+
+    /// The time saved: up to the chosen end, or until now.
+    private var shownDuration: Double {
+        guard earlierEnd != nil, endAtLastSet else { return live.elapsed() }
+        return live.activeSeconds(until: endTime)
+    }
+
+    private var healthLine: String {
+        if live.isWaitingForWatch { return "Waiting for Apple Watch…" }
+        if live.watchStoppedAt != nil { return "Apple Watch stopped recording — the rest is saved from iPhone" }
+        return live.watchIsRecording ? "Apple Watch recorded heart rate — saving from the watch" : "Will be saved to Apple Health"
     }
 
     /// Logged RPEs (from the "how many more reps" question) suggest the workout's effort.

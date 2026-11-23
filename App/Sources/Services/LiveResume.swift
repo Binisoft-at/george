@@ -1,4 +1,5 @@
 import Foundation
+import GeorgeCore
 
 /// Where a running workout stands, kept on this device so a relaunch (iOS ended the app, the phone
 /// restarted) continues exactly there: the rest still running, the set already started, the plan's
@@ -18,6 +19,15 @@ struct LiveResume: Codable {
     var pausedTimedSetID: UUID? = nil
     /// When the running hold of the current set ends (pauses already left out).
     var timedSetEndsAt: Date? = nil
+    /// Pauses since Start (Apple Health gets them as pause/resume events).
+    var pauses: [PauseSpan]? = nil
+    /// The Apple Watch was asked to record this workout (paired, George installed).
+    var watchExpected: Bool? = nil
+    /// The watch was heard recording it: the watch saves it to Apple Health, not the iPhone.
+    var watchRecording: Bool? = nil
+    /// The watch's recording ended while the workout went on: when, and the part it saved.
+    var watchStoppedAt: Date? = nil
+    var watchWorkoutID: UUID? = nil
 
     private static func key(_ id: UUID) -> String { "live.resume." + id.uuidString }
 
@@ -52,6 +62,9 @@ struct LiveResume: Codable {
         var title: String
         /// The automatic title Start gave it for today (put back only while it still has that title).
         var autoTitle: String? = nil
+        /// When this Start continued it: Apple Health gets only what was done since (the part saved
+        /// before is in Health already). Nil from older versions.
+        var segmentStartedAt: Date? = nil
 
         func save(for sessionID: UUID) {
             guard let data = try? JSONEncoder().encode(self) else { return }
@@ -64,5 +77,33 @@ struct LiveResume: Codable {
     static func loadPreStart(for sessionID: UUID) -> PreStart? {
         guard let data = UserDefaults.standard.data(forKey: preStartKey(sessionID)) else { return nil }
         return try? JSONDecoder().decode(PreStart.self, from: data)
+    }
+
+    // MARK: Apple Health links after Finish
+
+    private static let healthLinksKey = "live.healthLinks"
+
+    /// Finished workouts whose Apple Health link may still change (`PendingHealthLink`): kept apart
+    /// from the per-workout state above, which goes when the workout ends.
+    static func pendingHealthLinks(now: Date = Date()) -> [PendingHealthLink] {
+        guard let data = UserDefaults.standard.data(forKey: healthLinksKey),
+              let links = try? JSONDecoder().decode([PendingHealthLink].self, from: data) else { return [] }
+        return PendingHealthLink.pruned(links, now: now)
+    }
+
+    static func addPendingHealthLink(_ link: PendingHealthLink) {
+        savePendingHealthLinks(PendingHealthLink.adding(link, to: pendingHealthLinks(), now: Date()))
+    }
+
+    static func removePendingHealthLink(for sessionID: UUID) {
+        savePendingHealthLinks(PendingHealthLink.removing(sessionID, from: pendingHealthLinks()))
+    }
+
+    private static func savePendingHealthLinks(_ links: [PendingHealthLink]) {
+        guard !links.isEmpty, let data = try? JSONEncoder().encode(links) else {
+            UserDefaults.standard.removeObject(forKey: healthLinksKey)
+            return
+        }
+        UserDefaults.standard.set(data, forKey: healthLinksKey)
     }
 }

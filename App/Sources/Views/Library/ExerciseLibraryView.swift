@@ -14,6 +14,9 @@ struct ExerciseLibraryView: View {
     @State private var favoritesOnly = false
 
     var body: some View {
+        // Worked out once per update, not once per use (the search sorts the whole library).
+        let favoriteKeys = self.favoriteKeys
+        let results = self.results(favorites: favoriteKeys)
         NavList {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -88,10 +91,10 @@ struct ExerciseLibraryView: View {
         Set(userExercises.filter(\.isFavorite).map(\.key))
     }
 
-    private var results: [LibraryExercise] {
+    private func results(favorites: Set<String>) -> [LibraryExercise] {
         let all = library.search(query, kind: kind, muscle: muscle, equipment: nil, custom: userExercises)
         guard favoritesOnly else { return all }
-        return all.filter { favoriteKeys.contains($0.id) }
+        return all.filter { favorites.contains($0.id) }
     }
 
     private func chip(_ title: String, symbol: String, isOn: Bool, tint: Color = .accentColor, action: @escaping () -> Void) -> some View {
@@ -115,7 +118,7 @@ struct ExerciseDetailView: View {
     @Query private var userExercises: [UserExercise]
     @State private var newLink = ""
     @State private var playing: URL?
-    /// This exercise's sessions, from the shared history index (refreshed with the store revision).
+    /// This exercise's sessions, from the shared history index (refreshed when the history changes).
     @State private var history: [ExercisePoint] = []
     @ScaledMetric(relativeTo: .caption) private var stepBadge: CGFloat = 22
 
@@ -282,8 +285,10 @@ struct ExerciseDetailView: View {
         .sheet(item: Binding(get: { playing.map { URLItem(url: $0) } }, set: { playing = $0?.url })) { item in
             LinkPlayerView(url: item.url)
         }
+        // Saves what was edited here; moves the revision only when something changed (also an edit
+        // autosaved meanwhile) – just leaving the page doesn't make the app recompute.
         .onDisappear { store.save() }
-        .task(id: "\(exercise.id)#\(store.revision)") {
+        .task(id: "\(exercise.id)#\(store.historyRevision)") {
             history = StatsEngine.history(of: exercise.id, in: SessionHistory.shared.records(store))
         }
     }
@@ -528,7 +533,7 @@ struct ExerciseHistorySheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .macSheet(width: 520, height: 600)
-        .task(id: "\(exerciseKey)#\(store.revision)") {
+        .task(id: "\(exerciseKey)#\(store.historyRevision)") {
             history = StatsEngine.history(of: exerciseKey, in: SessionHistory.shared.records(store))
         }
     }

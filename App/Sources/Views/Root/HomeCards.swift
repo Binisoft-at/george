@@ -10,12 +10,12 @@ struct StreakCard: View {
     @Environment(Router.self) private var router
     @Environment(LiveWorkoutController.self) private var live
     @Environment(ToastCenter.self) private var toasts
-    @Query private var sessions: [WorkoutSession]
     @State private var showRescue = false
 
     var body: some View {
         let summary = store.streakSummary(healthEntries: health.externalWorkouts)
-        let _ = sessions.count + store.revision
+        // Saved changes move the revision (a running workout's sets don't: no refetch on every tick).
+        let _ = store.revision
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: "flame.fill")
@@ -182,12 +182,14 @@ struct UpNextCard: View {
     @Environment(HealthKitManager.self) private var health
     @Environment(ExerciseLibrary.self) private var library
     @Environment(ToastCenter.self) private var toasts
-    @Query private var sessions: [WorkoutSession]
-    @Query private var templates: [WorkoutTemplate]
     @State private var showPlanWeek = false
+    /// Readiness numbers kept between redraws (`readinessInfo(for:)`).
+    @State private var readinessCache = UpNextReadinessCache()
 
     var body: some View {
-        let _ = sessions.count + templates.count + store.revision
+        // Saved changes (workouts, templates) move the revision; a running workout's sets don't. Sets
+        // of a workout on another device move `liveRevision` (the "On your Mac" hero).
+        let _ = (store.revision, store.liveRevision)
         VStack(alignment: .leading, spacing: 12) {
             mainContent
             energyForecast
@@ -215,7 +217,7 @@ struct UpNextCard: View {
             }
         } else if let other = live.workoutOnOtherDevice {
             // Running on another iPhone, iPad or Mac (synced): no second Start here – continue it here.
-            header("On another device", symbol: "iphone.and.arrow.forward", tint: .green)
+            header("On \(ThisDevice.ownerName(of: other))", symbol: "iphone.and.arrow.forward", tint: .green)
             hero(
                 title: other.title,
                 subtitle: "\(other.content.completedSets) of \(other.content.totalSets) sets done · running there now",
@@ -441,13 +443,28 @@ struct UpNextCard: View {
         if store.isUnscheduledDay(in: store.activeProgram) {
             return "Nothing is scheduled today – \(more), with room to spare."
         }
-        let content = suggestion.content
-        let score = muscles.readiness(of: content, kind: suggestion.kind)
-        if score < 0.7, !muscles.fatiguedTargets(of: content, kind: suggestion.kind).isEmpty,
-           fresherAlternative(to: suggestion, score: score) == nil {
-            return "Muscles \(Int((score * 100).rounded())) % ready – recovery is training too (\(more))."
+        let info = readinessInfo(for: suggestion)
+        if info.score < 0.7, !info.fatigued.isEmpty, info.fresher == nil {
+            return "Muscles \(Int((info.score * 100).rounded())) % ready – recovery is training too (\(more))."
         }
         return nil
+    }
+
+    /// The suggestion's readiness, its tired muscles and a fresher template – worked out once per
+    /// suggestion, saved change, change of the muscle analytics and quarter hour, not twice per redraw
+    /// (with every template of the program decoded each time).
+    private func readinessInfo(for suggestion: WorkoutTemplate) -> UpNextReadinessCache.Info {
+        let key = UpNextReadinessCache.Key(template: suggestion.id, revision: store.revision, engine: muscles.engineKey,
+                                           quarterHour: Int(Date().timeIntervalSinceReferenceDate / 900))
+        if let info = readinessCache.info(for: key) { return info }
+        let content = suggestion.content
+        let fatigued = muscles.fatiguedTargets(of: content, kind: suggestion.kind)
+        let score = muscles.readiness(of: content, kind: suggestion.kind)
+        // Only offered next to tired muscles.
+        let fresher = fatigued.isEmpty ? nil : fresherAlternative(to: suggestion, score: score)
+        let info = UpNextReadinessCache.Info(score: score, fatigued: fatigued, fresher: fresher)
+        readinessCache.keep(info, for: key)
+        return info
     }
 
     /// A short routine for the time of day, started like any template.
@@ -529,13 +546,11 @@ struct UpNextCard: View {
     /// Shown only when muscles the suggestion targets are still recovering, with a fresher alternative.
     @ViewBuilder
     private func readiness(for suggestion: WorkoutTemplate) -> some View {
-        let content = suggestion.content
-        let fatigued = muscles.fatiguedTargets(of: content, kind: suggestion.kind)
-        if !fatigued.isEmpty {
-            let score = muscles.readiness(of: content, kind: suggestion.kind)
+        let info = readinessInfo(for: suggestion)
+        if !info.fatigued.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                ReadinessHint(fatigued: fatigued, readiness: score, compact: true)
-                if let fresher = fresherAlternative(to: suggestion, score: score) {
+                ReadinessHint(fatigued: info.fatigued, readiness: info.score, compact: true)
+                if let fresher = info.fresher {
                     Button {
                         store.requestStart(fresher.template, live: live, toasts: toasts)
                     } label: {
@@ -580,5 +595,40 @@ struct UpNextCard: View {
             }
             .scrollClipDisabled()
         }
+    }
+}
+
+/// Up next's readiness numbers, kept between redraws: the rest-day check and the readiness hint asked
+/// for the same numbers on every redraw, decoding every template of the program each time.
+final class UpNextReadinessCache {
+    struct Key: Equatable {
+        var template: UUID
+        /// Saved changes (a template edited, the program changed).
+        var revision: Int
+        /// The muscle analytics (the log, the profile, other sports).
+        var engine: MuscleAnalytics.EngineKey
+        /// Muscles recover as time goes by: worked out again every quarter of an hour.
+        var quarterHour: Int
+    }
+
+    struct Info {
+        var score: Double
+        var fatigued: [MuscleFreshness]
+        var fresher: (template: WorkoutTemplate, score: Double)?
+    }
+
+    private var keptKey: Key?
+    private var kept: Info?
+
+    func info(for key: Key) -> Info? {
+        guard key == keptKey, let kept else { return nil }
+        // A fresher template deleted meanwhile is looked for again.
+        if let template = kept.fresher?.template, template.modelContext == nil || template.isDeleted { return nil }
+        return kept
+    }
+
+    func keep(_ info: Info, for key: Key) {
+        keptKey = key
+        kept = info
     }
 }

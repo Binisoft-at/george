@@ -308,7 +308,11 @@ struct SettingsView: View {
         let mainIsOpen = router.mainWindowCount > 0
         dismissWindow()
         if !mainIsOpen { openWindow(id: "main") }
-        router.afterDismiss(action)
+        router.afterDismiss {
+            // Once Settings is gone: the main window may be behind the workout window.
+            if mainIsOpen { MainWindowFront.bringForward() }
+            action()
+        }
         #else
         action()
         #endif

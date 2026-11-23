@@ -192,9 +192,12 @@ final class ThaliaSync {
         schedule(after: .seconds(5))
     }
 
-    /// Every save bumps the store's revision (iCloud imports too, see `CloudImportRefresher`).
+    /// Saves that change something move the store's counters (iCloud imports too, see
+    /// `CloudImportRefresher`): finished workouts move `historyRevision`, templates (Thalia's links)
+    /// move `revision`. A running workout's sets move neither.
     private func observeRevision() {
         withObservationTracking {
+            _ = store.historyRevision
             _ = store.revision
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
@@ -229,13 +232,13 @@ final class ThaliaSync {
     /// Finished workouts of the last 62 days and all templates, from the synced store.
     private func makeSnapshot() -> ThaliaSnapshot {
         let now = Date()
-        let completed = SessionStatus.completed.rawValue
-        let partial = SessionStatus.partial.rawValue
-        let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.statusRaw == completed || $0.statusRaw == partial })
-        let sessions = (try? store.context.fetch(descriptor)) ?? []
-        let templates = store.fetchTemplates()
-        let names = Dictionary(templates.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let oldest = now.addingTimeInterval(-Double(BinisoftExchange.keepDays + 2) * 86_400)
+        // Only the last weeks' workouts, and without their content (only names and dates are written).
+        let sessions = store.fetchSessions(datedFrom: oldest, scalarsOnly: true).filter { $0.status.isPerformed }
+        var templateNames = FetchDescriptor<WorkoutTemplate>()
+        templateNames.propertiesToFetch = [\.id, \.name]
+        let templates = (try? store.context.fetch(templateNames)) ?? []
+        let names = Dictionary(templates.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let workouts: [ThaliaWorkout] = sessions.compactMap { session in
             let end = session.endedAt ?? session.date
             guard end >= oldest else { return nil }

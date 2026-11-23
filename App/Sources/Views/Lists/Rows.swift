@@ -341,9 +341,12 @@ struct TemplateMenuItems: View {
     @Environment(ToastCenter.self) private var toasts
     @Query(sort: \Program.sortIndex) private var programs: [Program]
     @Binding var logPastFor: WorkoutTemplate?
+    /// Runs before an item that copies the template (the editor writes what was just typed).
+    var beforeAction: () -> Void = {}
 
     var body: some View {
         Button {
+            beforeAction()
             if let practice { practice.startTapped = true } else { store.requestStart(template, live: live, toasts: toasts) }
         } label: {
             Label("Start Now", systemImage: "play.fill")
@@ -352,6 +355,7 @@ struct TemplateMenuItems: View {
             ForEach(0..<8, id: \.self) { offset in
                 let date = Calendar.current.date(byAdding: .day, value: offset, to: Date()) ?? Date()
                 Button(offset == 0 ? "Today" : date.formatted(.dateTime.weekday(.wide).day().month())) {
+                    beforeAction()
                     let session = store.makeSession(from: template, date: date, start: false)
                     router.open(.session(session.id))
                 }
@@ -360,12 +364,14 @@ struct TemplateMenuItems: View {
             Label("Plan For…", systemImage: "calendar.badge.plus")
         }
         Button {
+            beforeAction()
             logPastFor = template
         } label: {
             Label("Log Past Workout…", systemImage: "clock.arrow.circlepath")
         }
         Divider()
         Button {
+            beforeAction()
             let copy = store.duplicate(template)
             router.open(.template(copy.id))
         } label: {

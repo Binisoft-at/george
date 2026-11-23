@@ -7,12 +7,12 @@ struct StreakView: View {
     @Environment(GeorgeStore.self) private var store
     @Environment(HealthKitManager.self) private var health
     @Environment(LiveWorkoutController.self) private var live
-    @Query private var sessions: [WorkoutSession]
     @Query private var excused: [ExcusedWeek]
     @State private var showRescue = false
 
     var body: some View {
-        let _ = sessions.count + excused.count + store.revision
+        // Saved workouts move the revision (a running workout's sets don't: no refetch on every tick).
+        let _ = excused.count + store.revision
         let summary = store.streakSummary(healthEntries: health.externalWorkouts)
         let settings = store.settings
 

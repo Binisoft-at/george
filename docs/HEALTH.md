@@ -72,3 +72,27 @@ To get the best numbers in Bevel:
 - Check off sets, see the current exercise and rest countdown, pause/resume, finish with an effort rating.
 - Runs an `HKWorkoutSession`, so heart rate and calories are recorded and the workout is saved to
   Health from the watch (the phone then attaches the effort score instead of saving a duplicate).
+
+## One George workout, one Apple Health workout (v7)
+
+- **When it ended.** The end is clamped into the workout and used for the time, calories, stats and
+  Health alike: a time chosen on the finish sheet (*End at last set*), the tap time of a watch's
+  Finish, else now – and a gym/band/bodyweight workout whose clock passed 4 h ends at its last set
+  + rest (`FinishTime`). Pauses go to Health as pause/resume events, so its duration leaves them out.
+- **Continued workouts** ("stopped early", continued later) add only the new part to Health: its
+  start, active time and heart-rate window begin where it was continued, and the first part keeps its
+  Health link (`LiveResume.PreStart.segmentStartedAt`).
+- **Watch or iPhone, never both.** Whether the watch was asked to record and has been heard from is
+  kept with the running workout (`LiveResume`), so a relaunch doesn't make the iPhone save a second
+  copy. A watch that should record but hasn't sent anything yet gets up to 15 s on Finish. The watch's
+  numbers and its saved workout carry the George session id (`WatchMetrics.sessionID`), so the link
+  and the effort score land on the right workout also when they arrive late; if the iPhone had saved
+  its own copy without hearing from the watch, that copy (with its calories) is removed
+  (`HealthLink.plan`, pending links kept on the device for three days).
+- **Watch stopped on the way** (ended by watchOS, or on the watch while the phone goes on): its part
+  stays linked and Finish saves the rest from the iPhone ("Watch stopped recording").
+- **Discard** always tells the watch to throw its recording away, also before its first numbers; a
+  recording of a discarded workout that was saved anyway is removed. Watch Finish and Discard count
+  however late they arrive (same workout only).
+- **At launch** workouts recorded on the watch whose link never arrived are linked again by the
+  session id in the Health workout's metadata (last 7 days).

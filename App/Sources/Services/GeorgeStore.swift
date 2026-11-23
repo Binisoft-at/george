@@ -12,11 +12,34 @@ final class GeorgeStore {
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
 
-    /// Bumped after bulk changes so dependent views (streak, stats) recompute.
+    /// Any synced data changed – workouts, templates, programs, settings, check-ins (Today, lists, the
+    /// sidebar, reminders). Moves after saves that changed something and after iCloud imports that
+    /// brought changes (`CloudImportRefresher`); every `historyRevision` change moves it too.
     private(set) var revision = 0
+    /// Performed workouts changed – finished, logged, edited, deleted or synced (the history index,
+    /// "last time", muscles, Progress). Templates, plans, Set Active, Health numbers and a running
+    /// workout's sets don't move it.
+    private(set) var historyRevision = 0
+    /// A workout in progress changed on another device (synced): the "running on another device" bars.
+    private(set) var liveRevision = 0
+    /// What saved changes move since the last bump (`save(bumping: false)` keeps it for the next one).
+    @ObservationIgnored private var pendingChange: StoreChange = []
+    @ObservationIgnored private var saveObserver: NSObjectProtocol?
+    /// The user's exercise entries by key, per revision (`userExercise(forKey:)`).
+    @ObservationIgnored var userExerciseCache: (revision: Int, entries: [String: UserExercise])?
 
     init(container: ModelContainer) {
         self.container = container
+        // Autosaves and saves outside the store count too: what they change moves the counters at the
+        // next `save()`.
+        saveObserver = NotificationCenter.default.addObserver(forName: ModelContext.willSave, object: nil, queue: nil) { [weak self] _ in
+            guard Thread.isMainThread else { return }
+            MainActor.assumeIsolated { self?.notePendingChanges() }
+        }
+    }
+
+    deinit {
+        if let saveObserver { NotificationCenter.default.removeObserver(saveObserver) }
     }
 
     /// A routine template started from the streak rescue sheet: the session it starts counts as a
@@ -24,6 +47,9 @@ final class GeorgeStore {
     @ObservationIgnored var pendingRescue: (templateID: UUID, at: Date)?
     /// The energy rhythm's next low day, cached per revision and day (see `expectedLowEnergyDay`).
     @ObservationIgnored var lowEnergyCache: (revision: Int, day: Date, value: Date?)?
+    /// The calendar, profile, training days, streak, today's workouts and suggestions, kept between
+    /// redraws (GeorgeStore+Caches).
+    let caches = StoreCaches()
     /// Apple Health's latest body weight (kept on this device, set by the views that read Health).
     /// Energy estimates use it before the body weight from Settings.
     @ObservationIgnored var healthBodyMassKg: Double?
@@ -36,7 +62,46 @@ final class GeorgeStore {
     /// When the current iCloud sync error was first seen (the banner waits 15 minutes before it shows).
     @ObservationIgnored var syncErrorSince: (message: String, since: Date)?
 
-    func bump() { revision &+= 1 }
+    /// Everything recomputes (pull to refresh, a workout finished, a profile value from Apple Health).
+    func bump() { bump(.all) }
+
+    /// Moves the counters for `change`; a history change moves the data too.
+    func bump(_ change: StoreChange) {
+        guard !change.isEmpty else { return }
+        if change.contains(.history) { historyRevision &+= 1 }
+        if change.contains(.data) || change.contains(.history) { revision &+= 1 }
+        if change.contains(.live) { liveRevision &+= 1 }
+        pendingChange.subtract(change)
+    }
+
+    /// Notes what the context is about to save (before every save, autosaves included).
+    func notePendingChanges() {
+        guard context.hasChanges else { return }
+        pendingChange.formUnion(unsavedChange())
+    }
+
+    /// What the unsaved changes move: any model the data, a workout that is or was performed the history.
+    private func unsavedChange() -> StoreChange {
+        var change: StoreChange = []
+        let models = context.insertedModelsArray + context.changedModelsArray + context.deletedModelsArray
+        for model in models {
+            guard let session = model as? WorkoutSession else {
+                change.insert(.data)
+                continue
+            }
+            let wasPerformed = SessionHistory.shared.contains(session.id, in: self)
+            change.formUnion(.session(isPerformed: session.status.isPerformed, wasPerformed: wasPerformed))
+            if change.contains(.history) { break }
+        }
+        return change
+    }
+
+    /// Bumps what saves changed since the last bump – nothing when nothing changed.
+    private func bumpPending() {
+        let change = pendingChange
+        pendingChange = []
+        bump(change)
+    }
 
     /// An iCloud import finished (CloudImportRefresher).
     func noteCloudImport() {
@@ -59,16 +124,19 @@ final class GeorgeStore {
         save(bumping: true)
     }
 
-    /// Saves; `bumping: false` skips the revision bump (live set edits – dashboards don't need to
-    /// recompute on every keystroke; they refresh when the workout starts, finishes or is discarded).
+    /// Saves and moves the counters for what changed (`revision`, and `historyRevision` only when a
+    /// performed workout changed; nothing when nothing changed). `bumping: false` keeps the change for
+    /// the next bump (live set edits – dashboards don't need to recompute on every keystroke; they
+    /// refresh when the workout starts, finishes or is discarded).
     func save(bumping: Bool) {
+        notePendingChanges()
         do {
             if context.hasChanges { try context.save() }
             recordSave(nil)
         } catch {
             recordSave(error)
         }
-        if bumping { bump() }
+        if bumping { bumpPending() }
     }
 
     /// Saves changes without putting them on the undo stack (live sets must not be undone by ⌘Z or shake).
@@ -76,6 +144,7 @@ final class GeorgeStore {
         let manager = context.undoManager
         manager?.disableUndoRegistration()
         changes()
+        notePendingChanges()
         do {
             if context.hasChanges { try context.save() }
             recordSave(nil)
@@ -83,7 +152,7 @@ final class GeorgeStore {
             recordSave(error)
         }
         manager?.enableUndoRegistration()
-        if bumping { bump() }
+        if bumping { bumpPending() }
     }
 
     // MARK: Settings
@@ -118,7 +187,8 @@ final class GeorgeStore {
         save()
     }
 
-    var calendar: Calendar { Calendar.training(firstWeekday: settings.weekStartsOn) }
+    /// Built once per week start and time zone (`cachedCalendar`), not on every use.
+    var calendar: Calendar { cachedCalendar() }
     var unit: WeightUnit { settings.unit }
 
     // MARK: Fetching
@@ -197,7 +267,7 @@ final class GeorgeStore {
 
     /// Performed sessions as plain records for statistics.
     func performedRecords() -> [SessionRecord] {
-        fetchSessions().filter { $0.status.isPerformed }.map { $0.record() }
+        fetchPerformedSessions().map { $0.record() }
     }
 
     // MARK: Programs
@@ -297,7 +367,8 @@ final class GeorgeStore {
     func indexInWeek(for date: Date, excluding: UUID? = nil) -> Int {
         let cal = calendar
         let week = cal.weekStart(for: date)
-        let count = fetchSessions().filter { session in
+        // Only that week's workouts, without their content.
+        let count = fetchSessions(datedFrom: week, scalarsOnly: true).filter { session in
             session.id != excluding && session.status != .skipped && cal.weekStart(for: session.date) == week && session.date <= date
         }.count
         return count + 1
@@ -345,7 +416,8 @@ final class GeorgeStore {
         }
         template.lastUsedAt = date
         context.insert(session)
-        save()
+        // Started: `LiveWorkoutController.start` saves again right away – one bump for both.
+        save(bumping: !start)
         return session
     }
 
@@ -365,7 +437,8 @@ final class GeorgeStore {
             session.resumedAt = date
         }
         context.insert(session)
-        save()
+        // Started: `LiveWorkoutController.start` saves again right away – one bump for both.
+        save(bumping: !start)
         return session
     }
 
@@ -549,14 +622,16 @@ final class GeorgeStore {
 
     /// The template for a day: the one scheduled on that weekday (unless it's done that day already),
     /// otherwise the next one in the program's rotation (the one after the most recently used).
-    func suggestedTemplate(in program: Program?, on date: Date = Date()) -> WorkoutTemplate? {
+    /// Callers use `suggestedTemplate(in:on:)`, which keeps the answer per revision and day.
+    func uncachedSuggestedTemplate(in program: Program?, on date: Date = Date()) -> WorkoutTemplate? {
         guard let program else { return nil }
         // A template with nothing in it yet (just created) is no workout to suggest.
         let templates = program.orderedTemplates.filter(\.isPlannable)
         guard !templates.isEmpty else { return nil }
-        let weekday = calendar.component(.weekday, from: date)
+        let cal = calendar
+        let weekday = cal.component(.weekday, from: date)
         if let scheduled = templates.first(where: { $0.scheduleDays.contains(weekday) }) {
-            let doneThatDay = program.allSessions.contains { $0.templateID == scheduled.id && calendar.isDate($0.date, inSameDayAs: date) && $0.status.isPerformed }
+            let doneThatDay = program.allSessions.contains { $0.templateID == scheduled.id && cal.isDate($0.date, inSameDayAs: date) && $0.status.isPerformed }
             if !doneThatDay { return scheduled }
         }
         let lastSession = program.performedSessions.first { $0.templateID != nil }
@@ -637,7 +712,8 @@ final class GeorgeStore {
     }
 
     /// Stores heart rate / measured energy for a session on this device only.
-    func recordHealthMetrics(sessionID: UUID, averageHeartRate: Double?, maxHeartRate: Double?, activeEnergy: Double?) {
+    /// `bumping: false`: Finish counts its changes once at the end (only the data moves, never the history).
+    func recordHealthMetrics(sessionID: UUID, averageHeartRate: Double?, maxHeartRate: Double?, activeEnergy: Double?, bumping: Bool = true) {
         let metrics = healthMetrics(for: sessionID) ?? {
             let created = HealthMetrics(sessionID: sessionID)
             context.insert(created)
@@ -647,19 +723,21 @@ final class GeorgeStore {
         if let maxHeartRate, maxHeartRate > 0 { metrics.maxHeartRate = maxHeartRate }
         if let activeEnergy, activeEnergy > 0 { metrics.activeEnergyKcal = activeEnergy }
         metrics.updatedAt = Date()
-        save()
+        save(bumping: bumping)
     }
 
     // MARK: Streak
 
     /// The days that count as training: performed George workouts that qualify and – with "Count
     /// Apple Health workouts" on – Health workouts of at least the minimum. The streak, the Progress
-    /// days chart, the Today hero and Plan Week all use this one list (see `TrainingDays`).
-    func trainingEntries(healthEntries: [ActivityEntry] = []) -> [ActivityEntry] {
+    /// days chart, the Today hero and Plan Week all use this one list (see `TrainingDays`), through
+    /// `trainingEntries(healthEntries:)`, which keeps it until something changes.
+    func uncachedTrainingEntries(healthEntries: [ActivityEntry] = []) -> [ActivityEntry] {
         let s = settings
         // Completed or not: the minimum minutes count (strength work logged without a time counts
         // with 3 sets) – so a 2-minute routine is no training day, as Settings → Streak says.
-        let workouts = fetchSessions().filter { $0.status.isPerformed }.map { session in
+        // Performed workouts only, without their content (dates, minutes and set counts are fields).
+        let workouts = fetchPerformedSessions(scalarsOnly: true).map { session in
             TrainingDays.Workout(date: session.date, minutes: session.durationSeconds / 60, doneSets: session.doneSetCount,
                                  isRescue: session.isRescue, kind: session.kind)
         }
@@ -667,23 +745,14 @@ final class GeorgeStore {
                                     minimumMinutes: Double(s.minimumMinutes), rescueMinutes: Double(max(1, s.rescueMinutes)))
     }
 
-    /// The streak as of `now` (default: now). A past workout's recap passes its end, so it shows the
-    /// streak of that day, not today's.
-    func streakSummary(healthEntries: [ActivityEntry] = [], now: Date = Date()) -> StreakSummary {
-        let excused = (try? context.fetch(FetchDescriptor<ExcusedWeek>())) ?? []
-        return StreakEngine(calendar: calendar).evaluate(
-            entries: trainingEntries(healthEntries: healthEntries),
-            excusedWeeks: Set(excused.map(\.weekStart)),
-            config: settings.streakConfig,
-            now: now
-        )
-    }
+    // `streakSummary(healthEntries:now:)` is in GeorgeStore+Caches (kept for the day).
 
     func toggleExcused(weekStart: Date, reason: String = "Break") {
-        let start = calendar.weekStart(for: weekStart)
+        let cal = calendar
+        let start = cal.weekStart(for: weekStart)
         let all = (try? context.fetch(FetchDescriptor<ExcusedWeek>())) ?? []
         // Two devices may each have marked the week before they synced: one tap clears every copy.
-        let matches = all.filter { calendar.weekStart(for: $0.weekStart) == start }
+        let matches = all.filter { cal.weekStart(for: $0.weekStart) == start }
         if !matches.isEmpty {
             for match in matches { context.delete(match) }
         } else {
@@ -693,9 +762,10 @@ final class GeorgeStore {
     }
 
     func isExcused(weekStart: Date) -> Bool {
-        let start = calendar.weekStart(for: weekStart)
+        let cal = calendar
+        let start = cal.weekStart(for: weekStart)
         let all = (try? context.fetch(FetchDescriptor<ExcusedWeek>())) ?? []
-        return all.contains { calendar.weekStart(for: $0.weekStart) == start }
+        return all.contains { cal.weekStart(for: $0.weekStart) == start }
     }
 
     // MARK: Import

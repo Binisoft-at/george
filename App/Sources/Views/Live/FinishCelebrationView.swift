@@ -544,7 +544,7 @@ struct FinishCelebrationView: View {
     private var details: some View {
         VStack(spacing: 12) {
             if summary.savedToHealth {
-                Label("Saved to Apple Health", systemImage: "heart.text.square.fill")
+                Label(summary.healthNote ?? "Saved to Apple Health", systemImage: "heart.text.square.fill")
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.7))
             }

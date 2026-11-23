@@ -457,45 +457,85 @@ struct LivePanelSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Only what changes every half second sits in the timeline.
-                    TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                        PhaseRing(date: context.date, lineWidth: 14, large: true)
-                            .frame(width: 230, height: 230)
-                            .padding(.top, 8)
-                    }
-                    mainControls
-                    UpcomingList()
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        VStack(spacing: 20) {
-                            PaceSection(snapshot: live.paceSnapshot(at: context.date))
-                            statsSection(at: context.date)
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-            }
-            .navigationTitle(title)
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        live.toggleVoiceMute()
-                    } label: {
-                        Image(systemName: live.isVoiceMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    }
-                    .accessibilityLabel(live.isVoiceMuted ? "Unmute voice" : "Mute voice")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+        #if os(macOS)
+        // A column next to live mode (inspector): no toolbar – the header holds the title and buttons.
+        VStack(spacing: 0) {
+            macHeader
+            Divider()
+            panel
         }
-        .macSheet(width: 520, height: 720)
+        #else
+        NavigationStack {
+            panel
+                .navigationTitle(title)
+                .inlineTitle()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        muteButton
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+        }
+        #endif
     }
+
+    private var panel: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Only what changes every half second sits in the timeline.
+                TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                    PhaseRing(date: context.date, lineWidth: 14, large: true)
+                        .frame(width: 230, height: 230)
+                        .padding(.top, 8)
+                }
+                mainControls
+                UpcomingList()
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    VStack(spacing: 20) {
+                        PaceSection(snapshot: live.paceSnapshot(at: context.date))
+                        statsSection(at: context.date)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var muteButton: some View {
+        Button {
+            live.toggleVoiceMute()
+        } label: {
+            Image(systemName: live.isVoiceMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+        }
+        .accessibilityLabel(live.isVoiceMuted ? "Unmute voice" : "Mute voice")
+    }
+
+    #if os(macOS)
+    private var macHeader: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            muteButton
+                .buttonStyle(.borderless)
+                .help(live.isVoiceMuted ? "Unmute voice" : "Mute voice")
+            Button {
+                live.showPanel = false
+            } label: {
+                Image(systemName: "sidebar.trailing")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Hide Pace & Controls")
+            .help("Hide Pace & Controls")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+    }
+    #endif
 
     private var title: String {
         switch live.phase {
@@ -557,13 +597,18 @@ struct LivePanelSheet: View {
         }
     }
 
-    /// Closes the panel first – the next sheet opens from the live screen.
+    /// Closes the panel first – the next sheet opens from the live screen. On the Mac the panel is a
+    /// column next to live mode and stays.
     private func afterClosing(_ action: @escaping @MainActor () -> Void) {
+        #if os(macOS)
+        action()
+        #else
         live.showPanel = false
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 450_000_000)
             action()
         }
+        #endif
     }
 
     private func control(_ symbol: String, _ title: String, action: @escaping () -> Void) -> some View {
@@ -596,6 +641,31 @@ struct LivePanelSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .card(padding: 0, cornerRadius: 16)
+    }
+}
+
+/// Where Pace & Controls (`LivePanelSheet`) opens: a sheet on iPhone/iPad, an inspector column next to
+/// live mode on the Mac – no sheet over the workout window there.
+struct LivePanelPresentation: ViewModifier {
+    let onFinish: () -> Void
+    @Environment(LiveWorkoutController.self) private var live
+
+    func body(content: Content) -> some View {
+        let shown = Binding(get: { live.showPanel }, set: { live.showPanel = $0 })
+        #if os(macOS)
+        content
+            .inspector(isPresented: shown) {
+                LivePanelSheet(onFinish: onFinish)
+                    .inspectorColumnWidth(min: 300, ideal: 340, max: 440)
+            }
+        #else
+        content
+            .sheet(isPresented: shown) {
+                LivePanelSheet(onFinish: onFinish)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        #endif
     }
 }
 

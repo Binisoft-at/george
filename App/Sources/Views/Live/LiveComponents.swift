@@ -459,6 +459,23 @@ struct ValuePadRequest: Identifiable {
     var field: SetField
 }
 
+/// Mac: the keypad as a popover on the value that was clicked – live mode is a window there, and an
+/// edit no longer stacks a sheet over it. iPhone/iPad: nothing (live mode's sheet,
+/// `LiveActions.editValue`).
+struct ValuePadPopover: ViewModifier {
+    @Binding var request: ValuePadRequest?
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.popover(item: $request) { request in
+            ValuePadSheet(request: request)
+        }
+        #else
+        content
+        #endif
+    }
+}
+
 /// A big keypad for one set: switch between reps, weight, RPE…, tap a suggestion (last time,
 /// previous set, plan, ± one step) or type. Both "," and "." work. Changes apply as you type.
 struct ValuePadSheet: View {
@@ -482,84 +499,102 @@ struct ValuePadSheet: View {
     private var set: WorkoutSet? { item?.sets.first { $0.id == request.setID } }
 
     var body: some View {
+        #if os(macOS)
+        // A popover on the clicked value (no title bar or toolbar there): the exercise's name heads
+        // the pad; Save, Return and Esc close it.
+        pad
+            .padding(.top, 14)
+            .frame(width: 360)
+        #else
         NavigationStack {
-            VStack(spacing: 14) {
-                if let item, let set {
-                    header(item, set)
-                    if fields(for: item).count > 1 {
-                        Picker("Value", selection: Binding(get: { field }, set: { switchField(to: $0) })) {
-                            ForEach(fields(for: item), id: \.self) { Text(title(for: $0)).tag($0) }
+            pad
+                .navigationTitle(item?.name ?? "Set")
+                .inlineTitle()
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            commit()
+                            dismiss()
                         }
-                        .pickerStyle(.segmented)
+                        .fontWeight(.semibold)
                     }
-                    display
-                    if field == .weight, let plates = plates(item) {
-                        // Orange when the plates at hand can't make up the weight ("≈ 60 kg").
-                        Label(plates.text, systemImage: "circle.grid.2x1")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(plates.exact ? Color.secondary : Color.orange)
-                    }
-                    suggestions(item, set)
-                    keypad
-                    actions
-                } else {
-                    MessageView(title: "Set not found", systemImage: "questionmark")
                 }
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            .navigationTitle(item?.name ?? "Set")
-            .inlineTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        commit()
-                        dismiss()
+        }
+        #endif
+    }
+
+    private var pad: some View {
+        VStack(spacing: 14) {
+            if let item, let set {
+                #if os(macOS)
+                Text(item.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                #endif
+                header(item, set)
+                if fields(for: item).count > 1 {
+                    Picker("Value", selection: Binding(get: { field }, set: { switchField(to: $0) })) {
+                        ForEach(fields(for: item), id: \.self) { Text(title(for: $0)).tag($0) }
                     }
-                    .fontWeight(.semibold)
+                    .pickerStyle(.segmented)
                 }
+                display
+                if field == .weight, let plates = plates(item) {
+                    // Orange when the plates at hand can't make up the weight ("≈ 60 kg").
+                    Label(plates.text, systemImage: "circle.grid.2x1")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(plates.exact ? Color.secondary : Color.orange)
+                }
+                suggestions(item, set)
+                keypad
+                actions
+            } else {
+                MessageView(title: "Set not found", systemImage: "questionmark")
             }
-            .onAppear {
-                load()
-                padFocused = true
-            }
-            // Hardware keyboard (Mac, iPad): digits, comma/point, delete, return, Tab to the next
-            // value, Esc to close. The pad takes keyboard focus as it opens.
-            .focusable(interactions: .edit)
-            .focused($padFocused)
-            .defaultFocus($padFocused, true)
-            .focusEffectDisabled()
-            .onKeyPress(.escape) {
-                commit()
-                dismiss()
-                return .handled
-            }
-            .onKeyPress(.tab, phases: .down) { press in
-                guard let item else { return .ignored }
-                let all = fields(for: item)
-                guard all.count > 1, let index = all.firstIndex(of: field) else { return .ignored }
-                let step = press.modifiers.contains(.shift) ? all.count - 1 : 1
-                switchField(to: all[(index + step) % all.count])
-                return .handled
-            }
-            .onKeyPress(characters: .decimalDigits) { press in
-                self.press(press.characters)
-                return .handled
-            }
-            .onKeyPress(characters: CharacterSet(charactersIn: ".,")) { _ in
-                guard allowsDecimal else { return .ignored }
-                self.press(decimalSeparator)
-                return .handled
-            }
-            .onKeyPress(.delete) {
-                self.press("⌫")
-                return .handled
-            }
-            .onKeyPress(.return) {
-                commit()
-                dismiss()
-                return .handled
-            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .onAppear {
+            load()
+            padFocused = true
+        }
+        // Hardware keyboard (Mac, iPad): digits, comma/point, delete, return, Tab to the next
+        // value, Esc to close. The pad takes keyboard focus as it opens.
+        .focusable(interactions: .edit)
+        .focused($padFocused)
+        .defaultFocus($padFocused, true)
+        .focusEffectDisabled()
+        .onKeyPress(.escape) {
+            commit()
+            dismiss()
+            return .handled
+        }
+        .onKeyPress(.tab, phases: .down) { press in
+            guard let item else { return .ignored }
+            let all = fields(for: item)
+            guard all.count > 1, let index = all.firstIndex(of: field) else { return .ignored }
+            let step = press.modifiers.contains(.shift) ? all.count - 1 : 1
+            switchField(to: all[(index + step) % all.count])
+            return .handled
+        }
+        .onKeyPress(characters: .decimalDigits) { press in
+            self.press(press.characters)
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: ".,")) { _ in
+            guard allowsDecimal else { return .ignored }
+            self.press(decimalSeparator)
+            return .handled
+        }
+        .onKeyPress(.delete) {
+            self.press("⌫")
+            return .handled
+        }
+        .onKeyPress(.return) {
+            commit()
+            dismiss()
+            return .handled
         }
     }
 
@@ -643,7 +678,7 @@ struct ValuePadSheet: View {
                 HStack(spacing: 8) {
                     ForEach(row, id: \.self) { key in
                         if key.isEmpty {
-                            Color.clear.frame(maxWidth: .infinity, maxHeight: 56)
+                            Color.clear.frame(maxWidth: .infinity, maxHeight: keyHeight)
                         } else {
                             Button {
                                 press(key)
@@ -656,7 +691,7 @@ struct ValuePadSheet: View {
                                     }
                                 }
                                 .font(.title.weight(.semibold))
-                                .frame(maxWidth: .infinity, minHeight: 56)
+                                .frame(maxWidth: .infinity, minHeight: keyHeight)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.glass)
@@ -666,6 +701,15 @@ struct ValuePadSheet: View {
                 }
             }
         }
+    }
+
+    /// Big keys for a thumb; on the Mac (a popover, typed on the keyboard mostly) a little smaller.
+    private var keyHeight: CGFloat {
+        #if os(macOS)
+        return 44
+        #else
+        return 56
+        #endif
     }
 
     private var actions: some View {

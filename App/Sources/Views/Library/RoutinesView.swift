@@ -8,21 +8,43 @@ struct RoutinesView: View {
     @Environment(ExerciseLibrary.self) private var library
 
     var body: some View {
-        List {
-            Section {
-                ForEach(RoutineLibrary.all) { routine in
-                    NavigationLink {
-                        RoutineDetailView(routine: routine)
-                    } label: {
-                        RoutineRow(routine: routine, content: routine.content(using: library.catalog))
-                    }
-                }
-            } footer: {
-                Text("Start a routine right away, or add it to your templates (program “Stretch & Yoga”) to change holds and moves, plan it or share it as a PDF or George file. To build your own: + → New Template, then add stretches from the Exercise Library.")
+        list
+            .groupedList()
+            .navigationTitle("Stretch & Yoga")
+    }
+
+    @ViewBuilder
+    private var list: some View {
+        #if os(macOS)
+        // Mac: a list like the others – the chosen routine shows next to it.
+        NavList { section }
+        #else
+        List { section }
+        #endif
+    }
+
+    private var section: some View {
+        Section {
+            ForEach(RoutineLibrary.all) { routine in
+                link(to: routine)
             }
+        } footer: {
+            Text("Start a routine right away, or add it to your templates (program “Stretch & Yoga”) to change holds and moves, plan it or share it as a PDF or George file. To build your own: + → New Template, then add stretches from the Exercise Library.")
         }
-        .groupedList()
-        .navigationTitle("Stretch & Yoga")
+    }
+
+    @ViewBuilder
+    private func link(to routine: Routine) -> some View {
+        let row = RoutineRow(routine: routine, content: routine.content(using: library.catalog))
+        #if os(macOS)
+        DetailLink(.routine(routine.id)) { row }
+        #else
+        NavigationLink {
+            RoutineDetailView(routine: routine)
+        } label: {
+            row
+        }
+        #endif
     }
 }
 

@@ -52,7 +52,8 @@ struct MuscularLoadCard: View {
     var openIn: SidebarItem? = nil
 
     var body: some View {
-        let summary = analytics.engine.loadSummary(days: 14)
+        // Kept per day by the analytics, not worked out on every redraw.
+        let summary = analytics.loadSummary(days: 14)
         let point = summary.current
         Button {
             router.open(.muscularLoad, in: openIn)
@@ -152,7 +153,7 @@ struct MuscularLoadDetailView: View {
 
     var body: some View {
         let engine = analytics.engine
-        let summary = engine.loadSummary(group: group, days: range.rawValue)
+        let summary = analytics.loadSummary(group: group, days: range.rawValue)
         let selected = selectedDay.flatMap { day in summary.history.first { engine.calendar.isDate($0.day, inSameDayAs: day) } }
         let shown = selected ?? summary.current
 

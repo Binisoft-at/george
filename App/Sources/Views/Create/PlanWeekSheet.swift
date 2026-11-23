@@ -232,7 +232,8 @@ struct PlanWeekSheet: View {
         let calendar = store.calendar
         let today = calendar.startOfDay(for: Date())
         let horizon = calendar.addingDays(14, to: today)
-        busyDays = Set(store.fetchSessions().filter { $0.status != .skipped }.map { session in
+        // Only workouts from today on, without their content.
+        busyDays = Set(store.fetchSessions(datedFrom: today, scalarsOnly: true).filter { $0.status != .skipped }.map { session in
             calendar.startOfDay(for: session.status == .planned ? store.plannedDay(of: session) : session.date)
         }.filter { $0 >= today && $0 < horizon })
         let lighter = lighterChoice

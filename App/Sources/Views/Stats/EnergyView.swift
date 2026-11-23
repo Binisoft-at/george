@@ -24,7 +24,8 @@ extension GeorgeStore {
 
     /// Comparable workouts for the energy ↔ performance link.
     func performanceSamples() -> [PerformanceSample] {
-        fetchSessions().filter { $0.status.isPerformed && $0.setCount > 0 }.map {
+        // Numbers only: the workouts' content isn't loaded.
+        fetchPerformedSessions(scalarsOnly: true).filter { $0.setCount > 0 }.map {
             PerformanceSample(date: $0.date, group: $0.templateID?.uuidString ?? $0.title,
                               volumeKg: $0.volumeKg, completion: Double($0.doneSetCount) / Double(max(1, $0.setCount)))
         }

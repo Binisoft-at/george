@@ -219,10 +219,18 @@ struct ExerciseAnimation: View {
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(tint)
             }
+        } else if urls.count == 1 || reduceMotion {
+            // One picture, or Reduce Motion (the first picture only): nothing to flip, no timer that
+            // redraws the card every second.
+            ZStack {
+                if let first = urls.first {
+                    CachedImage(url: first) { Color.clear }
+                }
+            }
+            .background(Color.white)
         } else {
             TimelineView(.periodic(from: .now, by: 1.1)) { context in
-                // Reduce Motion: the first picture only, no flip-book.
-                let index = reduceMotion ? 0 : Int(context.date.timeIntervalSinceReferenceDate / 1.1) % urls.count
+                let index = Int(context.date.timeIntervalSinceReferenceDate / 1.1) % urls.count
                 ZStack {
                     ForEach(Array(urls.enumerated()), id: \.offset) { offset, url in
                         CachedImage(url: url) { Color.clear }

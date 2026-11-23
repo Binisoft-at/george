@@ -46,17 +46,38 @@ private struct TemplateDocument: View {
     @State private var readState: StoredContent.ReadState = .readable
     /// On screen (not covered by a pushed screen): only then it's what ⌘↩ starts.
     @State private var isShown = false
+    /// The workout as last loaded or written: an edit is compared with it, not with a fresh decode.
+    @State private var lastSaved = WorkoutContent()
+    /// Typed numbers not written yet: they're written once typing pauses (`editCount`), not per keystroke.
+    @State private var pendingEdit: PendingEdit?
+    /// Counts edits; the debounce task restarts with each one.
+    @State private var editCount = 0
+    /// Written without a revision bump: Today and the suggestions refresh once editing ends.
+    @State private var needsRefresh = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// An edit waiting to be written, with the template it belongs to (the list may switch to another).
+    private struct PendingEdit {
+        let template: WorkoutTemplate
+        let content: WorkoutContent
+    }
 
     /// ⌘↩ (Workout menu): "Start UPPER" while this template is shown – not on the tour's practice page.
     private var startCommand: StartCommand? {
         guard practice == nil else { return nil }
         let name = template.name.isEmpty ? "Template" : template.name
         return StartCommand(title: "Start \(name)", isEnabled: readState.isEditable) {
+            commitEdits()
             store.requestStart(template, live: live, toasts: toasts)
         }
     }
 
+    // Split in two so the compiler type-checks it in time.
     var body: some View {
+        withSaving(mainList)
+    }
+
+    private var mainList: some View {
         List {
             headerSection
             if !content.isEmpty {
@@ -99,15 +120,6 @@ private struct TemplateDocument: View {
             try? await Task.sleep(nanoseconds: 450_000_000)
             editor.showPicker = true
         }
-        .onChange(of: template.contentData) { _, newData in
-            if newData != loadedData { load() }
-        }
-        .onChange(of: content) { _, newContent in
-            guard readState.isEditable, newContent != template.content else { return }
-            template.content = newContent
-            loadedData = template.contentData
-            store.save()
-        }
         .sheet(item: $logPast) { template in
             NavigationStack { LogPastWorkoutSheet(template: template) }
         }
@@ -140,8 +152,82 @@ private struct TemplateDocument: View {
 
     private func load() {
         content = template.content
+        lastSaved = content
         loadedData = template.contentData
         readState = template.contentReadState
+    }
+
+    // MARK: Saving edits
+
+    /// Edits are written once typing pauses (not on every keystroke) and saved without a revision
+    /// bump; the bump comes once, when editing ends (leaving the screen or the app, Start, Plan …).
+    private func withSaving(_ base: some View) -> some View {
+        base
+        .onChange(of: template.contentData) { _, newData in externalChange(newData) }
+        .onChange(of: content) { _, newContent in contentEdited(newContent) }
+        .task(id: editCount) {
+            guard pendingEdit != nil else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            writePendingEdit()
+        }
+        .onChange(of: template.id) { _, _ in commitEdits() }
+        .onDisappear { commitEdits() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { commitEdits() }
+        }
+    }
+
+    /// External change (sync, an import, Update Template): reload unless it's our own write.
+    private func externalChange(_ newData: Data?) {
+        guard newData != loadedData else { return }
+        if let edit = pendingEdit, edit.template !== template {
+            // The list switched to another template: the one before keeps what was typed into it.
+            writePendingEdit()
+        } else {
+            // This template changed elsewhere: that change wins, as it did when each keystroke was saved.
+            pendingEdit = nil
+        }
+        load()
+    }
+
+    private func contentEdited(_ newContent: WorkoutContent) {
+        guard readState.isEditable else { return }
+        guard newContent != lastSaved else {
+            // Typed back to what's stored: nothing to write.
+            pendingEdit = nil
+            return
+        }
+        pendingEdit = PendingEdit(template: template, content: newContent)
+        editCount &+= 1
+    }
+
+    private func writePendingEdit() {
+        guard let edit = pendingEdit else { return }
+        pendingEdit = nil
+        let target = edit.template
+        // Deleted meanwhile: nothing to write.
+        guard target.modelContext != nil, !target.isDeleted else { return }
+        let isShownOne = target === template
+        guard target.storeContent(edit.content) else {
+            // Kept as stored (a newer George wrote it meanwhile): show what's there.
+            if isShownOne { load() }
+            return
+        }
+        if isShownOne {
+            lastSaved = edit.content
+            loadedData = target.contentData
+        }
+        store.save(bumping: false)
+        needsRefresh = true
+    }
+
+    /// Writes what's waiting and lets Today and the suggestions catch up (one revision bump).
+    private func commitEdits() {
+        writePendingEdit()
+        guard needsRefresh else { return }
+        needsRefresh = false
+        store.save()
     }
 
     private var headerSection: some View {
@@ -252,6 +338,8 @@ private struct TemplateDocument: View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
                 Button {
+                    // Start, Plan and Log copy the stored template: what was just typed goes with it.
+                    commitEdits()
                     if let practice { practice.startTapped = true } else { store.requestStart(template, live: live, toasts: toasts) }
                 } label: {
                     Label("Start", systemImage: "play.fill")
@@ -263,6 +351,7 @@ private struct TemplateDocument: View {
                 .tint(.accentColor)
                 // ⌘↩ is the Workout menu's item ("Start UPPER" while this is shown).
                 Button {
+                    commitEdits()
                     planDate = Date()
                     showPlan = true
                 } label: {
@@ -275,6 +364,7 @@ private struct TemplateDocument: View {
                 .accessibilityLabel("Plan for a day")
                 .help("Plan for a day")
                 Button {
+                    commitEdits()
                     logPast = template
                 } label: {
                     Image(systemName: "clock.arrow.circlepath")
@@ -337,6 +427,7 @@ private struct TemplateDocument: View {
     private var toolbarItems: some ToolbarContent {
         ToolbarItemGroup(placement: .georgeTrailing) {
             Button {
+                commitEdits()
                 shareRoutine = true
             } label: {
                 Image(systemName: "square.and.arrow.up")
@@ -352,7 +443,7 @@ private struct TemplateDocument: View {
                     }
                     Divider()
                 }
-                TemplateMenuItems(template: template, logPastFor: $logPast)
+                TemplateMenuItems(template: template, logPastFor: $logPast, beforeAction: { commitEdits() })
             } label: {
                 Image(systemName: "ellipsis")
             }

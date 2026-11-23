@@ -1,9 +1,10 @@
 import Foundation
 
-/// A workout marked "in progress" as one device sees it. No schema of its own: the synced status
-/// (active) plus the id each device keeps of the workout it runs itself (UserDefaults). A workout
-/// that is active but not this device's own runs on another iPhone, iPad or Mac – or was left
-/// running by accident when an app was closed mid-workout and never came back.
+/// A workout marked "in progress" as one device sees it: the synced status (active) plus the id each
+/// device keeps of the workout it runs itself (UserDefaults). A workout that is active but not this
+/// device's own runs on another iPhone, iPad or Mac – or was left running by accident when an app was
+/// closed mid-workout and never came back. When the session names the device that claimed it, that
+/// claim decides (`LiveOwnership`).
 public enum RunningWorkout {
     /// A workout nobody has touched for this long was left running by accident.
     public static let staleAfter: TimeInterval = 12 * 60 * 60

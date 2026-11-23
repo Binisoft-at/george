@@ -15,7 +15,7 @@ struct MuscleDetailView: View {
         let profile = store.profile
         let now = Date()
         let freshness = engine.freshness(of: group, at: now)
-        let load = engine.loadSummary(group: group, days: 14)
+        let load = analytics.loadSummary(group: group, days: 14)
         let weekly = engine.weeklySets(for: group, weeks: 12, now: now)
         let thisWeek = weekly.last?.sets ?? 0
         let ninety = DateInterval(start: now.addingTimeInterval(-90 * 86_400), end: now.addingTimeInterval(1))

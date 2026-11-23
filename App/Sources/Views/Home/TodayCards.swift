@@ -10,10 +10,10 @@ struct MissedPlansCard: View {
     @Environment(LiveWorkoutController.self) private var live
     @Environment(Router.self) private var router
     @Environment(ToastCenter.self) private var toasts
-    @Query private var sessions: [WorkoutSession]
 
     var body: some View {
-        let _ = sessions.count + store.revision
+        // Saved changes move the revision (a running workout's sets don't: no refetch on every tick).
+        let _ = store.revision
         let missed = store.overdueSessions(limit: 3)
         if !missed.isEmpty {
             VStack(spacing: 0) {

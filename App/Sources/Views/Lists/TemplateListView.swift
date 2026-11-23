@@ -141,7 +141,7 @@ struct TemplateListView: View {
         .contextMenu {
             TemplateMenuItems(template: template, logPastFor: $logPastFor)
         } preview: {
-            WorkoutPreview(title: template.name, subtitle: template.subtitle, kind: template.kind, content: template.content)
+            WorkoutPreview(template: template)
         }
         .draggable("template:\(template.id.uuidString)")
     }

@@ -6,7 +6,8 @@ rate or cardio fitness, so it is not a general "recovery score".
 
 Where to find it: sidebar → **Insights → Muscles**, the cards at the top of **Stats & Records**,
 the **Targets** section of a template, **Muscles worked** on a logged workout, the post-workout
-summary, and the readiness hint on the **Up next** card.
+summary, and the readiness hint on the **Up next** card. On the Mac and iPad (760 pt or wider) the
+Muscles screen shows the metric, a larger body map and the filters on the left and the muscles on the right.
 
 ## From sets to muscles
 
@@ -73,6 +74,8 @@ sport uses – scaled by duration (per hour) and effort (5 = neutral) – but ne
   week" (each set once; cardio, stretching and yoga add no sets).
 - **Calibrating** until there are 14 days since the first logged set and at least 4 sessions
   (whole body) or 3 sessions (one muscle) in the last six weeks.
+- Only the shown days (plus 84 days for the long average and 42 for the calibration window) are
+  read – not the whole log; the result is the same (tested against the full walk on three years).
 
 ## Sets per week
 
