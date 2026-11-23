@@ -606,7 +606,8 @@ private struct MacMainColumn: View {
         @Bindable var router = router
         return NavigationStack(path: $router.detailPath) {
             ScreenView(item: router.sidebar)
-                .frame(maxWidth: 980)
+                // Wide enough for Today's and Muscles' two columns (Today caps itself at 1100).
+                .frame(maxWidth: 1200)
                 .frame(maxWidth: .infinity)
                 .navigationDestination(for: DetailItem.self) { item in
                     DetailScreen(item: item)
