@@ -1,0 +1,3 @@
+ok: George.app has every entitlement from Config/iOS/George.entitlements
+ok: George.app/Watch/GeorgeWatch.app has every entitlement from Config/watchOS/GeorgeWatch.entitlements
+ok: George.app/PlugIns/GeorgeWidgets.appex has every entitlement from Config/Widgets/GeorgeWidgets.entitlements
