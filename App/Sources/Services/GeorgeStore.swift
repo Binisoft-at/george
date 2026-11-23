@@ -520,7 +520,8 @@ final class GeorgeStore {
     func updateTemplate(from session: WorkoutSession, mode: TemplateUpdateMode = .everything) -> (() -> Void)? {
         guard let template = template(id: session.templateID) else { return nil }
         let before = template.content
-        template.content = session.content.asTemplate(mode: mode, base: before)
+        // Stored data this build can't read (a newer George wrote it) stays as it is: nothing to undo.
+        guard template.storeContent(session.content.asTemplate(mode: mode, base: before)) else { return nil }
         save()
         AppLog.info("Template updated (\(mode.rawValue))", category: "store")
         return { [weak self, weak template] in

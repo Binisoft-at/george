@@ -557,6 +557,7 @@ struct FinishCelebrationView: View {
     private func updateTemplate(_ mode: TemplateUpdateMode) {
         guard let session = store.session(id: summary.sessionID) else { return }
         templateUndo = store.updateTemplate(from: session, mode: mode)
+        guard templateUndo != nil else { return }
         templateUpdated = true
         Haptics.success()
     }

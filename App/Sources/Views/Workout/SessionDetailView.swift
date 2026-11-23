@@ -229,6 +229,10 @@ private struct SessionDocument: View {
         let name = session.templateName
         let restore = store.updateTemplate(from: session, mode: mode)
         templateOffer = nil
+        guard restore != nil else {
+            toasts.show("\u{201C}\(name)\u{201D} wasn't changed – it was saved by a newer George", symbol: "exclamationmark.triangle")
+            return
+        }
         templateDiffers = !store.templateChanges(from: session, mode: .everything).isEmpty
         let undo: (() -> Void)? = restore.map { restore in
             {
